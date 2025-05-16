@@ -105,6 +105,7 @@ export default function Home() {
                     } catch (textError) {
                         errorDetails += ` (Konnte Fehlertext nicht lesen: ${(textError as Error).message})`;
                     }
+                    
                 }
                 throw new Error(`Fehler beim Abrufen der Daten: ${errorDetails}`);
             }
