@@ -1,9 +1,9 @@
 // app/page.tsx
 
 "use client";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { XIcon, CopyIcon, CheckIcon } from "lucide-react"; // CopyIcon und CheckIcon für Kopierfunktion
+import { CopyIcon, CheckIcon } from "lucide-react"; // CopyIcon und CheckIcon für Kopierfunktion
 
 // Definiere die Typen für deine Daten
 interface BaseItem {
@@ -94,16 +94,7 @@ const formatTime = (timeString?: string) => {
 };
 
 
-const getStatusColor = (status?: BeschwerdeItem["status"]) => {
-    const normalizedStatus = typeof status === 'string' ? status.toLowerCase() : undefined;
-    switch (normalizedStatus) {
-        case "offen": return "text-green-400";
-        case "in bearbeitung": return "text-yellow-400";
-        case "gelöst": return "text-blue-400";
-        case "abgelehnt": return "text-red-400";
-        default: return "text-neutral-400";
-    }
-};
+
 
 // Hilfskomponente für ein einzelnes Datenfeld mit Kopierfunktion
 const DataField = ({ label, value, onCopy, isCopied, copyValue, fieldKey }: { label: string, value?: string | null, onCopy: (text: string, key: string) => void, isCopied: boolean, copyValue?: string, fieldKey: string }) => {
@@ -186,7 +177,9 @@ export default function Home() {
                     if (sDate && itemDate < sDate) match = false;
                     if (eDate && itemDate > eDate) match = false;
                     return match;
-                } catch (e) { return false; }
+                } catch (e) { 
+                    console.log(e) 
+                    return false; }
             });
         }
         return tempData; 
