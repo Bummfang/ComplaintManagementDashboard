@@ -1,9 +1,9 @@
 // app/page.tsx
 
 "use client";
-import { motion } from "framer-motion";
+import { motion } from "framer-motion"; // AnimatePresence nicht mehr benötigt, da Modal entfernt wurde
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { CopyIcon, CheckIcon } from "lucide-react"; // CopyIcon und CheckIcon für Kopierfunktion
+import { CopyIcon, CheckIcon } from "lucide-react"; 
 
 // Definiere die Typen für deine Daten
 interface BaseItem {
@@ -92,8 +92,6 @@ const formatTime = (timeString?: string) => {
         return timeString;
     }
 };
-
-
 
 
 // Hilfskomponente für ein einzelnes Datenfeld mit Kopierfunktion
@@ -199,22 +197,41 @@ export default function Home() {
         }
     };
 
+    // handleStatusChange angepasst für die neue API-Struktur
     const handleStatusChange = async (itemId: number, newStatus: BeschwerdeItem["status"]) => {
         const originalData = [...data]; 
         setData(prevData => prevData.map(item => item.id === itemId && 'status' in item ? { ...item, status: newStatus } as BeschwerdeItem : item ));
         setError(null); 
         try {
-            const response = await fetch(`${API_ENDPOINTS.beschwerden}/${itemId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', }, body: JSON.stringify({ status: newStatus }), });
-            if (!response.ok) { setData(originalData); const errorData = await response.json().catch(() => ({ details: response.statusText })); throw new Error(`Update fehlgeschlagen (${response.status}): ${errorData.details || errorData.error || "Serverfehler"}`); }
-            fetchData(currentView, true);
-        } catch (err) { console.error(`Statusänderungsfehler für Item ${itemId}:`, err); setData(originalData); setError(err instanceof Error ? err.message : "Statusupdate fehlgeschlagen."); setTimeout(() => setError(null), 5000); }
+            // URL ist jetzt der Basis-Endpunkt für Beschwerden
+            // Die itemId wird im Body mitgesendet
+            const response = await fetch(API_ENDPOINTS.beschwerden, { 
+                method: 'PATCH', 
+                headers: { 'Content-Type': 'application/json', }, 
+                body: JSON.stringify({ 
+                    id: itemId, // ID jetzt im Body
+                    status: newStatus 
+                }), 
+            });
+            if (!response.ok) { 
+                setData(originalData); 
+                const errorData = await response.json().catch(() => ({ details: response.statusText })); 
+                throw new Error(`Update fehlgeschlagen (${response.status}): ${errorData.details || errorData.error || "Serverfehler"}`); 
+            }
+            console.log(`[handleStatusChange] Status für Item ${itemId} erfolgreich auf ${newStatus} auf dem Server gesetzt.`);
+            fetchData(currentView, true); // Daten neu laden, um Konsistenz sicherzustellen
+        } catch (err) { 
+            console.error(`Statusänderungsfehler für Item ${itemId}:`, err); 
+            setData(originalData); 
+            setError(err instanceof Error ? err.message : "Statusupdate fehlgeschlagen."); 
+            setTimeout(() => setError(null), 5000); 
+        }
     };
     
     const handleApplyDateFilter = () => { setAppliedStartDate(startDateInput || null); setAppliedEndDate(endDateInput || null); };
     const handleClearDateFilter = () => { setStartDateInput(""); setEndDateInput(""); setAppliedStartDate(null); setAppliedEndDate(null); };
 
     const renderDataItemCard = (item: DataItem) => {
-        // ... (renderDataItemCard Implementierung bleibt gleich)
         const itemTypePrefix = currentView === "beschwerden" ? "CMP-" : currentView === "lob" ? "LOB-" : "ANG-";
         const isBeschwerde = currentView === 'beschwerden' && 'beschwerdegrund' in item;
         const beschwerdeItem = isBeschwerde ? item as BeschwerdeItem : null;
@@ -339,7 +356,7 @@ export default function Home() {
                         />
                     </div>
                     {/* Gruppe für Buttons */}
-                    <div className="flex gap-2 items-center pt-1"> {/* pt-1 um mit der Höhe der Input-Labels besser auszurichten */}
+                    <div className="flex gap-2 items-center pt-1"> 
                         <button
                             onClick={handleApplyDateFilter}
                             className="px-4 h-[38px] bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-full transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-green-400 whitespace-nowrap"
