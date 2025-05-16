@@ -11,7 +11,7 @@ if (!connectionString) {
 }
 
 const pool = new Pool({ connectionString });
-pool.on('error', (err, client) => console.error('Unerwarteter Fehler im PostgreSQL-Client für Anregungen', err));
+pool.on('error', (err,) => console.error('Unerwarteter Fehler im PostgreSQL-Client für Anregungen', err));
 
 interface Anregung {
     id: number;
