@@ -8,6 +8,7 @@ const globalForLobPool = globalThis as unknown as {
   pool: Pool | undefined;
 };
 
+
 // Hilfsfunktion, um den Pool zu holen oder zu initialisieren
 function getDbPool(): Pool {
     // Prüfen, ob der Pool bereits für diesen Kontext initialisiert wurde
