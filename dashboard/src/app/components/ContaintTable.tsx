@@ -59,7 +59,7 @@ const formatDate = (dateString?: string) => {
             month: "2-digit",
             year: "numeric",
         });
-    } catch (e) { 
+    } catch (e) {
         console.log(e)
         return dateString;
     }
@@ -105,7 +105,7 @@ export default function Home() {
                     } catch (textError) {
                         errorDetails += ` (Konnte Fehlertext nicht lesen: ${(textError as Error).message})`;
                     }
-                    
+
                 }
                 throw new Error(`Fehler beim Abrufen der Daten: ${errorDetails}`);
             }
@@ -148,7 +148,7 @@ export default function Home() {
         return [...baseHeaders, "Beschreibung (Auszug)", "Aktionen"];
     };
 
-    const renderTableRow = (item: DataItem, ) => {
+    const renderTableRow = (item: DataItem) => {
         const itemTypePrefix = currentView === "beschwerden" ? "CMP-" : currentView === "lob" ? "LOB-" : "ANG-";
         return (
             <tr
@@ -157,13 +157,16 @@ export default function Home() {
             >
                 <td className="px-4 py-3 whitespace-nowrap">{itemTypePrefix}{item.id}</td>
                 <td className="px-4 py-3 whitespace-nowrap">{item.name}</td>
-                <td className="px-4 py-3 max-w-xs truncate" title={item.betreff}>{item.betreff}</td>
+                <td className="px-4 py-3 max-w-xs truncate" title={item.betreff}>{item.betreff}</td> {/* Betreff bleibt 'truncate' wie im Original, falls gewünscht */}
                 <td className="px-4 py-3 whitespace-nowrap">{formatDate(item.erstelltam)}</td>
 
                 {currentView === "beschwerden" && "beschwerdegrund" in item && (
                     <>
-                        <td className="px-4 py-3 max-w-md whitespace-normal" title={item.beschreibung}>
-                            {item.beschreibung}
+                        <td
+                            className="px-4 py-3 max-w-md whitespace-normal break-words"
+                            title={item.beschreibung}
+                        >
+                            {item.beschreibung} {/* Diese Zelle wird jetzt korrekt umbrechen */}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">{formatDate((item as BeschwerdeItem).datum)}</td>
                         <td className="px-4 py-3 whitespace-nowrap">{(item as BeschwerdeItem).linie || "N/A"}</td>
@@ -177,8 +180,11 @@ export default function Home() {
                 )}
 
                 {currentView !== "beschwerden" && (
-                    <td className="px-4 py-3 max-w-md truncate" title={item.beschreibung}>
-                        {item.beschreibung}
+                    <td
+                        className="px-4 py-3 max-w-md whitespace-normal break-words"
+                        title={item.beschreibung}
+                    >
+                        {item.beschreibung} {/* Auch diese Zelle (Lob/Anregungen) wird jetzt umbrechen */}
                     </td>
                 )}
 
