@@ -129,7 +129,7 @@ export default function Home() {
         const intervalId = setInterval(() => {
             console.log(`[Intervall] Aktualisiere Daten für Ansicht: ${currentView}`);
             fetchData(currentView, true);
-        }, 50000); // 50 Sekunden Intervall
+        }, 5000); // 5Sekunden Intervall
 
         return () => {
             clearInterval(intervalId);
