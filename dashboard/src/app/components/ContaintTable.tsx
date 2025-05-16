@@ -108,7 +108,7 @@ export default function Home() {
                 }
                 throw new Error(`Fehler beim Abrufen der Daten: ${errorDetails}`);
             }
-            let fetchedData: DataItem[] = await response.json();
+            const fetchedData: DataItem[] = await response.json();
 
             setData(fetchedData);
             setError(null);
