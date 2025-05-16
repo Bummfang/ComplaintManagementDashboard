@@ -30,7 +30,7 @@ function getDbPool(): Pool {
         } : undefined,
     });
 
-    newPool.on('error', (err: Error, _client: PoolClient | undefined) => {
+    newPool.on('error', (err: Error | undefined) => {
         console.error('Unerwarteter Fehler im PostgreSQL-Client-Pool (/api/beschwerden)', err);
     });
 
