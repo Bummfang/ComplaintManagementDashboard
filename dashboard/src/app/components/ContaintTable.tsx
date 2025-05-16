@@ -59,7 +59,8 @@ const formatDate = (dateString?: string) => {
             month: "2-digit",
             year: "numeric",
         });
-    } catch (_e) { // 'e' mit '_' präfixen, da es nicht verwendet wird
+    } catch (e) { 
+        console.log(e)
         return dateString;
     }
 };
@@ -152,7 +153,7 @@ export default function Home() {
         return [...baseHeaders, "Beschreibung (Auszug)", "Aktionen"];
     };
 
-    const renderTableRow = (item: DataItem, index: number) => {
+    const renderTableRow = (item: DataItem, ) => {
         const itemTypePrefix = currentView === "beschwerden" ? "CMP-" : currentView === "lob" ? "LOB-" : "ANG-";
         return (
             <tr
@@ -252,7 +253,7 @@ export default function Home() {
                                         </td>
                                     </tr>
                                 ) : (
-                                    data.map((item, index) => renderTableRow(item, index))
+                                    data.map((item) => renderTableRow(item))
                                 )}
                             </tbody>
                         </table>
