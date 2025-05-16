@@ -1,4 +1,4 @@
-// app/api/lob/route.ts
+// app/api/like/route.ts
 import { NextResponse } from 'next/server';
 import { Pool, type QueryResultRow, type PoolClient } from 'pg'; // QueryResultRow und PoolClient importieren
 

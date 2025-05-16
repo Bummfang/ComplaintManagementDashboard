@@ -1,4 +1,4 @@
-// app/api/anregungen/route.ts
+// app/api/feedback/route.ts
 import { NextResponse } from 'next/server';
 import { Pool, type QueryResultRow, type PoolClient } from 'pg'; // QueryResultRow und PoolClient importieren
 
