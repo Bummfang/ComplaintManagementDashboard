@@ -4,7 +4,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
 
-// Definiere die Typen für deine Daten
+// Definiere die Typen für deine Daten (wie gehabt)
 interface BaseItem {
     id: number;
     name: string;
@@ -24,24 +24,15 @@ interface BeschwerdeItem extends BaseItem {
     status?: "Offen" | "In Bearbeitung" | "Gelöst" | "Abgelehnt";
 }
 
-// Option A: Typ-Aliase verwenden, da LobItem und AnregungItem keine eigenen Member haben
 type LobItem = BaseItem;
 type AnregungItem = BaseItem;
-
-// Option B (falls du sie später erweitern willst, dann die eslint-disable Kommentare verwenden):
-// // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-// interface LobItem extends BaseItem {}
-// // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-// interface AnregungItem extends BaseItem {}
-
-
 type DataItem = BeschwerdeItem | LobItem | AnregungItem;
 type ViewType = "beschwerden" | "lob" | "anregungen";
 
 const API_ENDPOINTS: Record<ViewType, string> = {
     beschwerden: "/api/containt",
     lob: "/api/like",
-    anregungen: "/api/feedback", // oder /api/anregungen, je nachdem wie deine Datei heißt
+    anregungen: "/api/feedback",
 };
 
 const VIEW_TITLES: Record<ViewType, string> = {
@@ -81,6 +72,9 @@ export default function Home() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // NEU: State für das Feedback beim Kopieren
+    const [copiedCellKey, setCopiedCellKey] = useState<string | null>(null);
+
     const fetchData = useCallback(async (view: ViewType, isBackgroundUpdate = false) => {
         if (!isBackgroundUpdate) {
             setIsLoading(true);
@@ -105,12 +99,10 @@ export default function Home() {
                     } catch (textError) {
                         errorDetails += ` (Konnte Fehlertext nicht lesen: ${(textError as Error).message})`;
                     }
-
                 }
                 throw new Error(`Fehler beim Abrufen der Daten: ${errorDetails}`);
             }
             const fetchedData: DataItem[] = await response.json();
-
             setData(fetchedData);
             setError(null);
         } catch (err) {
@@ -140,6 +132,24 @@ export default function Home() {
         };
     }, [currentView, fetchData]);
 
+    // NEU: Funktion zum Kopieren in die Zwischenablage
+    const handleCopyToClipboard = async (textToCopy: string, cellKey: string) => {
+        if (typeof textToCopy !== 'string' || !textToCopy) {
+            // Nichts tun, wenn kein Text vorhanden ist oder der Typ nicht stimmt
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            setCopiedCellKey(cellKey); // Setze den Key der kopierten Zelle für Feedback
+            setTimeout(() => {
+                setCopiedCellKey(null); // Feedback nach 2 Sekunden zurücksetzen
+            }, 2000);
+        } catch (err) {
+            console.error('Fehler beim Kopieren: ', err);
+            alert("Kopieren fehlgeschlagen!"); // Optional: Besseres Fehlerfeedback
+        }
+    };
+
     const renderTableHeaders = () => {
         const baseHeaders = ["ID", "Name", "Betreff", "Erstellt am"];
         if (currentView === "beschwerden") {
@@ -148,49 +158,100 @@ export default function Home() {
         return [...baseHeaders, "Beschreibung (Auszug)", "Aktionen"];
     };
 
+    // --- MODIFIZIERTE renderTableRow Funktion ---
     const renderTableRow = (item: DataItem) => {
         const itemTypePrefix = currentView === "beschwerden" ? "CMP-" : currentView === "lob" ? "LOB-" : "ANG-";
+        const rowId = `${currentView}-${item.id}`; // Eindeutige ID für die Zeile
+
+        // Helfer-Komponente (optional, aber macht den Code sauberer)
+        // Für dieses Beispiel inline implementiert
+        const renderCopyButton = (textToCopy: string, fieldName: string) => {
+            const cellKey = `${rowId}-${fieldName}`;
+            const isCopied = copiedCellKey === cellKey;
+            return (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation(); // Verhindert Klick-Events auf der Zeile, falls vorhanden
+                        handleCopyToClipboard(textToCopy, cellKey);
+                    }}
+                    className="absolute top-1/2 right-1.5 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition-all duration-150 ease-in-out"
+                    title={isCopied ? "Kopiert!" : "Kopieren"}
+                >
+                    {isCopied ? "✓" : "📋"} {/* Icon ändert sich bei Erfolg */}
+                </button>
+            );
+        };
+        
+        const idText = `${itemTypePrefix}${item.id}`;
+        const nameText = item.name;
+        const betreffText = item.betreff;
+        const erstelltAmText = formatDate(item.erstelltam);
+        const beschreibungText = item.beschreibung;
+
         return (
             <tr
-                key={`${currentView}-${item.id}`}
+                key={rowId}
                 className="border-t border-[#20202A] hover:bg-[#1C1C22] transition-colors"
             >
-                <td className="px-4 py-3 whitespace-nowrap">{itemTypePrefix}{item.id}</td>
-                <td className="px-4 py-3 whitespace-nowrap">{item.name}</td>
-                <td className="px-4 py-3 max-w-xs truncate" title={item.betreff}>{item.betreff}</td> {/* Betreff bleibt 'truncate' wie im Original, falls gewünscht */}
-                <td className="px-4 py-3 whitespace-nowrap">{formatDate(item.erstelltam)}</td>
+                {/* ID */}
+                <td className="px-4 py-3 whitespace-nowrap group relative">
+                    <span>{idText}</span>
+                    {renderCopyButton(idText, "id")}
+                </td>
+                {/* Name */}
+                <td className="px-4 py-3 whitespace-nowrap group relative">
+                    <span>{nameText}</span>
+                    {renderCopyButton(nameText, "name")}
+                </td>
+                {/* Betreff */}
+                <td className="px-4 py-3 max-w-xs truncate group relative" title={betreffText}>
+                    {/* Wichtig: span mit block und truncate, wenn td truncate hat */}
+                    <span className="block truncate">{betreffText}</span> 
+                    {renderCopyButton(betreffText, "betreff")}
+                </td>
+                {/* Erstellt am */}
+                <td className="px-4 py-3 whitespace-nowrap group relative">
+                    <span>{erstelltAmText}</span>
+                    {renderCopyButton(erstelltAmText, "erstelltam")}
+                </td>
 
+                {/* Beschreibung (für alle Views jetzt mit Umbruch und Kopierfunktion) */}
+                <td
+                    className="px-4 py-3 max-w-md whitespace-normal break-words group relative"
+                    title={beschreibungText}
+                >
+                    <span>{beschreibungText}</span>
+                    {renderCopyButton(beschreibungText, "beschreibung")}
+                </td>
+
+                {/* Spezifische Spalten für Beschwerden */}
                 {currentView === "beschwerden" && "beschwerdegrund" in item && (
                     <>
-                        <td
-                            className="px-4 py-3 max-w-md whitespace-normal break-words"
-                            title={item.beschreibung}
-                        >
-                            {item.beschreibung} {/* Diese Zelle wird jetzt korrekt umbrechen */}
+                        <td className="px-4 py-3 whitespace-nowrap group relative">
+                            <span>{formatDate((item as BeschwerdeItem).datum)}</span>
+                            {renderCopyButton(formatDate((item as BeschwerdeItem).datum), "datum")}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap">{formatDate((item as BeschwerdeItem).datum)}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{(item as BeschwerdeItem).linie || "N/A"}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{(item as BeschwerdeItem).haltestelle || "N/A"}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap group relative">
+                            <span>{(item as BeschwerdeItem).linie || "N/A"}</span>
+                            {renderCopyButton((item as BeschwerdeItem).linie || "N/A", "linie")}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap group relative">
+                            <span>{(item as BeschwerdeItem).haltestelle || "N/A"}</span>
+                            {renderCopyButton((item as BeschwerdeItem).haltestelle || "N/A", "haltestelle")}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap group relative">
                             <span className={`font-medium ${getStatusColor((item as BeschwerdeItem).status)}`}>
                                 {(item as BeschwerdeItem).status || "N/A"}
                             </span>
+                            {renderCopyButton((item as BeschwerdeItem).status || "N/A", "status")}
                         </td>
                     </>
                 )}
-
-                {currentView !== "beschwerden" && (
-                    <td
-                        className="px-4 py-3 max-w-md whitespace-normal break-words"
-                        title={item.beschreibung}
-                    >
-                        {item.beschreibung} {/* Auch diese Zelle (Lob/Anregungen) wird jetzt umbrechen */}
-                    </td>
-                )}
-
+                
+                {/* Aktionsspalte (hier kein Kopierbutton für den "Details"-Button selbst) */}
                 <td className="px-4 py-3 whitespace-nowrap">
                     <button
-                        onClick={() => alert(`Details für ${itemTypePrefix}${item.id}\nBetreff: ${item.betreff}`)}
+                        onClick={() => alert(`Details für ${idText}\nBetreff: ${item.betreff}`)}
                         className="text-blue-400 hover:text-blue-300 px-2 py-1 rounded hover:bg-[#2a2a32] transition-colors"
                     >
                         Details
@@ -248,7 +309,6 @@ export default function Home() {
                             <tbody>
                                 {data.length === 0 ? (
                                     <tr>
-                                        {/* Korrigierte Anführungszeichen */}
                                         <td colSpan={renderTableHeaders().length} className="text-center py-10 text-neutral-500">
                                             Keine Einträge für &quot;{VIEW_TITLES[currentView]}&quot; gefunden.
                                         </td>
