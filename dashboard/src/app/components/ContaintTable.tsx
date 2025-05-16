@@ -110,12 +110,6 @@ export default function Home() {
             }
             let fetchedData: DataItem[] = await response.json();
 
-            if (view === "beschwerden") {
-                fetchedData = fetchedData.map((item, index) => ({
-                    ...item,
-                    status: (["Offen", "In Bearbeitung", "Gelöst", "Abgelehnt"] as BeschwerdeItem["status"][])[index % 4],
-                }));
-            }
             setData(fetchedData);
             setError(null);
         } catch (err) {
