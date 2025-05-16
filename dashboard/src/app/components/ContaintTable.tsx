@@ -137,7 +137,7 @@ export default function Home() {
         const intervalId = setInterval(() => {
             console.log(`[Intervall] Aktualisiere Daten für Ansicht: ${currentView}`);
             fetchData(currentView, true);
-        }, 1000);
+        }, 10000);
 
         return () => {
             clearInterval(intervalId);
