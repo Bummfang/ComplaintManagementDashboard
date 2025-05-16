@@ -1,3 +1,5 @@
+// page.tsx
+
 import ContaintTable from "./components/ContaintTable";
 export default function Home() {
   return (
