@@ -29,7 +29,7 @@ function getDbPool(): Pool {
         } : undefined, // Lokal kein SSL, es sei denn explizit konfiguriert
     });
 
-    newPool.on('error', (err: Error, _client: PoolClient | undefined) => {
+    newPool.on('error', (err: Error | undefined) => {
         console.error('Unerwarteter Fehler im PostgreSQL-Client-Pool (/api/lob)', err);
     });
 
