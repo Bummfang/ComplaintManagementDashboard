@@ -196,7 +196,7 @@ export default function Home() {
     return (
         <div className="min-h-screen w-full bg-[#0D0D12] text-white p-4 md:p-8 font-sans">
             <motion.div
-                className="w-full  mx-auto"
+                className="w-full p-10 mx-auto"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
