@@ -4,7 +4,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
 
-// --- Deine Interfaces und Konstanten bleiben gleich ---
+// Definiere die Typen für deine Daten
 interface BaseItem {
     id: number;
     name: string;
@@ -22,11 +22,18 @@ interface BeschwerdeItem extends BaseItem {
     haltestelle?: string;
     linie?: string;
     status?: "Offen" | "In Bearbeitung" | "Gelöst" | "Abgelehnt";
-    // zugewiesenAn wurde entfernt
 }
 
-interface LobItem extends BaseItem {}
-interface AnregungItem extends BaseItem {}
+// Option A: Typ-Aliase verwenden, da LobItem und AnregungItem keine eigenen Member haben
+type LobItem = BaseItem;
+type AnregungItem = BaseItem;
+
+// Option B (falls du sie später erweitern willst, dann die eslint-disable Kommentare verwenden):
+// // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+// interface LobItem extends BaseItem {}
+// // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+// interface AnregungItem extends BaseItem {}
+
 
 type DataItem = BeschwerdeItem | LobItem | AnregungItem;
 type ViewType = "beschwerden" | "lob" | "anregungen";
@@ -34,7 +41,7 @@ type ViewType = "beschwerden" | "lob" | "anregungen";
 const API_ENDPOINTS: Record<ViewType, string> = {
     beschwerden: "/api/containt",
     lob: "/api/like",
-    anregungen: "/api/feedback",
+    anregungen: "/api/feedback", // oder /api/anregungen, je nachdem wie deine Datei heißt
 };
 
 const VIEW_TITLES: Record<ViewType, string> = {
@@ -52,7 +59,7 @@ const formatDate = (dateString?: string) => {
             month: "2-digit",
             year: "numeric",
         });
-    } catch (e) {
+    } catch (_e) { // 'e' mit '_' präfixen, da es nicht verwendet wird
         return dateString;
     }
 };
@@ -95,7 +102,7 @@ export default function Home() {
                         const errorText = await response.text();
                         errorDetails += ` (Serverantwort: ${errorText.substring(0, 100)}...)`;
                     } catch (textError) {
-                         errorDetails += ` (Konnte Fehlertext nicht lesen: ${(textError as Error).message})`;
+                        errorDetails += ` (Konnte Fehlertext nicht lesen: ${(textError as Error).message})`;
                     }
                 }
                 throw new Error(`Fehler beim Abrufen der Daten: ${errorDetails}`);
@@ -129,7 +136,7 @@ export default function Home() {
         const intervalId = setInterval(() => {
             console.log(`[Intervall] Aktualisiere Daten für Ansicht: ${currentView}`);
             fetchData(currentView, true);
-        }, 10000); // 10000 millis
+        }, 50000);
 
         return () => {
             clearInterval(intervalId);
@@ -140,14 +147,12 @@ export default function Home() {
     const renderTableHeaders = () => {
         const baseHeaders = ["ID", "Name", "Betreff", "Erstellt am"];
         if (currentView === "beschwerden") {
-            // Neue Reihenfolge: "Beschreibung", dann Details, dann "Status" ans Ende (vor "Aktionen")
             return [...baseHeaders, "Beschreibung", "Vorfall Datum", "Linie", "Haltestelle", "Status", "Aktionen"];
         }
-        // Für Lob & Anregungen: Beschreibung (Auszug) kann bei Bedarf auch angepasst werden
         return [...baseHeaders, "Beschreibung (Auszug)", "Aktionen"];
     };
 
-    const renderTableRow = (item: DataItem,) => {
+    const renderTableRow = (item: DataItem, index: number) => {
         const itemTypePrefix = currentView === "beschwerden" ? "CMP-" : currentView === "lob" ? "LOB-" : "ANG-";
         return (
             <tr
@@ -161,14 +166,12 @@ export default function Home() {
 
                 {currentView === "beschwerden" && "beschwerdegrund" in item && (
                     <>
-                        {/* BESCHREIBUNG: `truncate` und `whitespace-nowrap` entfernt für Umbruch. `max-w-..` steuert die maximale Breite. */}
                         <td className="px-4 py-3 max-w-md whitespace-normal" title={item.beschreibung}>
                             {item.beschreibung}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">{formatDate((item as BeschwerdeItem).datum)}</td>
                         <td className="px-4 py-3 whitespace-nowrap">{(item as BeschwerdeItem).linie || "N/A"}</td>
                         <td className="px-4 py-3 whitespace-nowrap">{(item as BeschwerdeItem).haltestelle || "N/A"}</td>
-                        {/* STATUS: An neuer Position */}
                         <td className="px-4 py-3 whitespace-nowrap">
                             <span className={`font-medium ${getStatusColor((item as BeschwerdeItem).status)}`}>
                                 {(item as BeschwerdeItem).status || "N/A"}
@@ -178,7 +181,6 @@ export default function Home() {
                 )}
 
                 {currentView !== "beschwerden" && (
-                    // Für Lob/Anregungen: Wenn hier auch der volle Text mit Umbruch angezeigt werden soll, `truncate` entfernen und `whitespace-normal` hinzufügen.
                     <td className="px-4 py-3 max-w-md truncate" title={item.beschreibung}>
                         {item.beschreibung}
                     </td>
@@ -199,14 +201,11 @@ export default function Home() {
     return (
         <div className="min-h-screen w-full bg-[#0D0D12] text-white p-4 md:p-8 font-sans">
             <motion.div
-                // Erwäge max-w-full oder eine noch größere max-w- Variante, wenn horizontales Scrollen komplett vermieden werden soll
-                // und das Layout es zulässt.
                 className="w-full max-w-7xl mx-auto"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
             >
-                {/* Tab-Navigation und Titel bleiben gleich */}
                 <div className="mb-6 flex space-x-1 border-b border-[#20202A] pb-px">
                     {(Object.keys(VIEW_TITLES) as ViewType[]).map((viewKey) => (
                         <button
@@ -225,8 +224,6 @@ export default function Home() {
                 <h1 className="text-xl md:text-2xl font-semibold mb-6 text-neutral-200">
                     {VIEW_TITLES[currentView]}
                 </h1>
-
-                {/* Lade-, Fehler- und Tabellenlogik */}
                 {isLoading ? (
                     <div className="text-center py-10 text-neutral-300">Lade Daten...</div>
                 ) : error ? (
@@ -249,12 +246,13 @@ export default function Home() {
                             <tbody>
                                 {data.length === 0 ? (
                                     <tr>
+                                        {/* Korrigierte Anführungszeichen */}
                                         <td colSpan={renderTableHeaders().length} className="text-center py-10 text-neutral-500">
-                                            Keine Einträge für "{VIEW_TITLES[currentView]}" gefunden.
+                                            Keine Einträge für &quot;{VIEW_TITLES[currentView]}&quot; gefunden.
                                         </td>
                                     </tr>
                                 ) : (
-                                    data.map((item,) => renderTableRow(item,))
+                                    data.map((item, index) => renderTableRow(item, index))
                                 )}
                             </tbody>
                         </table>
