@@ -2,7 +2,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Mail, Filter, Hash, AlertTriangle, CheckCircle, Trash2 } from "lucide-react";
+import { Search, X, Mail, Filter, Hash, AlertTriangle, CheckCircle, Trash2, Palette } from "lucide-react"; 
 import { ViewType, StatusFilterMode } from '../types'; // Pfad anpassen
 import { FILTER_LABELS } from '../constants'; // Pfad anpassen
 
@@ -25,9 +25,12 @@ interface FilterControlsProps {
     handleApplyDateFilter: () => void;
     handleClearDateFilter: () => void;
     isDateFilterApplied: boolean;
+    // Props für den Farbakzent-Umschalter hinzugefügt
+    cardAccentsEnabled: boolean;
+    setCardAccentsEnabled: (enabled: boolean) => void;
 }
 
-// Globale Animationsvarianten
+// Globale Animationsvarianten (unverändert)
 const containerVariants = {
     hidden: { opacity: 0, y: -20 },
     visible: {
@@ -41,10 +44,10 @@ const itemVariants = {
     visible: { opacity: 1, x: 0, transition: { duration: 0.4, ease: "easeOut" } }
 };
 
-// Button Basis-Styling
 const neonButtonBaseClasses = "px-4 py-2 text-xs sm:text-sm font-semibold rounded-full transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900/80 shadow-md whitespace-nowrap flex items-center justify-center gap-2";
 const neonButtonSkyClasses = `bg-sky-600/80 hover:bg-sky-500/90 text-sky-50 hover:text-white focus-visible:ring-sky-400 shadow-[0_0_10px_1px_rgba(56,189,248,0.3),0_0_20px_2px_rgba(56,189,248,0.2)] hover:shadow-[0_0_15px_2px_rgba(56,189,248,0.4),0_0_30px_4px_rgba(56,189,248,0.3)]`;
 const neonButtonSlateClasses = `bg-slate-600/80 hover:bg-slate-500/90 text-slate-100 hover:text-white focus-visible:ring-slate-400 shadow-[0_0_10px_1px_rgba(100,116,139,0.3),0_0_20px_2px_rgba(100,116,139,0.2)] hover:shadow-[0_0_15px_2px_rgba(100,116,139,0.4),0_0_30px_4px_rgba(100,116,139,0.3)]`;
+const accentToggleButtonActiveClasses = `bg-emerald-500/80 hover:bg-emerald-400/90 text-emerald-50 hover:text-white focus-visible:ring-emerald-400 shadow-[0_0_10px_1px_rgba(16,185,129,0.4),0_0_20px_2px_rgba(16,185,129,0.3)] hover:shadow-[0_0_15px_2px_rgba(16,185,129,0.5),0_0_30px_4px_rgba(16,185,129,0.4)]`;
 
 
 export default function FilterControls({
@@ -66,6 +69,8 @@ export default function FilterControls({
     handleApplyDateFilter,
     handleClearDateFilter,
     isDateFilterApplied,
+    cardAccentsEnabled, 
+    setCardAccentsEnabled, 
 }: FilterControlsProps) {
 
     const dateFilterActiveColorClasses = "bg-sky-500/90 hover:bg-sky-400 text-white shadow-[0_0_18px_3px_rgba(56,189,248,0.5)] animate-pulse focus-visible:ring-sky-300";
@@ -81,7 +86,6 @@ export default function FilterControls({
         >
             <motion.div variants={itemVariants} className="flex flex-wrap items-center justify-start gap-x-4 gap-y-4">
                 {currentView === "beschwerden" && (
-                    // Container für Status-Pills: overflow-hidden ist hier entscheidend!
                     <div className="p-1.5 bg-slate-700/40 backdrop-blur-sm rounded-full shadow-lg flex justify-center items-center relative max-w-full w-full sm:w-auto overflow-x-auto scrollbar-hide overflow-hidden">
                         {(Object.keys(FILTER_LABELS) as StatusFilterMode[]).map((filterKey) => (
                             <motion.button
@@ -89,8 +93,8 @@ export default function FilterControls({
                                 onClick={() => setActiveStatusFilter(filterKey)}
                                 className={`relative flex-shrink-0 px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm rounded-full transition-colors duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-opacity-75 whitespace-nowrap
                                     ${activeStatusFilter === filterKey 
-                                        ? 'text-white font-semibold' // Aktiver Text heller
-                                        : 'text-slate-300 hover:text-sky-200 hover:shadow-[0_0_10px_1px_rgba(56,189,248,0.2)]' // Inaktiver Text und Hover-Effekt
+                                        ? 'text-white font-semibold' 
+                                        : 'text-slate-300 hover:text-sky-200 hover:shadow-[0_0_10px_1px_rgba(56,189,248,0.2)]'
                                     }`}
                                 whileHover={{ scale: activeStatusFilter === filterKey ? 1 : 1.03 }}
                                 whileTap={{ scale: 0.97 }}
@@ -99,9 +103,8 @@ export default function FilterControls({
                                 {activeStatusFilter === filterKey && (
                                     <motion.div
                                         layoutId="activeFilterPillNeonGlassControls"
-                                        // Styling der aktiven "Hammer"-Pille
                                         className="absolute inset-0 bg-sky-500/90 rounded-full shadow-[0_0_15px_3px_rgba(56,189,248,0.7),_0_0_8px_1px_rgba(56,189,248,0.5)_inset] -z-0"
-                                        transition={{ type: "spring", stiffness: 380, damping: 32 }} // Angepasste Federung
+                                        transition={{ type: "spring", stiffness: 380, damping: 32 }}
                                     />
                                 )}
                             </motion.button>
@@ -109,7 +112,6 @@ export default function FilterControls({
                     </div>
                 )}
 
-                {/* Suchfelder */}
                 {[
                     { Icon: Search, placeholder: "Personensuche", value: searchTerm, setter: setSearchTerm, title: "Suche zurücksetzen" },
                     { Icon: Mail, placeholder: "E-Mail Suche", value: emailSearchTerm, setter: setEmailSearchTerm, title: "E-Mail-Suche zurücksetzen" },
@@ -144,7 +146,6 @@ export default function FilterControls({
                     </motion.div>
                 ))}
 
-                {/* Button für erweiterte Filter & Warn-Icon Container */}
                 <motion.div variants={itemVariants} className="flex items-center self-center md:self-auto ml-auto gap-2.5">
                     <AnimatePresence>
                         {isDateFilterApplied && (
@@ -160,6 +161,27 @@ export default function FilterControls({
                         )}
                     </AnimatePresence>
                     
+                    <motion.button
+                        onClick={() => setCardAccentsEnabled(!cardAccentsEnabled)}
+                        className={`${neonButtonBaseClasses} h-[40px] ${cardAccentsEnabled ? accentToggleButtonActiveClasses : neonButtonSlateClasses}`}
+                        title={cardAccentsEnabled ? "Karten-Farbakzente deaktivieren" : "Karten-Farbakzente aktivieren"}
+                        whileHover={{ scale: 1.05, y: -1, transition: { type: "spring", stiffness: 350, damping: 15 } }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        <Palette size={16} />
+                         <AnimatePresence mode="wait" initial={false}>
+                            <motion.span
+                                key={cardAccentsEnabled ? "AkzenteAn" : "AkzenteAus"}
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -5 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                {cardAccentsEnabled ? "Akzente Ein" : "Akzente Aus"}
+                            </motion.span>
+                        </AnimatePresence>
+                    </motion.button>
+
                     <motion.button
                         onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
                         className={`${neonButtonBaseClasses} ${neonButtonSlateClasses} h-[40px]`}

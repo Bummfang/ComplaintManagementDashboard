@@ -3,7 +3,7 @@
 
 import { ViewType } from '../types'; // Pfad anpassen
 import { VIEW_TITLES } from '../constants'; // Pfad anpassen
-import { motion } from 'framer-motion'; // Framer Motion importieren (AnimatePresence ist hier nicht zwingend)
+import { motion } from 'framer-motion'; 
 
 interface ViewTabsProps {
   currentView: ViewType;
@@ -14,10 +14,14 @@ export default function ViewTabs({ currentView, setCurrentView }: ViewTabsProps)
   // Funktion zur korrekten Anzeige des Tab-Titels
   const getTabTitle = (viewKey: ViewType): string => {
     const fullTitle = VIEW_TITLES[viewKey];
-    if (fullTitle === "Anregungsübersicht") {
-      return "Anregungen"; // Spezifische Behandlung für "Anregungsübersicht"
+    if (viewKey === "statistik") { // Spezifische Behandlung für den Schlüssel "statistik"
+      return "Statistik"; 
     }
-    return fullTitle.replace("übersicht", ""); // Standardbehandlung für andere Titel
+    if (fullTitle === "Anregungsübersicht") {
+      return "Anregungen"; 
+    }
+    // Standardbehandlung, entfernt "übersicht" oder gibt den vollen Titel zurück, falls "übersicht" nicht enthalten ist.
+    return fullTitle.includes("übersicht") ? fullTitle.replace("übersicht", "") : fullTitle; 
   };
 
   return (
@@ -41,11 +45,11 @@ export default function ViewTabs({ currentView, setCurrentView }: ViewTabsProps)
           {currentView === viewKey && (
             <motion.div
               className="absolute bottom-[-1px] left-0 right-0 h-[2px] bg-blue-400" // Indikatorfarbe
-              layoutId="activeTabIndicator" // Wichtig für die Animation zwischen den Tabs
-              initial={false} // Keine anfängliche Animation, wenn die Komponente zum ersten Mal geladen wird
+              layoutId="activeTabIndicator" 
+              initial={false} 
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }} // Federartige Animation
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }} 
             />
           )}
         </button>

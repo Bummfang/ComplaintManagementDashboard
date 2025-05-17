@@ -1,24 +1,21 @@
 // app/components/ContaintTable.tsx
 "use client";
 
-import { motion, MotionProps, Transition as MotionTransition } from "framer-motion"; // MotionProps und Transition importiert
+import { motion, MotionProps, Transition as MotionTransition } from "framer-motion"; 
 import { useEffect, useState, useCallback, useMemo } from "react";
 
-// Importiere den useAuth-Hook für den Zugriff auf den Authentifizierungsstatus
-import { useAuth } from '../contexts/AuthContext'; // Passe den Pfad ggf. an
-
-// useRouter für eventuelle Weiterleitungen
+import { useAuth } from '../contexts/AuthContext'; 
 import { useRouter } from 'next/navigation';
 
-// Importiere deine Typen, Konstanten und anderen Komponenten
-import { DataItem, ViewType, StatusFilterMode, BeschwerdeItem } from '../types'; // Stelle sicher, dass der Pfad zu 'types' korrekt ist
-import { API_ENDPOINTS, VIEW_TITLES, FILTER_LABELS } from '../constants'; // Stelle sicher, dass der Pfad zu 'constants' korrekt ist
+import { DataItem, ViewType, StatusFilterMode, BeschwerdeItem } from '../types'; 
+import { API_ENDPOINTS, VIEW_TITLES, FILTER_LABELS } from '../constants'; 
 import StatusBar from './StatusBar';
 import ViewTabs from './ViewTabs';
 import FilterControls from './FilterControls';
 import DataItemCard from './DataItemCard';
+import StatisticsView from './StatisticsView'; // NEU: Importname auf StatisticsView geändert
 
-// --- BackgroundBlob Komponente (aus LoginScreen/LoadingScreen übernommen) ---
+// BackgroundBlob Komponente (unverändert)
 interface BackgroundBlobProps {
   className: string;
   animateProps: MotionProps['animate'];
@@ -44,7 +41,6 @@ const BackgroundBlob = ({ className, animateProps, transitionProps }: Background
   }
   return (
     <motion.div
-      // Blur-Effekt reduziert von blur-3xl auf blur-xl
       className={`absolute rounded-full filter blur-xl pointer-events-none ${className}`}
       initial={initialMotionValues}
       animate={animateProps}
@@ -52,7 +48,6 @@ const BackgroundBlob = ({ className, animateProps, transitionProps }: Background
     />
   );
 };
-// --- Ende BackgroundBlob ---
 
 export default function ContaintTable() {
   const { isAuthenticated, user, token, isLoadingAuth, logout } = useAuth();
@@ -74,8 +69,17 @@ export default function ContaintTable() {
   const [appliedEndDate, setAppliedEndDate] = useState<string | null>(null);
   const [isDbConnected, setIsDbConnected] = useState<boolean>(true);
   const [lastDataUpdateTimestamp, setLastDataUpdateTimestamp] = useState<Date | null>(null);
+  const [cardAccentsEnabled, setCardAccentsEnabled] = useState<boolean>(true);
+
 
   const fetchData = useCallback(async (view: ViewType, isBackgroundUpdate = false) => {
+    if (view === "statistik") {
+      setIsLoadingData(false);
+      setData([]); 
+      setError(null);
+      return;
+    }
+
     if (!token) {
       if (!isBackgroundUpdate) setIsLoadingData(false);
       console.warn("ContaintTable: fetchData called without a token.");
@@ -116,28 +120,30 @@ export default function ContaintTable() {
     } finally {
       if (!isBackgroundUpdate) setIsLoadingData(false);
     }
-  }, [token, logout]);
+  }, [token, logout]); 
 
   useEffect(() => {
     if (isAuthenticated && token) {
-      fetchData(currentView);
-      setActiveStatusFilter("alle");
-      setSearchTerm("");
-      setEmailSearchTerm("");
-      setIdSearchTerm("");
-      setStartDateInput("");
-      setEndDateInput("");
-      setAppliedStartDate(null);
-      setAppliedEndDate(null);
-      setShowAdvancedFilters(false);
+      fetchData(currentView); 
+      if (currentView !== "statistik") {
+        setActiveStatusFilter("alle");
+        setSearchTerm("");
+        setEmailSearchTerm("");
+        setIdSearchTerm("");
+        setStartDateInput("");
+        setEndDateInput("");
+        setAppliedStartDate(null);
+        setAppliedEndDate(null);
+        setShowAdvancedFilters(false);
+      }
     } else if (!isLoadingAuth && !isAuthenticated) {
       setData([]);
     }
-  }, [currentView, isAuthenticated, token, isLoadingAuth, fetchData]);
+  }, [currentView, isAuthenticated, token, isLoadingAuth, fetchData]); // fetchData als Dependency hinzugefügt
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
-    if (isAuthenticated && token) {
+    if (isAuthenticated && token && currentView !== "statistik") { 
       intervalId = setInterval(() => {
         fetchData(currentView, true);
       }, 30000);
@@ -146,7 +152,7 @@ export default function ContaintTable() {
   }, [currentView, isAuthenticated, token, fetchData]);
 
   const filteredData = useMemo(() => {
-    if (!data || data.length === 0) return [];
+    if (currentView === "statistik" || !data || data.length === 0) return [];
     let tempData = [...data];
     if (currentView === "beschwerden" && activeStatusFilter !== "alle") {
       tempData = tempData.filter(item => {
@@ -265,6 +271,7 @@ export default function ContaintTable() {
     alert("Funktion 'Neuen Nutzer anlegen' noch nicht implementiert.");
   };
 
+
   if (isLoadingAuth) {
     return (
       <div className="min-h-screen w-full bg-gradient-to-br from-[#0D0D12] via-[#111318] to-[#0a0a0f] text-white font-sans flex justify-center items-center">
@@ -288,37 +295,20 @@ export default function ContaintTable() {
   }
 
   return (
-    // Haupt-Container mit neuem Hintergrund und overflow-hidden
     <div className="min-h-screen w-full bg-gradient-to-br from-[#0D0D12] via-[#111318] to-[#0a0a0f] text-white font-sans relative pt-16 pb-16 overflow-hidden">
-      {/* Hintergrund Blobs für eine subtile Dynamik */}
       <BackgroundBlob
-        className="w-[700px] h-[700px] bg-sky-900/80 -top-1/4 -left-1/3" // Farbe angepasst für mehr Subtilität
-        animateProps={{
-          x: [-200, 100, -200],
-          y: [-150, 80, -150],
-          rotate: [0, 100, 0],
-          scale: [1, 1.2, 1],
-          opacity: [0.03, 0.08, 0.03] // Sehr subtile Opazität
-        }}
+        className="w-[700px] h-[700px] bg-sky-900/80 -top-1/4 -left-1/3"
+        animateProps={{ x: [-200, 100, -200], y: [-150, 80, -150], rotate: [0, 100, 0], scale: [1, 1.2, 1], opacity: [0.03, 0.08, 0.03] }}
         transitionProps={{ duration: 55, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
       />
       <BackgroundBlob
-        className="w-[800px] h-[800px] bg-emerald-800/70 -bottom-1/3 -right-1/4" // Farbe angepasst
-        animateProps={{
-          x: [150, -100, 150],
-          y: [100, -80, 100],
-          rotate: [0, -120, 0],
-          scale: [1.1, 1.3, 1.1],
-          opacity: [0.04, 0.09, 0.04] // Sehr subtile Opazität
-        }}
+        className="w-[800px] h-[800px] bg-emerald-800/70 -bottom-1/3 -right-1/4" 
+        animateProps={{ x: [150, -100, 150], y: [100, -80, 100], rotate: [0, -120, 0], scale: [1.1, 1.3, 1.1], opacity: [0.04, 0.09, 0.04] }}
         transitionProps={{ duration: 60, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
       />
        <BackgroundBlob
-        className="w-[900px] h-[900px] bg-slate-700/60 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" // Zentraler, sehr diffuser Blob
-        animateProps={{
-            scale: [1, 1.1, 1],
-            opacity: [0.02, 0.05, 0.02], // Extrem subtil
-        }}
+        className="w-[900px] h-[900px] bg-slate-700/60 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" 
+        animateProps={{ scale: [1, 1.1, 1], opacity: [0.02, 0.05, 0.02] }}
         transitionProps={{ duration: 70, repeat: Infinity, repeatType: "mirror", ease: "linear" }}
       />
 
@@ -326,13 +316,11 @@ export default function ContaintTable() {
         isDbConnected={isDbConnected}
         lastDataUpdateTimestamp={lastDataUpdateTimestamp}
         isAuthenticated={isAuthenticated}
-        // user={user} // user Prop wird in StatusBar nicht verwendet, kann ggf. wieder hinzu, falls benötigt
         logout={logout}
       />
       
-      {/* Hauptinhaltsbereich mit relative und z-10, um über den Blobs zu liegen */}
       <motion.div
-        className="w-full max-w-none p-4 md:p-8 mx-auto relative z-10" // z-10 hinzugefügt
+        className="w-full max-w-none p-4 md:p-8 mx-auto relative z-10"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -341,7 +329,7 @@ export default function ContaintTable() {
         
         <div className="flex flex-col md:flex-row justify-between items-center my-4">
             <h1 className="text-xl md:text-4xl font-semibold text-neutral-200 text-center md:text-left mb-2 md:mb-0"> 
-                {VIEW_TITLES[currentView] || "Übersicht"}
+                {VIEW_TITLES[currentView] || "Übersicht"} 
             </h1>
             {user?.isAdmin && (
                 <motion.button
@@ -355,26 +343,34 @@ export default function ContaintTable() {
             )}
         </div>
 
-        <FilterControls
-          currentView={currentView}
-          activeStatusFilter={activeStatusFilter}
-          setActiveStatusFilter={setActiveStatusFilter}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          emailSearchTerm={emailSearchTerm} setEmailSearchTerm={setEmailSearchTerm}
-          idSearchTerm={idSearchTerm} setIdSearchTerm={setIdSearchTerm}
-          showAdvancedFilters={showAdvancedFilters} setShowAdvancedFilters={setShowAdvancedFilters}
-          startDateInput={startDateInput} setStartDateInput={setStartDateInput}
-          endDateInput={endDateInput} setEndDateInput={setEndDateInput}
-          handleApplyDateFilter={handleApplyDateFilter} handleClearDateFilter={handleClearDateFilter}
-          isDateFilterApplied={isDateFilterApplied}
-        />
-        {error && (
+        {currentView !== "statistik" && (
+            <FilterControls
+            currentView={currentView}
+            activeStatusFilter={activeStatusFilter}
+            setActiveStatusFilter={setActiveStatusFilter}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            emailSearchTerm={emailSearchTerm} setEmailSearchTerm={setEmailSearchTerm}
+            idSearchTerm={idSearchTerm} setIdSearchTerm={setIdSearchTerm}
+            showAdvancedFilters={showAdvancedFilters} setShowAdvancedFilters={setShowAdvancedFilters}
+            startDateInput={startDateInput} setStartDateInput={setStartDateInput}
+            endDateInput={endDateInput} setEndDateInput={setEndDateInput}
+            handleApplyDateFilter={handleApplyDateFilter} handleClearDateFilter={handleClearDateFilter}
+            isDateFilterApplied={isDateFilterApplied}
+            cardAccentsEnabled={cardAccentsEnabled} 
+            setCardAccentsEnabled={setCardAccentsEnabled} 
+            />
+        )}
+
+        {error && currentView !== "statistik" && ( 
           <div className="my-4 p-3 bg-red-700/80 text-red-100 border border-red-600 rounded-md shadow-lg" role="alert">
             <p><strong>Fehler:</strong> {error}</p>
           </div>
         )}
-        {isLoadingData && !error ? (
+
+        {currentView === "statistik" ? (
+            <StatisticsView /> // NEU: StatisticsView wird hier gerendert
+        ) : isLoadingData && !error ? (
           <div className="text-center py-10 text-neutral-400">Lade Daten...</div>
         ) : !isLoadingData && filteredData.length === 0 && !error ? (
           <div className="text-center py-10 text-neutral-500">
@@ -397,6 +393,7 @@ export default function ContaintTable() {
                 copiedCellKey={copiedCellKey}
                 onCopyToClipboard={handleCopyToClipboard}
                 onStatusChange={handleStatusChangeForCard}
+                cardAccentsEnabled={cardAccentsEnabled} 
               />
             ))}
           </motion.div>

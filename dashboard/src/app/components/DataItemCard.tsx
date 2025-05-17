@@ -24,20 +24,17 @@ const getStatusTextColorClass = (status?: BeschwerdeItem["status"]): string => {
 
 // Hilfsfunktion für einen subtilen, vollflächigen Hintergrund-Farbstich
 const getCardBackgroundAccentClasses = (status?: BeschwerdeItem["status"]): string => {
-  const baseFallback = "bg-slate-800/60"; // Standardhintergrund für nicht-Beschwerde oder unbekannten Status
+  const baseFallback = "bg-slate-800/60"; // Standardhintergrund
 
   switch (status) {
     case "Offen":
-      // Deckkraft von 6% auf 10% erhöht (/[.06] zu /[.1])
       return "bg-sky-900/[.4]"; 
     case "In Bearbeitung":
-      // Deckkraft von 6% auf 10% erhöht
-      return "bg-yellow-900/[.3]";
+      // In deinem Code war hier yellow-900, ich verwende amber-900 für Farbton-Konsistenz mit den Textfarben
+      return "bg-amber-900/[.3]"; 
     case "Gelöst":
-      // Deckkraft von 6% auf 10% erhöht
       return "bg-green-900/[.4]";
     case "Abgelehnt":
-      // Deckkraft von 6% auf 10% erhöht
       return "bg-red-900/[.3]";
     default:
       return baseFallback; 
@@ -45,7 +42,7 @@ const getCardBackgroundAccentClasses = (status?: BeschwerdeItem["status"]): stri
 };
 
 
-// DataField Komponente
+// DataField Komponente (unverändert)
 const DataField = ({
   label,
   value,
@@ -88,7 +85,7 @@ const DataField = ({
   );
 };
 
-// Varianten für die Hauptkarte und ihre gestaffelten Kinder
+// Varianten für die Hauptkarte und ihre gestaffelten Kinder (unverändert)
 const cardContainerVariants = {
   hidden: { opacity: 0, y: 25, scale: 0.97 },
   visible: {
@@ -113,6 +110,7 @@ interface DataItemCardProps {
   copiedCellKey: string | null;
   onCopyToClipboard: (textToCopy: string, cellKey: string) => void;
   onStatusChange: (itemId: number, newStatus: BeschwerdeItem["status"]) => void;
+  cardAccentsEnabled: boolean; // Prop hier hinzugefügt/sichergestellt
 }
 
 export default function DataItemCard({
@@ -121,6 +119,7 @@ export default function DataItemCard({
   copiedCellKey,
   onCopyToClipboard,
   onStatusChange,
+  cardAccentsEnabled, // Prop hier verwenden
 }: DataItemCardProps) {
   const itemTypePrefix = currentView === "beschwerden" ? "CMP-" : currentView === "lob" ? "LOB-" : "ANG-";
   const isBeschwerde = currentView === 'beschwerden' && 'beschwerdegrund' in item;
@@ -128,6 +127,7 @@ export default function DataItemCard({
   const currentStatus = beschwerdeItem?.status;
   let actionButton = null;
 
+  // Logik für Aktionsknöpfe (unverändert)
   if (isBeschwerde && beschwerdeItem) {
     switch (currentStatus) {
       case "Offen":
@@ -187,6 +187,11 @@ export default function DataItemCard({
   }
   const cardKey = `card-${item.id}`;
 
+  // Bestimme die Hintergrundklasse basierend auf cardAccentsEnabled
+  const backgroundClass = (isBeschwerde && beschwerdeItem && beschwerdeItem.status && cardAccentsEnabled) 
+                          ? getCardBackgroundAccentClasses(beschwerdeItem.status) 
+                          : 'bg-slate-800/60';
+
   return (
     <motion.div
       key={item.id}
@@ -198,15 +203,14 @@ export default function DataItemCard({
       whileHover={{ y: -5, scale: 1.01, transition: { type: "spring", stiffness: 300, damping: 18 } }}
       className={`
         relative overflow-hidden rounded-xl 
-        ${isBeschwerde && beschwerdeItem && beschwerdeItem.status ? getCardBackgroundAccentClasses(beschwerdeItem.status) : 'bg-slate-800/60'}
+        ${backgroundClass} {/* Dynamische Hintergrundklasse */}
         backdrop-blur-md transition-all duration-300 ease-out 
         shadow-lg shadow-slate-900/25 hover:shadow-xl hover:shadow-slate-900/35 
         flex flex-col justify-between cursor-pointer
       `}
     >
-      {/* Hauptinhaltsbereich der Karte */}
+      {/* Hauptinhaltsbereich der Karte (unverändert) */}
       <div className="p-4 md:p-5 flex flex-col flex-grow">
-        {/* Header-Sektion */}
         <motion.div variants={contentItemVariants} className="flex justify-between items-start mb-2.5">
           <h3 className="text-md font-semibold text-slate-100 hover:text-white transition-colors break-words pr-2">
             {item.betreff || "Unbekannter Betreff"}
@@ -214,7 +218,6 @@ export default function DataItemCard({
           <span className="text-xs text-slate-400 whitespace-nowrap ml-2 pt-0.5">ID: {itemTypePrefix}{item.id}</span>
         </motion.div>
 
-        {/* Datenfelder-Grid */}
         <motion.div variants={contentItemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-x-4 text-xs mb-1">
           <DataField label="Name" value={item.name} onCopy={onCopyToClipboard} isCopied={copiedCellKey === `${cardKey}-name`} fieldKey={`${cardKey}-name`} />
           <DataField label="Email" value={item.email} onCopy={onCopyToClipboard} isCopied={copiedCellKey === `${cardKey}-email`} fieldKey={`${cardKey}-email`} />
@@ -239,7 +242,6 @@ export default function DataItemCard({
           )}
         </motion.div>
 
-        {/* Beschreibungs-Sektion */}
         <motion.div variants={contentItemVariants} className="mt-2 py-1 flex-grow flex flex-col">
           <span className="text-xs text-slate-400 block mb-0.5">Beschreibung</span>
           <div className="text-slate-200 text-xs whitespace-pre-wrap break-words max-h-24 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600/70 scrollbar-track-slate-700/30 pt-1 pb-1 min-h-[40px] flex-grow">
@@ -257,7 +259,6 @@ export default function DataItemCard({
         </motion.div>
       </div>
 
-      {/* Aktionsknöpfe-Sektion */}
       {isBeschwerde && actionButton && (
         <motion.div variants={contentItemVariants} className="px-4 md:px-5 pb-4 pt-2">
           {actionButton}
