@@ -123,7 +123,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         animate="visible"
         className="w-full max-w-sm md:max-w-md relative z-10"
       >
-        <div className="bg-slate-800/70 backdrop-blur-lg p-6 sm:p-8 md:p-10 rounded-xl shadow-2xl border border-slate-700/60">
+        <div className="bg-slate-800/10 backdrop-blur-lg p-6 sm:p-8 md:p-10 rounded-xl shadow-2xl border border-slate-700/60">
           <motion.div variants={itemVariants} className="flex flex-col items-center mb-6 md:mb-8">
             <div className="p-3 bg-sky-500/20 rounded-full mb-3 w-16 h-16 sm:w-20 sm:h-20 flex justify-center items-center shadow-inner">
               {/* Du hattest hier key-solid.svg, stelle sicher, dass diese Datei im public Ordner ist */}
@@ -167,7 +167,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   value={username} // State-Variable username
                   onChange={(e) => setUsernameState(e.target.value)} // State-Setter setUsernameState
                   disabled={isLoading}
-                  className="block w-full rounded-lg border-0 bg-slate-700/60 py-2.5 sm:py-3 pl-10 sm:pl-11 pr-3 text-neutral-100 shadow-sm ring-1 ring-inset ring-slate-600/80 placeholder:text-neutral-500 focus:bg-slate-700/80 focus:ring-2 focus:ring-inset focus:ring-sky-500 sm:text-sm sm:leading-6 transition-all duration-150 ease-in-out"
+                  className="block w-full rounded-lg border-0 bg-slate-700/10 py-2.5 sm:py-3 pl-10 sm:pl-11 pr-3 text-neutral-100 shadow-sm ring-1 ring-inset ring-slate-600/80 placeholder:text-neutral-500 focus:bg-slate-700/80 focus:ring-2 focus:ring-inset focus:ring-sky-500 sm:text-sm sm:leading-6 transition-all duration-150 ease-in-out"
                   placeholder="z.B. max.mustermann"
                 />
               </div>
@@ -193,7 +193,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   value={password} // State-Variable password
                   onChange={(e) => setPassword(e.target.value)} // State-Setter setPassword
                   disabled={isLoading}
-                  className="block w-full rounded-lg border-0 bg-slate-700/60 py-2.5 sm:py-3 pl-10 sm:pl-11 pr-3 text-neutral-100 shadow-sm ring-1 ring-inset ring-slate-600/80 placeholder:text-neutral-500 focus:bg-slate-700/80 focus:ring-2 focus:ring-inset focus:ring-sky-500 sm:text-sm sm:leading-6 transition-all duration-150 ease-in-out"
+                  className="block w-full rounded-lg border-0 bg-slate-700/10 py-2.5 sm:py-3 pl-10 sm:pl-11 pr-3 text-neutral-100 shadow-sm ring-1 ring-inset ring-slate-600/80 placeholder:text-neutral-500 focus:bg-slate-700/80 focus:ring-2 focus:ring-inset focus:ring-sky-500 sm:text-sm sm:leading-6 transition-all duration-150 ease-in-out"
                   placeholder="••••••••"
                 />
               </div>
@@ -203,7 +203,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="flex w-full justify-center items-center rounded-lg bg-gradient-to-r from-sky-500 to-sky-600 px-3 py-2.5 sm:py-3 text-sm font-semibold leading-6 text-white shadow-md hover:from-sky-600 hover:to-sky-700 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-sky-500 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-150 ease-in-out group"
+                className="flex w-full justify-center items-center rounded-lg bg-gradient-to-r from-sky-500 to-sky-600 px-3 py-2.5 sm:py-3 text-sm duration-300 font-semibold leading-6 text-white shadow-md hover:from-sky-600 hover:to-sky-700 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-sky-500 disabled:opacity-60 disabled:cursor-not-allowed transition-all ease-in-out group"
               >
                 {isLoading ? (
                   <>
