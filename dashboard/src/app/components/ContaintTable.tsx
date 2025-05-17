@@ -1,7 +1,7 @@
 // app/components/ContaintTable.tsx
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence, MotionProps, Transition as MotionTransition } from "framer-motion"; // MotionProps und Transition importiert
 import { useEffect, useState, useCallback, useMemo } from "react";
 
 // Importiere den useAuth-Hook für den Zugriff auf den Authentifizierungsstatus
@@ -17,6 +17,42 @@ import StatusBar from './StatusBar';
 import ViewTabs from './ViewTabs';
 import FilterControls from './FilterControls';
 import DataItemCard from './DataItemCard';
+
+// --- BackgroundBlob Komponente (aus LoginScreen/LoadingScreen übernommen) ---
+interface BackgroundBlobProps {
+  className: string;
+  animateProps: MotionProps['animate'];
+  transitionProps: MotionTransition;
+}
+type AnimatableXYProperties = {
+  x?: string | number | string[] | number[];
+  y?: string | number | string[] | number[];
+};
+const BackgroundBlob = ({ className, animateProps, transitionProps }: BackgroundBlobProps) => {
+  const initialMotionValues: MotionProps['initial'] = {
+    scale: 0.8,
+    opacity: 0,
+  };
+  if (typeof animateProps === 'object' && animateProps !== null && !Array.isArray(animateProps)) {
+    const target = animateProps as AnimatableXYProperties;
+    if (target.x && Array.isArray(target.x) && typeof target.x[0] === 'number') {
+      initialMotionValues.x = target.x[0];
+    }
+    if (target.y && Array.isArray(target.y) && typeof target.y[0] === 'number') {
+      initialMotionValues.y = target.y[0];
+    }
+  }
+  return (
+    <motion.div
+      // Blur-Effekt reduziert von blur-3xl auf blur-xl
+      className={`absolute rounded-full filter blur-xl pointer-events-none ${className}`}
+      initial={initialMotionValues}
+      animate={animateProps}
+      transition={transitionProps}
+    />
+  );
+};
+// --- Ende BackgroundBlob ---
 
 export default function ContaintTable() {
   const { isAuthenticated, user, token, isLoadingAuth, logout } = useAuth();
@@ -85,7 +121,6 @@ export default function ContaintTable() {
   useEffect(() => {
     if (isAuthenticated && token) {
       fetchData(currentView);
-      // Reset filters and search terms when view changes or on initial load
       setActiveStatusFilter("alle");
       setSearchTerm("");
       setEmailSearchTerm("");
@@ -96,80 +131,62 @@ export default function ContaintTable() {
       setAppliedEndDate(null);
       setShowAdvancedFilters(false);
     } else if (!isLoadingAuth && !isAuthenticated) {
-      // Clear data if user is not authenticated and auth check is complete
       setData([]);
     }
   }, [currentView, isAuthenticated, token, isLoadingAuth, fetchData]);
 
-  // Background data refresh interval
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
     if (isAuthenticated && token) {
       intervalId = setInterval(() => {
-        fetchData(currentView, true); // true for background update
-      }, 30000); // Refresh every 30 seconds
+        fetchData(currentView, true);
+      }, 30000);
     }
-    return () => clearInterval(intervalId); // Cleanup interval on component unmount
+    return () => clearInterval(intervalId);
   }, [currentView, isAuthenticated, token, fetchData]);
 
   const filteredData = useMemo(() => {
     if (!data || data.length === 0) return [];
-
     let tempData = [...data];
-
-    // Filter by status (only for 'beschwerden' view)
     if (currentView === "beschwerden" && activeStatusFilter !== "alle") {
-        tempData = tempData.filter(item => {
-            // Check if 'status' property exists and matches the active filter
-            if ("status" in item) { const beschwerde = item as BeschwerdeItem; return beschwerde.status === activeStatusFilter; }
-            return false;
-        });
+      tempData = tempData.filter(item => {
+        if ("status" in item) { const beschwerde = item as BeschwerdeItem; return beschwerde.status === activeStatusFilter; }
+        return false;
+      });
     }
-
-    // Filter by name search term
     if (searchTerm.trim() !== "") {
-        const lowerSearchTerm = searchTerm.trim().toLowerCase();
-        tempData = tempData.filter(item => item.name?.toLowerCase().includes(lowerSearchTerm));
+      const lowerSearchTerm = searchTerm.trim().toLowerCase();
+      tempData = tempData.filter(item => item.name?.toLowerCase().includes(lowerSearchTerm));
     }
-
-    // Filter by email search term
     if (emailSearchTerm.trim() !== "") {
-        const lowerEmailSearchTerm = emailSearchTerm.trim().toLowerCase();
-        tempData = tempData.filter(item => item.email?.toLowerCase().includes(lowerEmailSearchTerm));
+      const lowerEmailSearchTerm = emailSearchTerm.trim().toLowerCase();
+      tempData = tempData.filter(item => item.email?.toLowerCase().includes(lowerEmailSearchTerm));
     }
-    
-    // Filter by ID search term
     if (idSearchTerm.trim() !== "") {
-        const searchId = parseInt(idSearchTerm.trim(), 10);
-        if (!isNaN(searchId)) {
-            tempData = tempData.filter(item => item.id === searchId);
-        }
+      const searchId = parseInt(idSearchTerm.trim(), 10);
+      if (!isNaN(searchId)) {
+        tempData = tempData.filter(item => item.id === searchId);
+      }
     }
-
-    // Filter by date range
     if (appliedStartDate || appliedEndDate) {
-        const sDate = appliedStartDate ? new Date(appliedStartDate) : null;
-        const eDate = appliedEndDate ? new Date(appliedEndDate) : null;
-
-        // Set time to start/end of day for accurate comparison
-        if (sDate) sDate.setHours(0, 0, 0, 0);
-        if (eDate) eDate.setHours(23, 59, 59, 999);
-
-        tempData = tempData.filter(item => {
-            if (!item.erstelltam) return false; // Skip items without a creation date
-            try {
-                const itemDate = new Date(item.erstelltam);
-                if (isNaN(itemDate.getTime())) return false; // Skip items with invalid date
-
-                let match = true;
-                if (sDate && itemDate < sDate) match = false;
-                if (eDate && itemDate > eDate) match = false;
-                return match;
-            } catch (e) {
-                console.error("Error parsing date for filtering:", item.erstelltam, e);
-                return false; // Skip item if date parsing fails
-            }
-        });
+      const sDate = appliedStartDate ? new Date(appliedStartDate) : null;
+      const eDate = appliedEndDate ? new Date(appliedEndDate) : null;
+      if (sDate) sDate.setHours(0, 0, 0, 0);
+      if (eDate) eDate.setHours(23, 59, 59, 999);
+      tempData = tempData.filter(item => {
+        if (!item.erstelltam) return false;
+        try {
+          const itemDate = new Date(item.erstelltam);
+          if (isNaN(itemDate.getTime())) return false;
+          let match = true;
+          if (sDate && itemDate < sDate) match = false;
+          if (eDate && itemDate > eDate) match = false;
+          return match;
+        } catch (e) {
+          console.error("Error parsing date for filtering:", item.erstelltam, e);
+          return false;
+        }
+      });
     }
     return tempData;
   }, [data, currentView, activeStatusFilter, appliedStartDate, appliedEndDate, searchTerm, emailSearchTerm, idSearchTerm]);
@@ -177,32 +194,28 @@ export default function ContaintTable() {
   const handleCopyToClipboard = async (textToCopy: string, cellKey: string) => {
     if (!textToCopy) return;
     try {
-        await navigator.clipboard.writeText(textToCopy);
-        setCopiedCellKey(cellKey);
-        setTimeout(() => setCopiedCellKey(null), 1500); // Reset after 1.5 seconds
+      await navigator.clipboard.writeText(textToCopy);
+      setCopiedCellKey(cellKey);
+      setTimeout(() => setCopiedCellKey(null), 1500);
     }
     catch (err) {
-        setError("Kopieren fehlgeschlagen.");
-        console.log("Clipboard error:", err);
-        setTimeout(() => setError(null), 3000); // Clear error after 3 seconds
+      setError("Kopieren fehlgeschlagen.");
+      console.log("Clipboard error:", err);
+      setTimeout(() => setError(null), 3000);
     }
   };
 
   const performStatusChangeAsync = useCallback(async (itemId: number, newStatus: BeschwerdeItem["status"]) => {
-    // NEU: Die user.isAdmin-Prüfung wurde hier entfernt. Jeder eingeloggte Benutzer kann den Status ändern.
     if (!token) {
       setError("Nicht autorisiert für Statusänderung. Bitte neu anmelden.");
-      logout(); // Log out user if token is missing
+      logout();
       return;
     }
-
-    const originalData = [...data]; // Store original data for rollback on error
-    // Optimistically update UI
+    const originalData = [...data];
     setData(prevData => prevData.map(item =>
-        item.id === itemId && 'status' in item ? { ...item, status: newStatus } as BeschwerdeItem : item
+      item.id === itemId && 'status' in item ? { ...item, status: newStatus } as BeschwerdeItem : item
     ));
-    setError(null); // Clear previous errors
-
+    setError(null);
     try {
       if (!API_ENDPOINTS.beschwerden) {
         throw new Error("API Endpunkt für Beschwerden-Statusänderung nicht definiert.");
@@ -215,9 +228,8 @@ export default function ContaintTable() {
         },
         body: JSON.stringify({ id: itemId, status: newStatus }),
       });
-
       if (!response.ok) {
-        setData(originalData); // Rollback UI update on error
+        setData(originalData);
         const errorData = await response.json().catch(() => ({ details: response.statusText, error: `HTTP-Fehler ${response.status}` }));
         if (response.status === 401) {
           setError("Ihre Sitzung ist abgelaufen oder ungültig. Bitte melden Sie sich erneut an.");
@@ -226,22 +238,17 @@ export default function ContaintTable() {
         }
         throw new Error(`Statusupdate fehlgeschlagen (${response.status}): ${errorData.details || errorData.error || "Unbekannter Serverfehler"}`);
       }
-      // Successfully updated, fetch data again to ensure consistency (especially if other users are making changes)
-      fetchData(currentView, true); // true for background update
+      fetchData(currentView, true);
     } catch (err) {
-      setData(originalData); // Rollback UI update on error
+      setData(originalData);
       setError(err instanceof Error ? err.message : "Statusupdate ist fehlgeschlagen.");
-      // Re-throw error to be caught by caller if needed
       throw err;
     }
-  }, [token, data, logout, fetchData, currentView, setError, setData]); // Dependencies for useCallback
+  }, [token, data, logout, fetchData, currentView, setError, setData]);
 
   const handleStatusChangeForCard = (itemId: number, newStatus: BeschwerdeItem["status"]): void => {
-    // NEU: Die user.isAdmin-Prüfung wurde hier entfernt.
-    // Es wird nur noch geprüft, ob es sich um die 'beschwerden'-Ansicht handelt.
     if (currentView === "beschwerden") {
       performStatusChangeAsync(itemId, newStatus).catch(err => {
-        // Error is already set in performStatusChangeAsync, just log it here
         console.error("ContaintTable: Fehler beim Aufruf von performStatusChangeAsync:", err);
       });
     } else {
@@ -253,32 +260,25 @@ export default function ContaintTable() {
   const handleApplyDateFilter = () => { setAppliedStartDate(startDateInput || null); setAppliedEndDate(endDateInput || null); };
   const handleClearDateFilter = () => { setStartDateInput(""); setEndDateInput(""); setAppliedStartDate(null); setAppliedEndDate(null); };
   const isDateFilterApplied = useMemo(() => !!(appliedStartDate || appliedEndDate), [appliedStartDate, appliedEndDate]);
-
-  // Handler für den "Neuen Nutzer anlegen" Button (nur für Admins)
   const handleCreateNewUser = () => {
-    // Hier würde die Logik zum Öffnen eines Modals oder Navigieren zu einer Seite zum Erstellen von Benutzern stehen.
-    // Fürs Erste nur ein console.log.
     console.log("Admin Aktion: 'Neuen Nutzer anlegen' geklickt.");
     alert("Funktion 'Neuen Nutzer anlegen' noch nicht implementiert.");
   };
 
-
   if (isLoadingAuth) {
-    // Show a simple loading message while authentication status is being checked
     return (
-      <div className="min-h-screen w-full bg-[#0D0D12] text-white font-sans flex justify-center items-center">
+      <div className="min-h-screen w-full bg-gradient-to-br from-[#0D0D12] via-[#111318] to-[#0a0a0f] text-white font-sans flex justify-center items-center">
         <p>Authentifizierung wird geprüft...</p>
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    // If not authenticated, show a message and a button to go to the login page
     return (
-      <div className="min-h-screen w-full bg-[#0D0D12] text-white font-sans flex flex-col justify-center items-center">
-        <p className="mb-4 text-xl">Bitte melden Sie sich an, um auf diese Inhalte zuzugreifen.</p>
+      <div className="min-h-screen w-full bg-gradient-to-br from-[#0D0D12] via-[#111318] to-[#0a0a0f] text-white font-sans flex flex-col justify-center items-center p-4">
+        <p className="mb-4 text-xl text-center">Bitte melden Sie sich an, um auf diese Inhalte zuzugreifen.</p>
         <button
-          onClick={() => router.push('/')} // Navigate to the root page (assumed to be the login page)
+          onClick={() => router.push('/')}
           className="px-6 py-2 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-lg shadow-md transition-colors"
         >
           Zur Login-Seite
@@ -287,19 +287,52 @@ export default function ContaintTable() {
     );
   }
 
-  // Main JSX of the component when authenticated
   return (
-    <div className="min-h-screen w-full bg-[#0D0D12] text-white font-sans relative pt-16 pb-16">
+    // Haupt-Container mit neuem Hintergrund und overflow-hidden
+    <div className="min-h-screen w-full bg-gradient-to-br from-[#0D0D12] via-[#111318] to-[#0a0a0f] text-white font-sans relative pt-16 pb-16 overflow-hidden">
+      {/* Hintergrund Blobs für eine subtile Dynamik */}
+      <BackgroundBlob
+        className="w-[700px] h-[700px] bg-sky-900/80 -top-1/4 -left-1/3" // Farbe angepasst für mehr Subtilität
+        animateProps={{
+          x: [-200, 100, -200],
+          y: [-150, 80, -150],
+          rotate: [0, 100, 0],
+          scale: [1, 1.2, 1],
+          opacity: [0.03, 0.08, 0.03] // Sehr subtile Opazität
+        }}
+        transitionProps={{ duration: 55, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+      />
+      <BackgroundBlob
+        className="w-[800px] h-[800px] bg-emerald-800/70 -bottom-1/3 -right-1/4" // Farbe angepasst
+        animateProps={{
+          x: [150, -100, 150],
+          y: [100, -80, 100],
+          rotate: [0, -120, 0],
+          scale: [1.1, 1.3, 1.1],
+          opacity: [0.04, 0.09, 0.04] // Sehr subtile Opazität
+        }}
+        transitionProps={{ duration: 60, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+      />
+       <BackgroundBlob
+        className="w-[900px] h-[900px] bg-slate-700/60 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" // Zentraler, sehr diffuser Blob
+        animateProps={{
+            scale: [1, 1.1, 1],
+            opacity: [0.02, 0.05, 0.02], // Extrem subtil
+        }}
+        transitionProps={{ duration: 70, repeat: Infinity, repeatType: "mirror", ease: "linear" }}
+      />
+
       <StatusBar
         isDbConnected={isDbConnected}
         lastDataUpdateTimestamp={lastDataUpdateTimestamp}
         isAuthenticated={isAuthenticated}
-        user={user}
+        // user={user} // user Prop wird in StatusBar nicht verwendet, kann ggf. wieder hinzu, falls benötigt
         logout={logout}
       />
       
+      {/* Hauptinhaltsbereich mit relative und z-10, um über den Blobs zu liegen */}
       <motion.div
-        className="w-full max-w-none p-4 md:p-8 mx-auto"
+        className="w-full max-w-none p-4 md:p-8 mx-auto relative z-10" // z-10 hinzugefügt
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -307,10 +340,9 @@ export default function ContaintTable() {
         <ViewTabs currentView={currentView} setCurrentView={setCurrentView} />
         
         <div className="flex flex-col md:flex-row justify-between items-center my-4">
-            <h1 className="text-xl md:text-2xl font-semibold text-neutral-200 text-center md:text-left mb-2 md:mb-0"> 
+            <h1 className="text-xl md:text-4xl font-semibold text-neutral-200 text-center md:text-left mb-2 md:mb-0"> 
                 {VIEW_TITLES[currentView] || "Übersicht"}
             </h1>
-            {/* NEU: Button "Neuen Nutzer anlegen" nur für Admins */}
             {user?.isAdmin && (
                 <motion.button
                     onClick={handleCreateNewUser}
@@ -322,7 +354,6 @@ export default function ContaintTable() {
                 </motion.button>
             )}
         </div>
-
 
         <FilterControls
           currentView={currentView}
@@ -366,7 +397,6 @@ export default function ContaintTable() {
                 copiedCellKey={copiedCellKey}
                 onCopyToClipboard={handleCopyToClipboard}
                 onStatusChange={handleStatusChangeForCard}
-                // isAdmin-Prop wird nicht mehr benötigt, da die Logik in der Karte selbst nicht mehr prüft
               />
             ))}
           </motion.div>
