@@ -2,7 +2,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Mail, Filter, Hash, AlertTriangle, CheckCircle, CalendarDays, Trash2 } from "lucide-react";
+import { Search, X, Mail, Filter, Hash, AlertTriangle, CheckCircle, Trash2 } from "lucide-react";
 import { ViewType, StatusFilterMode } from '../types'; // Pfad anpassen
 import { FILTER_LABELS } from '../constants'; // Pfad anpassen
 

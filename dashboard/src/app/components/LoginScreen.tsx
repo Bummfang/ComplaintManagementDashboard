@@ -1,16 +1,15 @@
+// app/components/LoginScreen.tsx
 "use client";
 
 import { useState, FormEvent } from 'react';
 import { motion, Transition as MotionTransition, MotionProps, AnimatePresence } from 'framer-motion';
-import { UserIcon, LockClosedIcon, ArrowRightOnRectangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline'; // CheckCircleIcon hinzugefügt
-import { useAuth } from '../contexts/AuthContext'; // Passe den Pfad ggf. an
-import { LOGIN_APP_NAME, COMPANY_NAME, COMPANY_SUBTITLE, LOGIN_API_ENDPOINT } from '../constants'; // Passe den Pfad ggf. an
+import { UserIcon, LockClosedIcon, ArrowRightOnRectangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import Image from 'next/image'; // Import für next/image
+import { useAuth } from '../contexts/AuthContext'; 
+import { LOGIN_APP_NAME, COMPANY_NAME, COMPANY_SUBTITLE, LOGIN_API_ENDPOINT } from '../constants'; 
 
-interface LoginScreenProps {
-  // keine Props mehr zwingend erforderlich
-}
+// LoginScreenProps wurde entfernt, da es leer war und nicht verwendet wurde.
 
-// --- BackgroundBlob Komponente (unverändert) ---
 interface BackgroundBlobProps {
   className: string;
   animateProps: MotionProps['animate'];
@@ -43,21 +42,21 @@ const BackgroundBlob = ({ className, animateProps, transitionProps }: Background
     />
   );
 };
-// --- Ende BackgroundBlob ---
 
-export default function LoginScreen(/* props: LoginScreenProps */) {
+// Die Props wurden aus der Funktionssignatur entfernt.
+export default function LoginScreen() {
   const [username, setUsernameState] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [loginSuccess, setLoginSuccess] = useState(false); // Neuer State für Erfolgs-Feedback
+  const [loginSuccess, setLoginSuccess] = useState(false); 
   const { login } = useAuth();
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
-    setLoginSuccess(false); // Zurücksetzen bei jedem neuen Versuch
+    setLoginSuccess(false); 
 
     console.log("LoginScreen: Attempting login with (AuthContext version):", { username, password });
 
@@ -74,11 +73,10 @@ export default function LoginScreen(/* props: LoginScreenProps */) {
 
       if (response.ok) {
         console.log('LoginScreen: Login API call successful (AuthContext version). Response data:', responseData);
-        setLoginSuccess(true); // Erfolgsstatus setzen
+        setLoginSuccess(true); 
 
-        // NEU: Verzögerung vor dem Aufruf der login() Funktion, um Animationen Zeit zu geben
         setTimeout(() => {
-          login({ // AuthContext informieren
+          login({ 
             userId: responseData.userId,
             username: responseData.username,
             name: responseData.name,
@@ -86,26 +84,18 @@ export default function LoginScreen(/* props: LoginScreenProps */) {
             isAdmin: responseData.isAdmin,
             token: responseData.token,
           });
-          // setIsLoading(false) wird im finally-Block gehandhabt, aber der Button ist durch loginSuccess eh deaktiviert.
-        }, 1800); // Verzögerung von 1.8 Sekunden (kann angepasst werden)
+        }, 1800); 
 
       } else {
         console.error('LoginScreen: Login API call failed (AuthContext version). Error data:', responseData);
         setError(responseData.error || responseData.details || 'Ein unbekannter Anmeldefehler ist aufgetreten.');
-        setIsLoading(false); // Ladezustand bei Fehler direkt beenden
+        setIsLoading(false); 
       }
     } catch (err) {
       console.error('LoginScreen: Network or fetch error during login (AuthContext version):', err);
       setError('Verbindung zum Server fehlgeschlagen oder Server antwortet nicht.');
-      setIsLoading(false); // Ladezustand bei Fehler direkt beenden
-    } finally {
-      // setIsLoading(false) wird nun bei Fehler direkt gesetzt oder nach der Verzögerung bei Erfolg implizit durch den Komponentenwechsel.
-      // Wenn der Login erfolgreich ist und die Verzögerung läuft, bleibt isLoading true, was ok ist, da der Button durch loginSuccess gesperrt ist.
-      // Wenn die Komponente vor Ablauf des Timeouts unmounted wird (was sie wird), ist das auch ok.
-      // Für den Fall, dass die Komponente NICHT unmounted würde, müsste setIsLoading hier nochmals aufgerufen werden.
-      // Da aber ein Komponentenwechsel stattfindet, ist es hier weniger kritisch.
-      // Um ganz sicher zu sein, könnte man es im Timeout auch noch setzen, aber der Button ist eh disabled.
-    }
+      setIsLoading(false); 
+    } 
   };
 
   const cardVariants = {
@@ -130,7 +120,7 @@ export default function LoginScreen(/* props: LoginScreenProps */) {
         y: -30,
         scale: 0.95,
         transition: {
-            duration: 0.4, // Exit-Animation etwas verlängert, um die Erfolgsnachricht besser zu sehen
+            duration: 0.4, 
             ease: "easeIn",
         }
     }
@@ -157,12 +147,10 @@ export default function LoginScreen(/* props: LoginScreenProps */) {
     y: { duration: 0.3 }
   };
 
-  // Stagger-Delay für das Schlüssel-Icon, basierend auf cardVariants
   const keyIconEntryDelay = (cardVariants.visible.transition.staggerChildren || 0) + 0.1;
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-[#0D0D12] via-[#111318] to-[#0a0a0f] text-white font-sans flex flex-col items-center justify-center p-4 overflow-hidden relative">
-      {/* Background Blobs */}
       <BackgroundBlob
         className="w-[500px] h-[500px] bg-purple-600 -top-40 -left-40"
         animateProps={{ x: [-100, 50, -100], y: [-80, 30, -80], rotate: [0, 120, 0], scale: [0.9, 1.1, 0.9], opacity: [0.15, 0.35, 0.15]}}
@@ -179,7 +167,6 @@ export default function LoginScreen(/* props: LoginScreenProps */) {
         transitionProps={{ duration: 28, repeat: Infinity, repeatType: "mirror", ease: "linear" }}
       />
 
-      {/* Login Card */}
       <motion.div
         variants={cardVariants}
         initial="hidden"
@@ -188,38 +175,37 @@ export default function LoginScreen(/* props: LoginScreenProps */) {
         className="w-full max-w-sm md:max-w-md relative z-10"
       >
         <div className="bg-slate-800/10 backdrop-blur-lg p-6 sm:p-8 md:p-10 rounded-xl shadow-2xl border border-slate-700/60">
-          {/* Header Sektion */}
           <motion.div variants={itemVariants} className="flex flex-col items-center mb-6 md:mb-8">
-            {/* Schlüssel Icon mit konditionaler Animation */}
             <motion.div
               className={`p-3 rounded-full mb-3 w-16 h-16 sm:w-20 sm:h-20 flex justify-center items-center shadow-inner transition-colors duration-300 ease-out ${loginSuccess ? 'bg-green-600/30 shadow-lg shadow-green-500/40' : 'bg-sky-500/20'}`}
               initial={{ scale: 0.5, opacity: 0 }}
               animate={loginSuccess
-                ? { // Erfolgsanimation
-                    scale: [1, 1.25, 1], // Etwas stärkeres Pulsieren für Erfolg
-                    rotate: 360,    // Einmal drehen
+                ? { 
+                    scale: [1, 1.25, 1], 
+                    rotate: 360,   
                     opacity: 1,
                   }
-                : { // Standard rhythmische Animation
+                : { 
                     scale: [1, 1.12, 1, 1.08, 1],
                     rotate: [0, 7, -4, 6, 0],
                     opacity: 1,
                   }
               }
               transition={loginSuccess
-                ? { // Übergang für Erfolgsanimation
-                    duration: 0.8, // Dauer der Erfolgsanimation
+                ? { 
+                    duration: 0.8, 
                     ease: 'circOut',
-                    delay: 0.1, // Kleine Verzögerung, um den Farbwechsel zuerst sichtbar zu machen
+                    delay: 0.1, 
                   }
-                : { // Übergänge für initiales Erscheinen und rhythmische Animation
+                : { 
                     opacity: { duration: 0.5, ease: "easeOut", delay: keyIconEntryDelay },
                     scale: { delay: keyIconEntryDelay, duration: 3.0, ease: "easeInOut", repeat: Infinity, repeatType: "mirror" },
                     rotate: { delay: keyIconEntryDelay, duration: 3.0, ease: "easeInOut", repeat: Infinity, repeatType: "mirror" },
                   }
               }
             >
-              <img src={'/key-solid.svg'} alt='Anmelde Icon' className="h-8 w-8 sm:h-10 sm:w-10 text-sky-400" />
+              {/* Ersetzt durch next/image. Annahme: key-solid.svg ist im public-Ordner. */}
+              <Image src={'/key-solid.svg'} alt='Anmelde Icon' width={40} height={40} className="text-sky-400" />
             </motion.div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400">
               {LOGIN_APP_NAME}
@@ -227,9 +213,8 @@ export default function LoginScreen(/* props: LoginScreenProps */) {
             <p className="text-sm font-semibold text-neutral-300 mt-1.5">{COMPANY_NAME}</p>
           </motion.div>
 
-          {/* Fehlermeldung (Shake-Animation) */}
           <AnimatePresence>
-            {error && !loginSuccess && ( // Fehler nur anzeigen, wenn kein Erfolg
+            {error && !loginSuccess && ( 
               <motion.div
                 key="error-message"
                 initial={{ opacity: 0, y: -20 }}
@@ -243,12 +228,10 @@ export default function LoginScreen(/* props: LoginScreenProps */) {
             )}
           </AnimatePresence>
 
-          {/* Login Formular oder Erfolgsmeldung */}
           <AnimatePresence mode="wait">
             {!loginSuccess ? (
-              <motion.div key="login-form" exit={{opacity: 0, transition: {duration: 0.2}}}> {/* Key und sanfter Exit für das Formular */}
+              <motion.div key="login-form" exit={{opacity: 0, transition: {duration: 0.2}}}> 
                 <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6">
-                  {/* Benutzername */}
                   <motion.div variants={itemVariants} whileHover={{ scale: 1.015, transition: { duration: 0.2 } }}>
                     <label htmlFor="username_input" className="block text-xs sm:text-sm font-medium text-neutral-300 mb-1.5">Benutzername</label>
                     <div className="relative">
@@ -263,7 +246,6 @@ export default function LoginScreen(/* props: LoginScreenProps */) {
                       />
                     </div>
                   </motion.div>
-                  {/* Passwort */}
                   <motion.div variants={itemVariants} whileHover={{ scale: 1.015, transition: { duration: 0.2 } }}>
                     <label htmlFor="password_input" className="block text-xs sm:text-sm font-medium text-neutral-300 mb-1.5">Passwort</label>
                     <div className="relative">
@@ -278,10 +260,9 @@ export default function LoginScreen(/* props: LoginScreenProps */) {
                       />
                     </div>
                   </motion.div>
-                  {/* Submit Button */}
                   <motion.div variants={itemVariants}>
                     <motion.button
-                      type="submit" disabled={isLoading || loginSuccess} // Button auch bei Erfolg deaktivieren
+                      type="submit" disabled={isLoading || loginSuccess} 
                       className="flex w-full justify-center items-center rounded-lg bg-gradient-to-r from-sky-500 to-sky-600 px-3 py-2.5 sm:py-3 text-sm duration-300 font-semibold leading-6 text-white shadow-md hover:from-sky-600 hover:to-sky-700 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-sky-500 disabled:opacity-60 disabled:cursor-not-allowed transition-all ease-in-out group"
                       whileHover={{ scale: isLoading || loginSuccess ? 1 : 1.03, boxShadow: isLoading || loginSuccess ? 'none' : "0 8px 20px -3px rgba(2, 132, 199, 0.3), 0 4px 8px -2px rgba(2, 132, 199, 0.25)"}}
                       whileTap={{ scale: isLoading || loginSuccess ? 1 : 0.98, y: isLoading || loginSuccess ? 0 : 1 }}
@@ -304,7 +285,7 @@ export default function LoginScreen(/* props: LoginScreenProps */) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20, transition: {duration: 0.2} }}
-                transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }} // Delay, damit das Formular zuerst ausblendet
+                transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }} 
                 className="mt-6 py-4 text-center"
               >
                 <div className="inline-flex items-center justify-center p-3 bg-green-600/25 text-green-200 rounded-lg shadow-lg border border-green-500/50">
@@ -315,7 +296,6 @@ export default function LoginScreen(/* props: LoginScreenProps */) {
             )}
           </AnimatePresence>
 
-          {/* Footer */}
           <motion.p variants={itemVariants} className="mt-8 text-center text-xs text-neutral-500">
             {COMPANY_SUBTITLE}<br />&copy; {new Date().getFullYear()} {COMPANY_NAME}. Alle Rechte vorbehalten.
           </motion.p>

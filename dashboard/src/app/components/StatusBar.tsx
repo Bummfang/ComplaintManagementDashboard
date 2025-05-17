@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { RefreshCwIcon, PowerIcon } from 'lucide-react'; 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { formatDate, formatLastUpdateTime } from '../utils'; // Pfad anpassen
+import { formatLastUpdateTime } from '../utils'; // Pfad anpassen
 
 const MotionPowerIcon = motion(PowerIcon);
 

@@ -1,7 +1,7 @@
 // app/components/ContaintTable.tsx
 "use client";
 
-import { motion, AnimatePresence, MotionProps, Transition as MotionTransition } from "framer-motion"; // MotionProps und Transition importiert
+import { motion, MotionProps, Transition as MotionTransition } from "framer-motion"; // MotionProps und Transition importiert
 import { useEffect, useState, useCallback, useMemo } from "react";
 
 // Importiere den useAuth-Hook für den Zugriff auf den Authentifizierungsstatus

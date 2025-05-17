@@ -1,7 +1,7 @@
 // app/components/LoadingScreen.tsx
 "use client"; // Erforderlich für Framer Motion Hooks
 
-import { motion, Transition as MotionTransition, MotionProps, AnimatePresence } from 'framer-motion';
+import { motion, Transition as MotionTransition, MotionProps} from 'framer-motion';
 
 // --- BackgroundBlob Komponente (Kann auch in eine separate UI-Datei ausgelagert werden) ---
 interface BackgroundBlobProps {
