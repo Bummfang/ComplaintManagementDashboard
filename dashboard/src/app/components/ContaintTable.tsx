@@ -167,7 +167,6 @@ export default function ContaintTable() {
                 isDbConnected={isDbConnected}
                 lastDataUpdateTimestamp={lastDataUpdateTimestamp}
             />
-            <div className="h-10"></div> {/* Spacer für fixed StatusBar */}
 
             <motion.div
                 className="w-full max-w-none mt-10 p-4 md:p-8 mx-auto"

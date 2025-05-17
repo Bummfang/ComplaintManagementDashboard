@@ -46,7 +46,7 @@ export default function StatusBar({ isDbConnected, lastDataUpdateTimestamp }: St
                 </div>
                 {lastDataUpdateTimestamp && (
                     <div className="hidden md:flex items-center text-slate-400" title={`Daten zuletzt abgerufen um ${formatLastUpdateTime(lastDataUpdateTimestamp)}`}>
-                        <RefreshCwIcon size={12} className="mr-1.5 flex-shrink-0" />
+                        <RefreshCwIcon size={12} className="mr-1.5 animate-spin flex-shrink-0" />
                         <span className="hidden lg:inline">Letzte Aktual.: </span>
                         <span>{formatLastUpdateTime(lastDataUpdateTimestamp)}</span>
                     </div>

@@ -63,7 +63,7 @@ export default function FilterControls({
                                 {activeStatusFilter === filterKey && (
                                     <motion.div
                                         layoutId="activeFilterPillNeonGlass"
-                                        className="absolute inset-0 bg-green-500/70 rounded-full shadow-[0_0_10px_1px_theme(colors.green.400),_0_0_15px_2px_theme(colors.green.500/0.3)] -z-0"
+                                        className="absolute inset-0 bg-green-500/70 rounded-full  -z-0"
                                         transition={{ type: "spring", stiffness: 380, damping: 30 }}
                                     />
                                 )}
