@@ -6,7 +6,7 @@ import { CopyIcon, CheckIcon } from 'lucide-react';
 import { DataItem, BeschwerdeItem, ViewType } from '../types'; // Pfad anpassen
 import { formatDate, formatTime } from '../utils'; // Pfad anpassen
 
-// Hilfsfunktion für dynamische Textfarben basierend auf dem Status
+// Hilfsfunktion für dynamische Textfarben basierend auf dem Status (unverändert)
 const getStatusTextColorClass = (status?: BeschwerdeItem["status"]): string => {
   switch (status) {
     case "Offen":
@@ -22,15 +22,14 @@ const getStatusTextColorClass = (status?: BeschwerdeItem["status"]): string => {
   }
 };
 
-// Hilfsfunktion für einen subtilen, vollflächigen Hintergrund-Farbstich
+// Hilfsfunktion für einen subtilen, vollflächigen Hintergrund-Farbstich (unverändert)
 const getCardBackgroundAccentClasses = (status?: BeschwerdeItem["status"]): string => {
-  const baseFallback = "bg-slate-800/60"; // Standardhintergrund
+  const baseFallback = "bg-slate-800/60"; 
 
   switch (status) {
     case "Offen":
       return "bg-sky-900/[.4]"; 
     case "In Bearbeitung":
-      // In deinem Code war hier yellow-900, ich verwende amber-900 für Farbton-Konsistenz mit den Textfarben
       return "bg-amber-900/[.3]"; 
     case "Gelöst":
       return "bg-green-900/[.4]";
@@ -85,22 +84,52 @@ const DataField = ({
   );
 };
 
-// Varianten für die Hauptkarte und ihre gestaffelten Kinder (unverändert)
+// Varianten für die Hauptkarte (unverändert)
 const cardContainerVariants = {
-  hidden: { opacity: 0, y: 25, scale: 0.97 },
-  visible: {
-    opacity: 1, y: 0, scale: 1,
-    transition: { duration: 0.4, ease: [0.25, 1, 0.5, 1], staggerChildren: 0.07 }
+  hidden: { 
+    opacity: 0, 
+    y: 60, 
+    scale: 0.9, 
+    rotateX: -20, 
+    transformPerspective: 1000 
   },
-  exit: {
-    opacity: 0, y: -20, scale: 0.98,
-    transition: { duration: 0.3, ease: "easeIn" }
+  visible: {
+    opacity: 1, 
+    y: 0, 
+    scale: 1,
+    rotateX: 0,
+    transition: { 
+      type: "spring", 
+      stiffness: 120, 
+      damping: 20, 
+      staggerChildren: 0.08, 
+      delayChildren: 0.1 
+    }
+  },
+  exit: { 
+    opacity: 0,
+    scale: 0.85, 
+    transition: { duration: 0.2, ease: "easeOut" } 
   }
 };
 
+// Varianten für die Inhaltselemente (unverändert)
 const contentItemVariants = {
-  hidden: { opacity: 0, x: -10 },
-  visible: { opacity: 1, x: 0, transition: { duration: 0.3, ease: "easeOut" } }
+  hidden: { 
+    opacity: 0, 
+    x: -25, 
+    scale: 0.85 
+  },
+  visible: { 
+    opacity: 1, 
+    x: 0,
+    scale: 1,
+    transition: { 
+      type: "spring", 
+      stiffness: 180, 
+      damping: 20 
+    } 
+  }
 };
 
 
@@ -110,7 +139,7 @@ interface DataItemCardProps {
   copiedCellKey: string | null;
   onCopyToClipboard: (textToCopy: string, cellKey: string) => void;
   onStatusChange: (itemId: number, newStatus: BeschwerdeItem["status"]) => void;
-  cardAccentsEnabled: boolean; // Prop hier hinzugefügt/sichergestellt
+  cardAccentsEnabled: boolean; 
 }
 
 export default function DataItemCard({
@@ -119,7 +148,7 @@ export default function DataItemCard({
   copiedCellKey,
   onCopyToClipboard,
   onStatusChange,
-  cardAccentsEnabled, // Prop hier verwenden
+  cardAccentsEnabled, 
 }: DataItemCardProps) {
   const itemTypePrefix = currentView === "beschwerden" ? "CMP-" : currentView === "lob" ? "LOB-" : "ANG-";
   const isBeschwerde = currentView === 'beschwerden' && 'beschwerdegrund' in item;
@@ -127,7 +156,6 @@ export default function DataItemCard({
   const currentStatus = beschwerdeItem?.status;
   let actionButton = null;
 
-  // Logik für Aktionsknöpfe (unverändert)
   if (isBeschwerde && beschwerdeItem) {
     switch (currentStatus) {
       case "Offen":
@@ -187,7 +215,6 @@ export default function DataItemCard({
   }
   const cardKey = `card-${item.id}`;
 
-  // Bestimme die Hintergrundklasse basierend auf cardAccentsEnabled
   const backgroundClass = (isBeschwerde && beschwerdeItem && beschwerdeItem.status && cardAccentsEnabled) 
                           ? getCardBackgroundAccentClasses(beschwerdeItem.status) 
                           : 'bg-slate-800/60';
@@ -199,17 +226,27 @@ export default function DataItemCard({
       initial="hidden"
       animate="visible"
       exit="exit"
-      layout
-      whileHover={{ y: -5, scale: 1.01, transition: { type: "spring", stiffness: 300, damping: 18 } }}
+      layout 
+      whileHover={{ 
+        y: -8, 
+        scale: 1.02, 
+        rotateY: 2, 
+        boxShadow: "0px 10px 25px rgba(0,0,0,0.25), 0px 6px 10px rgba(0,0,0,0.22)", 
+        transition: { type: "spring", stiffness: 200, damping: 15 }
+      }}
+      whileTap={{ 
+        scale: 0.995, // Skalierung beim Klicken EXTREM dezent angepasst
+        rotateY: -1,
+        boxShadow: "0px 4px 12px rgba(0,0,0,0.18), 0px 2px 6px rgba(0,0,0,0.15)", 
+      }}
       className={`
         relative overflow-hidden rounded-xl 
-        ${backgroundClass} {/* Dynamische Hintergrundklasse */}
-        backdrop-blur-md transition-all duration-300 ease-out 
-        shadow-lg shadow-slate-900/25 hover:shadow-xl hover:shadow-slate-900/35 
+        ${backgroundClass} 
+        backdrop-blur-md 
+        shadow-lg shadow-slate-900/25
         flex flex-col justify-between cursor-pointer
-      `}
+        `}
     >
-      {/* Hauptinhaltsbereich der Karte (unverändert) */}
       <div className="p-4 md:p-5 flex flex-col flex-grow">
         <motion.div variants={contentItemVariants} className="flex justify-between items-start mb-2.5">
           <h3 className="text-md font-semibold text-slate-100 hover:text-white transition-colors break-words pr-2">
