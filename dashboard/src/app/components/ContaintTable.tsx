@@ -1,104 +1,19 @@
+// app/components/ContaintTable.tsx
 "use client";
 import { motion } from "framer-motion";
-import Image from 'next/image'; // NEU: Import für Next.js Image Komponente
+import Image from 'next/image';
 import { useEffect, useState, useCallback, useMemo } from "react";
 import {
     CopyIcon, CheckIcon, SearchIcon, XIcon, MailIcon,
     FilterIcon, HashIcon, RefreshCwIcon
 } from "lucide-react";
 
-// Definiere die Typen für deine Daten
-interface BaseItem {
-    id: number;
-    name: string;
-    email: string;
-    tel?: string;
-    betreff: string;
-    beschreibung: string;
-    erstelltam: string;
-}
+// Importiere ausgelagerte Typen, Konstanten und Utils
+import { DataItem, ViewType, StatusFilterMode, BeschwerdeItem } from '../types'; // Pfad anpassen
+import { API_ENDPOINTS, VIEW_TITLES, FILTER_LABELS } from '../constants'; // Pfad anpassen
+import { formatDate, formatTime, formatLastUpdateTime } from '../utils'; // Pfad anpassen
 
-interface BeschwerdeItem extends BaseItem {
-    beschwerdegrund: string;
-    datum: string;
-    uhrzeit: string;
-    haltestelle?: string;
-    linie?: string;
-    status?: "Offen" | "In Bearbeitung" | "Gelöst" | "Abgelehnt";
-}
-
-type LobItem = BaseItem;
-type AnregungItem = BaseItem;
-type DataItem = BeschwerdeItem | LobItem | AnregungItem;
-type ViewType = "beschwerden" | "lob" | "anregungen";
-
-type StatusFilterMode = "alle" | "Offen" | "In Bearbeitung" | "Gelöst" | "Abgelehnt";
-
-const API_ENDPOINTS: Record<ViewType, string> = {
-    beschwerden: "/api/containt",
-    lob: "/api/like",
-    anregungen: "/api/feedback",
-};
-
-const VIEW_TITLES: Record<ViewType, string> = {
-    beschwerden: "Beschwerdeübersicht",
-    lob: "Lobübersicht",
-    anregungen: "Anregungsübersicht",
-};
-
-const FILTER_LABELS: Record<StatusFilterMode, string> = {
-    "alle": "Alle",
-    "Offen": "Offen",
-    "In Bearbeitung": "In Bearb.",
-    "Gelöst": "Gelöst",
-    "Abgelehnt": "Abgelehnt",
-};
-
-const formatDate = (dateString?: string, options?: Intl.DateTimeFormatOptions) => {
-    if (!dateString) return "N/A";
-    try {
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) throw new Error("Invalid date value");
-        const defaultOptions: Intl.DateTimeFormatOptions = {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-        };
-        return date.toLocaleDateString("de-DE", { ...defaultOptions, ...options });
-    } catch (e) {
-        return dateString;
-    }
-};
-
-const formatTime = (timeString?: string) => {
-    if (!timeString || timeString.toLowerCase() === "invalid date") return "N/A";
-    try {
-        if (/^\d{2}:\d{2}(:\d{2})?$/.test(timeString)) {
-            return timeString.substring(0, 5);
-        }
-        const date = new Date(`1970-01-01T${timeString}`);
-        if (isNaN(date.getTime())) {
-            const fullDate = new Date(timeString);
-            if(isNaN(fullDate.getTime())) return timeString;
-            return fullDate.toLocaleTimeString("de-DE", {
-                hour: "2-digit",
-                minute: "2-digit",
-            });
-        }
-        return date.toLocaleTimeString("de-DE", {
-            hour: "2-digit",
-            minute: "2-digit",
-        });
-    } catch (e) {
-        return timeString;
-    }
-};
-
-const formatLastUpdateTime = (timestamp: Date | null): string => {
-    if (!timestamp) return "N/A";
-    return timestamp.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-};
-
+// Komponente für einzelne Datenfelder (könnte auch in eine eigene Datei)
 const DataField = ({ label, value, onCopy, isCopied, copyValue, fieldKey }: { label: string, value?: string | null, onCopy: (text: string, key: string) => void, isCopied: boolean, copyValue?: string, fieldKey: string }) => {
     const displayValue = value || "N/A";
     const actualCopyValue = copyValue || displayValue;
@@ -121,7 +36,8 @@ const DataField = ({ label, value, onCopy, isCopied, copyValue, fieldKey }: { la
     );
 };
 
-export default function Home() {
+
+export default function ContaintTable() {
     const [currentView, setCurrentView] = useState<ViewType>("beschwerden");
     const [data, setData] = useState<DataItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -144,6 +60,7 @@ export default function Home() {
     const [currentDate, setCurrentDate] = useState<string>("--.--.----");
     const [lastDataUpdateTimestamp, setLastDataUpdateTimestamp] = useState<Date | null>(null);
 
+    // useEffect für Datum/Zeit (könnte in eine separate Header/Statusleisten-Komponente)
     useEffect(() => {
         const updateDateTime = () => {
             const now = new Date();
@@ -175,7 +92,7 @@ export default function Home() {
         } finally { 
             if (!isBackgroundUpdate) setIsLoading(false); 
         }
-    }, []);
+    }, []); // Keine Abhängigkeiten, da API_ENDPOINTS konstant sind
 
     useEffect(() => {
         fetchData(currentView);
@@ -254,7 +171,7 @@ export default function Home() {
         setData(prevData => prevData.map(item => item.id === itemId && 'status' in item ? { ...item, status: newStatus } as BeschwerdeItem : item ));
         setError(null);
         try {
-            const response = await fetch(API_ENDPOINTS.beschwerden, {
+            const response = await fetch(API_ENDPOINTS.beschwerden, { // Beachte: API_ENDPOINTS.beschwerden ist hier fest codiert, ggf. anpassen falls Statusänderung für andere Typen kommt
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', },
                 body: JSON.stringify({ id: itemId, status: newStatus }),
@@ -264,7 +181,7 @@ export default function Home() {
                 const errorData = await response.json().catch(() => ({ details: response.statusText }));
                 throw new Error(`Update fehlgeschlagen (${response.status}): ${errorData.details || errorData.error || "Serverfehler"}`);
             }
-            fetchData(currentView, true);
+            fetchData(currentView, true); // Daten neu laden, um Konsistenz sicherzustellen
         } catch (err) {
             setData(originalData);
             setError(err instanceof Error ? err.message : "Statusupdate fehlgeschlagen.");
@@ -277,6 +194,8 @@ export default function Home() {
     
     const isDateFilterApplied = useMemo(() => appliedStartDate || appliedEndDate, [appliedStartDate, appliedEndDate]);
 
+    // renderDataItemCard bleibt hier, da es stark von den States dieser Komponente abhängt
+    // oder wird in eine eigene Komponente `DataItemCard.tsx` ausgelagert und erhält Props
     const renderDataItemCard = (item: DataItem) => {
         const itemTypePrefix = currentView === "beschwerden" ? "CMP-" : currentView === "lob" ? "LOB-" : "ANG-";
         const isBeschwerde = currentView === 'beschwerden' && 'beschwerdegrund' in item;
@@ -320,19 +239,17 @@ export default function Home() {
 
     return (
         <div className="min-h-screen w-full bg-[#0D0D12] text-white font-sans">
-            {/* Statusleiste */}
+            {/* Statusleiste - Kandidat für Auslagerung in StatusBar.tsx */}
             <div className="fixed top-0 h-15 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-md text-slate-300 text-xs px-4 shadow-md flex justify-between items-center">
-                {/* Linke Seite der Statusleiste */}
                 <div className="flex items-center space-x-4">
-                    {/* NEU: Logo */}
                     <div className="flex-shrink-0">
                         <Image
-                            src="/logo.png" // Stellen Sie sicher, dass logo.png im /public Ordner ist
+                            src="/logo.png" 
                             alt="Cottbusverkehr Logo"
-                            width={125}  // Passen Sie dies ggf. an das Seitenverhältnis Ihres Logos an
-                            height={24} // Höhe, die gut in die Leiste passt (h-10 ist 40px)
-                            priority     // Wichtig für LCP, wenn das Logo sofort sichtbar ist
-                            className="object-contain" // Stellt sicher, dass das Bild skaliert wird, ohne beschnitten zu werden
+                            width={125}  
+                            height={24} 
+                            priority     
+                            className="object-contain"
                         />
                     </div>
                     <div className="flex items-center" title={isDbConnected ? "API Verbindung aktiv" : "API Verbindung unterbrochen"}>
@@ -347,14 +264,12 @@ export default function Home() {
                         </div>
                     )}
                 </div>
-
-                {/* Rechte Seite der Statusleiste */}
                 <div className="flex items-center space-x-3">
                     <span className="hidden sm:inline">{currentDate}</span>
                     <span className="font-mono text-sm">{currentTime}</span>
                 </div>
             </div>
-            <div className="h-10"></div> 
+            <div className="h-10"></div> {/* Spacer für fixed StatusBar */}
 
             <motion.div
                 className="w-full max-w-none mt-10 p-4 md:p-8 mx-auto"
@@ -362,7 +277,7 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
             >
-                {/* Rest der Seite... (Tabs, Titel, Filter, Karten) */}
+                {/* Tab-Navigation - Kandidat für Auslagerung in ViewTabs.tsx */}
                 <div className="mb-6 flex flex-wrap space-x-1 border-b border-[#20202A] pb-px">
                     {(Object.keys(VIEW_TITLES) as ViewType[]).map((viewKey) => (
                         <button
@@ -383,6 +298,7 @@ export default function Home() {
                     {VIEW_TITLES[currentView]}
                 </h1>
 
+                {/* Filter Bereich - Kandidat für Auslagerung in FilterControls.tsx */}
                 <div className="my-6 space-y-4 md:space-y-0 md:flex md:flex-col p-3 bg-slate-800/60 backdrop-blur-lg rounded-2xl shadow-xl">
                     <div className="flex flex-wrap items-center justify-start gap-x-4 gap-y-4">
                         {currentView === "beschwerden" && (
@@ -406,6 +322,7 @@ export default function Home() {
                                 ))}
                             </div>
                         )}
+                        {/* Suchfelder könnten auch eigene Komponenten sein (z.B. SearchInput.tsx) */}
                         <div className="flex flex-col items-start w-full md:w-auto md:min-w-[180px]">
                             <label htmlFor="personSearch" className="text-xs font-medium text-slate-300 mb-1 ml-1">Person:</label>
                             <div className="relative w-full">
@@ -414,11 +331,11 @@ export default function Home() {
                                 {searchTerm && ( <button onClick={() => setSearchTerm("")} className="absolute inset-y-0 right-0 flex items-center pr-2 text-slate-400 hover:text-slate-200" title="Suche zurücksetzen" > <XIcon size={18} /> </button> )}
                             </div>
                         </div>
-                        <div className="flex flex-col items-start w-full md:w-auto md:min-w-[180px]">
+                         <div className="flex flex-col items-start w-full md:w-auto md:min-w-[180px]">
                             <label htmlFor="emailSearch" className="text-xs font-medium text-slate-300 mb-1 ml-1">E-Mail:</label>
                             <div className="relative w-full">
                                 <span className="absolute inset-y-0 left-0 flex items-center pl-3"> <MailIcon size={16} className="text-slate-400" /> </span>
-                                <input type="text" id="emailSearch" placeholder="E-Mail..." value={emailSearchTerm} onChange={(e) => setEmailSearchTerm(e.target.value)} className="bg-slate-700/50 text-slate-100 border border-slate-600 rounded-full pl-10 pr-8 py-1.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 appearance-none w-full" style={{colorScheme: 'dark'}} />
+                                <input type="text" id="emailSearch" placeholder="E-Mail..." value={emailSearchTerm} onChange={(e) => setEmailSearchTerm(e.target.value)} className="bg-slate-700/50 text-slate-100 border border-slate-600 rounded-full pl-10 pr-8 py-1.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 appearance-none w-full" style={{colorScheme: 'dark'}}/>
                                 {emailSearchTerm && ( <button onClick={() => setEmailSearchTerm("")} className="absolute inset-y-0 right-0 flex items-center pr-2 text-slate-400 hover:text-slate-200" title="E-Mail-Suche zurücksetzen" > <XIcon size={18} /> </button> )}
                             </div>
                         </div>
@@ -477,6 +394,7 @@ export default function Home() {
 
                 {error && ( <div className="my-4 p-3 bg-red-700 text-white rounded-md shadow-lg" role="alert"> <p><strong>Fehler:</strong> {error}</p> </div> )}
 
+                {/* Datenanzeige - Kandidat für Auslagerung in DataGrid.tsx oder DataList.tsx */}
                 {isLoading && !error ? (
                     <div className="text-center py-10 text-neutral-300">Lade Daten...</div>
                 ) : !isLoading && filteredData.length === 0 && !error ? (
