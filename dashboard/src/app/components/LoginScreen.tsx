@@ -2,27 +2,59 @@
 "use client";
 
 import { useState, FormEvent } from 'react';
-import { motion } from 'framer-motion';
+import { motion, Transition as MotionTransition, MotionProps } from 'framer-motion';
 import { UserIcon, LockClosedIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
-// Stelle sicher, dass LOGIN_API_ENDPOINT hier importiert wird, falls noch nicht geschehen
 import { LOGIN_APP_NAME, COMPANY_NAME, COMPANY_SUBTITLE, LOGIN_API_ENDPOINT } from '../constants';
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
 }
 
+interface BackgroundBlobProps {
+  className: string;
+  animateProps: MotionProps['animate'];
+  transitionProps: MotionTransition;
+}
+
+// Hilfstyp für die Eigenschaften, aus denen wir Initialwerte extrahieren wollen
+type AnimatableXYProperties = {
+  x?: string | number | string[] | number[];
+  y?: string | number | string[] | number[];
+  // Du könntest hier auch andere animierbare Eigenschaften hinzufügen,
+  // falls du deren Initialwerte benötigst (z.B. scale, opacity).
+};
+
 // Hilfskomponente für die animierten Hintergrund-Blobs
-const BackgroundBlob = ({ className, animateProps, transitionProps }: { className: string, animateProps: any, transitionProps: any }) => (
-  <motion.div
-    className={`absolute rounded-full filter blur-3xl opacity-30 pointer-events-none ${className}`}
-    initial={{ scale: 0.8, opacity: 0, x: animateProps.x[0], y: animateProps.y[0] }}
-    animate={animateProps}
-    transition={transitionProps}
-  />
-);
+const BackgroundBlob = ({ className, animateProps, transitionProps }: BackgroundBlobProps) => {
+  const initialMotionValues: MotionProps['initial'] = {
+    scale: 0.8,
+    opacity: 0,
+  };
+
+  if (typeof animateProps === 'object' && animateProps !== null && !Array.isArray(animateProps)) {
+    // Hier verwenden wir den spezifischeren Typ anstelle von Record<string, any>
+    const target = animateProps as AnimatableXYProperties; // Korrigierte Zeile
+
+    if (target.x && Array.isArray(target.x) && typeof target.x[0] === 'number') {
+      initialMotionValues.x = target.x[0];
+    }
+    if (target.y && Array.isArray(target.y) && typeof target.y[0] === 'number') {
+      initialMotionValues.y = target.y[0];
+    }
+  }
+
+  return (
+    <motion.div
+      className={`absolute rounded-full filter blur-3xl opacity-30 pointer-events-none ${className}`}
+      initial={initialMotionValues}
+      animate={animateProps}
+      transition={transitionProps}
+    />
+  );
+};
 
 export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
-  const [username, setUsernameState] = useState(''); // Umbenannt, um Konflikt mit globalem username zu vermeiden
+  const [username, setUsernameState] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,26 +67,24 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     console.log("Login attempt with:", { username, password });
 
     try {
-      const response = await fetch(LOGIN_API_ENDPOINT, { // Verwendung der Konstante
+      const response = await fetch(LOGIN_API_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password }), // username und password aus dem State
+        body: JSON.stringify({ username, password }),
       });
 
       const responseData = await response.json();
 
-      if (response.ok) { // Status 200-299
+      if (response.ok) {
         console.log('Login successful:', responseData);
-        onLoginSuccess(); // Rufe die Erfolgsfunktion auf, die von der übergeordneten Komponente kommt
+        onLoginSuccess();
       } else {
-        // Fehler vom Backend (z.B. 400, 401, 500)
         console.error('Login failed:', responseData);
         setError(responseData.error || 'Ein unbekannter Fehler ist aufgetreten.');
       }
     } catch (err) {
-      // Netzwerkfehler oder anderer Fehler beim fetch
       console.error('Network or fetch error during login:', err);
       setError('Verbindung zum Server fehlgeschlagen. Bitte versuchen Sie es später erneut.');
     } finally {
@@ -126,7 +156,6 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         <div className="bg-slate-800/10 backdrop-blur-lg p-6 sm:p-8 md:p-10 rounded-xl shadow-2xl border border-slate-700/60">
           <motion.div variants={itemVariants} className="flex flex-col items-center mb-6 md:mb-8">
             <div className="p-3 bg-sky-500/20 rounded-full mb-3 w-16 h-16 sm:w-20 sm:h-20 flex justify-center items-center shadow-inner">
-              {/* Du hattest hier key-solid.svg, stelle sicher, dass diese Datei im public Ordner ist */}
               <img src={'/key-solid.svg'} alt='Anmelde Icon' className="h-8 w-8 sm:h-10 sm:w-10 text-sky-400" />
             </div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400">
@@ -149,7 +178,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6">
             <motion.div variants={itemVariants}>
               <label
-                htmlFor="username_input" // Geändert, um Kollision mit State-Variable zu vermeiden
+                htmlFor="username_input"
                 className="block text-xs sm:text-sm font-medium text-neutral-300 mb-1.5"
               >
                 Benutzername
@@ -159,13 +188,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 text-neutral-500" aria-hidden="true" />
                 </div>
                 <input
-                  id="username_input" // Geändert
+                  id="username_input"
                   name="username"
                   type="text"
                   autoComplete="username"
                   required
-                  value={username} // State-Variable username
-                  onChange={(e) => setUsernameState(e.target.value)} // State-Setter setUsernameState
+                  value={username}
+                  onChange={(e) => setUsernameState(e.target.value)}
                   disabled={isLoading}
                   className="block w-full rounded-lg border-0 bg-slate-700/10 py-2.5 sm:py-3 pl-10 sm:pl-11 pr-3 text-neutral-100 shadow-sm ring-1 ring-inset ring-slate-600/80 placeholder:text-neutral-500 focus:bg-slate-700/80 focus:ring-2 focus:ring-inset focus:ring-sky-500 sm:text-sm sm:leading-6 transition-all duration-150 ease-in-out"
                   placeholder="z.B. max.mustermann"
@@ -175,7 +204,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
             <motion.div variants={itemVariants}>
               <label
-                htmlFor="password_input" // Geändert
+                htmlFor="password_input"
                 className="block text-xs sm:text-sm font-medium text-neutral-300 mb-1.5"
               >
                 Passwort
@@ -185,13 +214,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   <LockClosedIcon className="h-4 w-4 sm:h-5 sm:w-5 text-neutral-500" aria-hidden="true" />
                 </div>
                 <input
-                  id="password_input" // Geändert
+                  id="password_input"
                   name="password"
                   type="password"
                   autoComplete="current-password"
                   required
-                  value={password} // State-Variable password
-                  onChange={(e) => setPassword(e.target.value)} // State-Setter setPassword
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
                   className="block w-full rounded-lg border-0 bg-slate-700/10 py-2.5 sm:py-3 pl-10 sm:pl-11 pr-3 text-neutral-100 shadow-sm ring-1 ring-inset ring-slate-600/80 placeholder:text-neutral-500 focus:bg-slate-700/80 focus:ring-2 focus:ring-inset focus:ring-sky-500 sm:text-sm sm:leading-6 transition-all duration-150 ease-in-out"
                   placeholder="••••••••"
