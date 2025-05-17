@@ -33,14 +33,14 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #39ff14; /* Neon-Grün */
+  background-color: #2892e9; /* Neon-Grün */
   border-radius: 10px; /* Abgerundete Ecken für den Thumb */
   /* Sicherstellen, dass kein expliziter Rand gesetzt ist */
   /* border: none; (ist meistens Standard, aber zur Sicherheit) */
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #2eff00; /* Etwas helleres Neon-Grün beim Hover */
+  background-color: #2892e9; /* Etwas helleres Neon-Grün beim Hover */
 }
 
 /* Pfeile explizit ausblenden (oft nicht nötig, aber zur Sicherheit) */
