@@ -11,6 +11,7 @@ export const formatDate = (dateString?: string, options?: Intl.DateTimeFormatOpt
         };
         return date.toLocaleDateString("de-DE", { ...defaultOptions, ...options });
     } catch (e) {
+        console.log(e);
         return dateString;
     }
 };
@@ -35,6 +36,7 @@ export const formatTime = (timeString?: string): string => {
             minute: "2-digit",
         });
     } catch (e) {
+        console.log(e);
         return timeString;
     }
 };

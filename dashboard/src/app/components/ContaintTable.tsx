@@ -112,7 +112,9 @@ export default function ContaintTable() {
                     if (sDate && itemDate < sDate) match = false;
                     if (eDate && itemDate > eDate) match = false;
                     return match;
-                } catch (e) { return false; }
+                } catch (e) { 
+                    console.log(e);
+                    return false; }
             });
         }
         return tempData;
@@ -127,6 +129,7 @@ export default function ContaintTable() {
         }
         catch (err) {
             setError("Kopieren fehlgeschlagen.");
+            console.log(err);
             setTimeout(() => setError(null), 3000);
         }
     };
