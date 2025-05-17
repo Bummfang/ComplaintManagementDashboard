@@ -6,6 +6,7 @@ export const API_ENDPOINTS: Record<ViewType, string> = {
   beschwerden: "/api/containt",
   lob: "/api/like",
   anregungen: "/api/feedback",
+  statistik: "/api/statistics", // NEU: Endpunkt für Statistik (Platzhalter)
 };
 
 // Bestehende Titel für die Ansichten
@@ -13,6 +14,7 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   beschwerden: "Beschwerdeübersicht",
   lob: "Lobübersicht",
   anregungen: "Anregungsübersicht",
+  statistik: "Statistikübersicht", // NEU: Titel für Statistik
 };
 
 // Bestehende Labels für Filter
@@ -34,5 +36,3 @@ export const COMPANY_SUBTITLE = "Ein Unternehmen der Stadt Cottbus/Chóśebuz";
 
 // API Endpunkt für den Login-Vorgang
 export const LOGIN_API_ENDPOINT = '/api/login'; // Pfad zur zukünftigen Login-API-Route
-
-
