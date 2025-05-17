@@ -60,5 +60,5 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
   scrollbar-width: thin; /* 'thin' für einen minimalistischen Look */
-   scrollbar-color: #39eb19 transparent; /* Daumenfarbe (Neon-Grün) Trackfarbe (Dunkelgrau) */
+   scrollbar-color: #2872e0 transparent; /* Daumenfarbe (Neon-Grün) Trackfarbe (Dunkelgrau) */
 }
