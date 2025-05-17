@@ -10,7 +10,6 @@ import { formatDate, formatLastUpdateTime } from '../utils'; // Pfad anpassen
 // Importiere den User-Typ aus dem AuthContext, um user.isAdmin zu prüfen
 // und die Motion-Komponente für Animationen
 import { User } from '../contexts/AuthContext'; // Passe den Pfad ggf. an
-import { motion } from 'framer-motion';
 
 
 interface StatusBarProps {
@@ -26,7 +25,6 @@ export default function StatusBar({
   isDbConnected,
   lastDataUpdateTimestamp,
   isAuthenticated,
-  user,
   logout
 }: StatusBarProps) {
   const [currentTime, setCurrentTime] = useState<string>("--:--:--");
@@ -78,26 +76,12 @@ export default function StatusBar({
         {/* Auth-Knöpfe werden nur angezeigt, wenn der Benutzer authentifiziert ist */}
         {isAuthenticated && (
           <>
-            {/* Admin-Knopf: Wird nur angezeigt, wenn user.isAdmin true ist */}
-            {user?.isAdmin && (
-              <motion.button
-                onClick={() => alert("Admin-Bereich Aktionen hier implementieren!")}
-                title="Admin Bereich"
-                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold p-1.5 sm:p-2 rounded-full shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-150 ease-in-out flex items-center group"
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Cog className="h-4 w-4 sm:h-5 sm:w-5 group-hover:rotate-45 transition-transform duration-200" />
-                 {/* Optional: Text "Admin" für größere Bildschirme, wenn gewünscht */}
-                {/* <span className="ml-1.5 hidden lg:inline text-xs font-medium">Admin</span> */}
-              </motion.button>
-            )}
+            
             {/* Logout-Knopf - Gestylt */}
             <button
               onClick={logout}
               title="Abmelden"
-              className="flex items-center bg-red-600 hover:bg-red-700 text-white font-semibold px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-full shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 transform hover:scale-105 active:scale-95 transition-all duration-150 ease-in-out group"
+              className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-full shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 transform hover:scale-105 active:scale-95 transition-all duration-150 ease-in-out group"
             >
               <LogOut className="h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-200 ease-in-out group-hover:translate-x-0.5" />
               {/* Text "Abmelden" für mittlere und größere Bildschirme */}

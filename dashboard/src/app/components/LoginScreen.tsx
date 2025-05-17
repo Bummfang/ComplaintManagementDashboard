@@ -1,18 +1,11 @@
-// app/components/LoginScreen.tsx
 "use client";
 
 import { useState, FormEvent } from 'react';
-import { motion, Transition as MotionTransition, MotionProps } from 'framer-motion';
+import { motion, Transition as MotionTransition, MotionProps, AnimatePresence } from 'framer-motion';
 import { UserIcon, LockClosedIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
-
-// Importiere den useAuth-Hook
 import { useAuth } from '../contexts/AuthContext'; // Passe den Pfad ggf. an
-
-// Importiere deine Konstanten
-// Stelle sicher, dass LOGIN_API_ENDPOINT auf '/api/login' zeigt
 import { LOGIN_APP_NAME, COMPANY_NAME, COMPANY_SUBTITLE, LOGIN_API_ENDPOINT } from '../constants'; // Passe den Pfad ggf. an
 
-// LoginScreenProps wird nicht mehr benötigt oder kann leer sein, da onLoginSuccess entfernt wurde
 interface LoginScreenProps {
   // keine Props mehr zwingend erforderlich
 }
@@ -52,14 +45,11 @@ const BackgroundBlob = ({ className, animateProps, transitionProps }: Background
 };
 // --- Ende BackgroundBlob ---
 
-// Die Komponente nimmt keine onLoginSuccess Prop mehr entgegen
 export default function LoginScreen(/* props: LoginScreenProps */) {
   const [username, setUsernameState] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Hole die login-Funktion aus dem AuthContext
   const { login } = useAuth();
 
   const handleSubmit = async (event: FormEvent) => {
@@ -70,7 +60,6 @@ export default function LoginScreen(/* props: LoginScreenProps */) {
     console.log("LoginScreen: Attempting login with (AuthContext version):", { username, password });
 
     try {
-      // Stelle sicher, dass LOGIN_API_ENDPOINT auf deine korrekte Login-Route zeigt (z.B. '/api/login')
       const response = await fetch(LOGIN_API_ENDPOINT, {
         method: 'POST',
         headers: {
@@ -83,18 +72,14 @@ export default function LoginScreen(/* props: LoginScreenProps */) {
 
       if (response.ok) {
         console.log('LoginScreen: Login API call successful (AuthContext version). Response data:', responseData);
-
-        // Rufe die login-Funktion aus dem AuthContext auf.
-        // responseData sollte { userId, username, name?, nachname?, isAdmin, token } enthalten.
         login({
-            userId: responseData.userId,
-            username: responseData.username,
-            name: responseData.name,
-            nachname: responseData.nachname,
-            isAdmin: responseData.isAdmin,
-            token: responseData.token,
+          userId: responseData.userId,
+          username: responseData.username,
+          name: responseData.name,
+          nachname: responseData.nachname,
+          isAdmin: responseData.isAdmin,
+          token: responseData.token,
         });
-        // Die Weiterleitung zur ContaintTable wird von app/page.tsx gehandhabt.
       } else {
         console.error('LoginScreen: Login API call failed (AuthContext version). Error data:', responseData);
         setError(responseData.error || responseData.details || 'Ein unbekannter Anmeldefehler ist aufgetreten.');
@@ -107,11 +92,61 @@ export default function LoginScreen(/* props: LoginScreenProps */) {
     }
   };
 
-  // cardVariants und itemVariants (unverändert)
-  const cardVariants = { /* ... */ };
-  const itemVariants = { /* ... */ };
+  const cardVariants = {
+    hidden: {
+      opacity: 0,
+      y: 30,
+      scale: 0.98,
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        duration: 0.5,
+        ease: "easeOut",
+        when: "beforeChildren",
+        staggerChildren: 0.1,
+      },
+    },
+    exit: { // Exit-Animation für die Karte
+        opacity: 0,
+        y: -30,
+        scale: 0.95,
+        transition: {
+            duration: 0.3,
+            ease: "easeIn",
+        }
+    }
+  };
 
-  // JSX-Struktur (unverändert)
+  const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.4,
+        ease: "circOut",
+      },
+    },
+  };
+
+  // KORRIGIERT: errorShakeTransition für die Fehlermeldung
+  const errorShakeTransition = {
+    x: {
+      // type: "spring" wurde entfernt, um mehrere Keyframes zu erlauben.
+      // Framer Motion verwendet standardmäßig "tween", was hier passt.
+      // Alternativ könnte man type: "keyframes" explizit setzen.
+      duration: 0.4, // Dauer der gesamten Schüttelsequenz
+      ease: "easeInOut", // Sorgt für einen weicheren Ablauf der Schüttelbewegung
+      // stiffness, damping, mass sind nur für "spring" relevant und wurden entfernt.
+    },
+    opacity: { duration: 0.3 },
+    y: { duration: 0.3 }
+  };
+
+
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-[#0D0D12] via-[#111318] to-[#0a0a0f] text-white font-sans flex flex-col items-center justify-center p-4 overflow-hidden relative">
       <BackgroundBlob
@@ -133,30 +168,59 @@ export default function LoginScreen(/* props: LoginScreenProps */) {
         variants={cardVariants}
         initial="hidden"
         animate="visible"
+        exit="exit" // Für AnimatePresence in page.tsx
         className="w-full max-w-sm md:max-w-md relative z-10"
       >
         <div className="bg-slate-800/10 backdrop-blur-lg p-6 sm:p-8 md:p-10 rounded-xl shadow-2xl border border-slate-700/60">
           <motion.div variants={itemVariants} className="flex flex-col items-center mb-6 md:mb-8">
-            <div className="p-3 bg-sky-500/20 rounded-full mb-3 w-16 h-16 sm:w-20 sm:h-20 flex justify-center items-center shadow-inner">
+            <motion.div
+              className="p-3 bg-sky-500/20 rounded-full mb-3 w-16 h-16 sm:w-20 sm:h-20 flex justify-center items-center shadow-inner"
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{
+                scale: [1, 1.12, 1, 1.08, 1],
+                rotate: [0, 7, -4, 6, 0],
+                opacity: 1,
+              }}
+              transition={{
+                opacity: { duration: 0.5, ease: "easeOut", delay: cardVariants.visible.transition.staggerChildren + 0.1 },
+                default: {
+                  delay: cardVariants.visible.transition.staggerChildren + 0.1,
+                  duration: 3.0,
+                  ease: "easeInOut",
+                  repeat: Infinity,
+                  repeatType: "mirror",
+                }
+              }}
+            >
               <img src={'/key-solid.svg'} alt='Anmelde Icon' className="h-8 w-8 sm:h-10 sm:w-10 text-sky-400" />
-            </div>
+            </motion.div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400">
               {LOGIN_APP_NAME}
             </h1>
             <p className="text-sm font-semibold text-neutral-300 mt-1.5">{COMPANY_NAME}</p>
           </motion.div>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -5 }}
-              className="mb-4 p-3 bg-red-600/40 text-red-200 border border-red-500/70 rounded-lg text-sm shadow-md"
-            >
-              {error}
-            </motion.div>
-          )}
+
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                key="error-message"
+                initial={{ opacity: 0, y: -20 }}
+                // Die animate-Prop verwendet die Keyframes direkt für x
+                animate={{ opacity: 1, y: 0, x: [0, -7, 7, -5, 5, -2, 2, 0] }} // Keyframes für den Shake
+                exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
+                transition={errorShakeTransition} // Verwendet die korrigierte Transition
+                className="mb-4 p-3 bg-red-600/40 text-red-200 border border-red-500/70 rounded-lg text-sm shadow-md"
+              >
+                {error}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6">
-            <motion.div variants={itemVariants}>
+            <motion.div
+              variants={itemVariants}
+              whileHover={{ scale: 1.015, transition: { duration: 0.2 } }}
+            >
               <label htmlFor="username_input" className="block text-xs sm:text-sm font-medium text-neutral-300 mb-1.5">Benutzername</label>
               <div className="relative">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
@@ -170,7 +234,10 @@ export default function LoginScreen(/* props: LoginScreenProps */) {
                 />
               </div>
             </motion.div>
-            <motion.div variants={itemVariants}>
+            <motion.div
+              variants={itemVariants}
+              whileHover={{ scale: 1.015, transition: { duration: 0.2 } }}
+            >
               <label htmlFor="password_input" className="block text-xs sm:text-sm font-medium text-neutral-300 mb-1.5">Passwort</label>
               <div className="relative">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
@@ -185,16 +252,44 @@ export default function LoginScreen(/* props: LoginScreenProps */) {
               </div>
             </motion.div>
             <motion.div variants={itemVariants}>
-              <button
+              <motion.button
                 type="submit" disabled={isLoading}
                 className="flex w-full justify-center items-center rounded-lg bg-gradient-to-r from-sky-500 to-sky-600 px-3 py-2.5 sm:py-3 text-sm duration-300 font-semibold leading-6 text-white shadow-md hover:from-sky-600 hover:to-sky-700 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-sky-500 disabled:opacity-60 disabled:cursor-not-allowed transition-all ease-in-out group"
+                whileHover={{
+                  scale: 1.03,
+                  boxShadow: "0 8px 20px -3px rgba(2, 132, 199, 0.3), 0 4px 8px -2px rgba(2, 132, 199, 0.25)"
+                }}
+                whileTap={{ scale: 0.98, y: 1 }}
+                transition={{ duration: 0.15, ease: "easeInOut" }}
               >
-                {isLoading ? (
-                  <><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Anmelden...</>
-                ) : (
-                  <><ArrowRightOnRectangleIcon className="h-5 w-5 mr-2 transform transition-transform duration-200 ease-in-out group-hover:translate-x-1" />Anmelden</>
-                )}
-              </button>
+                <AnimatePresence mode="wait" initial={false}>
+                  {isLoading ? (
+                    <motion.span
+                      key="loading"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10, transition: { duration: 0.1 } }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center justify-center"
+                    >
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                      Anmelden...
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="submit"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10, transition: { duration: 0.1 } }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center justify-center"
+                    >
+                      <ArrowRightOnRectangleIcon className="h-5 w-5 mr-2 transform transition-transform duration-200 ease-in-out group-hover:translate-x-1" />
+                      Anmelden
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.button>
             </motion.div>
           </form>
         </div>
