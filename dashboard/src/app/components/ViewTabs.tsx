@@ -16,9 +16,9 @@ export default function ViewTabs({ currentView, setCurrentView }: ViewTabsProps)
                 <button
                     key={viewKey}
                     onClick={() => setCurrentView(viewKey)}
-                    className={`px-3 py-2 sm:px-4 text-xs sm:text-sm font-medium transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500
+                    className={`py-2 sm:px-4 text-xs sm:text-sm font-medium transition-all duration-150 ease-in-out focus:outline-none 
                         ${currentView === viewKey
-                            ? 'border-b-2 border-blue-500 text-blue-400'
+                            ? 'border-b-2  text-green-400'
                             : 'border-b-2 border-transparent text-neutral-400 hover:text-neutral-200 hover:border-neutral-500'
                         }`}
                 >
