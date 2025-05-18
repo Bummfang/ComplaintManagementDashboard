@@ -9,14 +9,13 @@ import {
   FilterIcon, XIcon as XMarkIcon
 } from 'lucide-react';
 import {
-  BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, Sector, LabelList,
+  BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,ResponsiveContainer, Cell, Sector, LabelList,
   TooltipProps
 } from 'recharts';
-import type { Payload as LegendPayload } from 'recharts/types/component/DefaultLegendContent';
 
 import { useAuth } from '../contexts/AuthContext';
 import { API_ENDPOINTS } from '../constants';
-import { formatDate, formatDateTime, formatTime } from '../utils';
+import { formatDate } from '../utils';
 
 // --- Typdefinitionen ---
 export type ChartComplaintStatusType = "Offen" | "In Bearbeitung" | "Gelöst" | "Abgelehnt" | "Unbekannt";
@@ -210,7 +209,7 @@ export default function StatisticsView() {
   const handleApplyDateFilter = () => { /* ... unverändert ... */     if (selectedStartDate && selectedEndDate && new Date(selectedStartDate) > new Date(selectedEndDate)) {        setError("Das Startdatum darf nicht nach dem Enddatum liegen.");        return;    }    setError(null);    setAppliedStartDate(selectedStartDate || null);    setAppliedEndDate(selectedEndDate || null);    fetchStatistics(selectedStartDate || null, selectedEndDate || null);  };
   const handleClearDateFilter = () => { /* ... unverändert ... */     setSelectedStartDate("");    setSelectedEndDate("");    setAppliedStartDate(null);    setAppliedEndDate(null);    setError(null);    fetchStatistics(null, null);  };
   const handleComingSoon = (featureName: string) => { alert(`Die Funktion "${featureName}" ist bald verfügbar.`);  };
-  const renderLegendText = (value: string, entry: LegendPayload) => { return <span style={{ color: '#e2e8f0' }}>{value}</span>;  };
+ 
 
   const isDateFilterActive = appliedStartDate || appliedEndDate;
 
