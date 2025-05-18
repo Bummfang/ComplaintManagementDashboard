@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { CopyIcon, CheckIcon, ClockIcon, Lock, Unlock, UserIcon } from 'lucide-react'; // UserIcon ist schon da, gut!
 import { useState, useEffect } from 'react';
 import {
-    DataItem, BeschwerdeItem, LobItem, AnregungItem, ViewType, AnyItemStatus
+    DataItem, BeschwerdeItem, ViewType, AnyItemStatus
 } from '../types';
 import { formatDate, formatTime, formatDateTime } from '../utils';
 import { useAuth } from '../contexts/AuthContext';

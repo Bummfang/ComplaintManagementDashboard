@@ -9,9 +9,9 @@ import { useAuth } from '../contexts/AuthContext';
 
 import {
     DataItem, ViewType, StatusFilterMode, BeschwerdeItem, // BeschwerdeItem für Typ-Casts
-    LobItem, AnregungItem, AnyItemStatus
+    AnyItemStatus
 } from '../types';
-import { API_ENDPOINTS, VIEW_TITLES, FILTER_LABELS } from '../constants';
+import { API_ENDPOINTS, VIEW_TITLES} from '../constants';
 import StatusBar from './StatusBar';
 import ViewTabs from './ViewTabs';
 import FilterControls from './FilterControls';
@@ -198,7 +198,10 @@ export default function ContaintTable() {
                     if (sDate && itemDate < sDate) match = false;
                     if (eDate && itemDate > eDate) match = false;
                     return match;
-                } catch (e) { return false; }
+                } catch (e) { 
+                    console.log(e);
+                    return false; 
+                }
             });
         }
         return tempData;

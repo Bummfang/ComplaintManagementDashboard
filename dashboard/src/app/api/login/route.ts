@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
         const errorTimestamp = new Date().toISOString();
         let errorMessage = 'Ein interner Serverfehler ist aufgetreten.';
         let errorDetails = 'Unbekannter Fehler';
-        let statusCode = 500;
+        const statusCode = 500;
 
         if (error instanceof DatabaseError) {
             errorDetails = error.message;

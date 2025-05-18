@@ -1,6 +1,6 @@
-// app/api/containt/route.ts
+// src/app/api/containt/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import { type QueryResultRow, type PoolClient, DatabaseError } from 'pg'; // DatabaseError hinzugefügt
+import { type QueryResultRow, type PoolClient} from 'pg';
 import { getDbPool } from '@/lib/db';
 import jwt from 'jsonwebtoken';
 
@@ -19,7 +19,7 @@ export interface BeschwerdeData extends QueryResultRow {
     erstelltam: string;
     status?: AllowedStatus;
     abgeschlossenam?: string | null;
-    bearbeiter_id?: number | null; // Ist schon korrekt vorhanden!
+    bearbeiter_id?: number | null;
     bearbeiter_name?: string | null;
 }
 
@@ -27,47 +27,48 @@ type AllowedStatus = "Offen" | "In Bearbeitung" | "Gelöst" | "Abgelehnt";
 const allowedStatuses: AllowedStatus[] = ["Offen", "In Bearbeitung", "Gelöst", "Abgelehnt"];
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// GET Funktion bleibt wie von dir bereitgestellt (ist schon korrekt mit bearbeiter_id)
 export async function GET(request: NextRequest) {
+    const requestTimestamp = new Date().toISOString();
     if (!JWT_SECRET) {
-        console.error(`FATAL for GET /api/containt: JWT_SECRET is not defined.`);
+        console.error(`[${requestTimestamp}] FATAL for GET /api/containt: JWT_SECRET nicht definiert.`);
         return NextResponse.json({ error: 'Serverkonfigurationsfehler.' }, { status: 500 });
     }
+
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return NextResponse.json({ error: 'Authentifizierungstoken fehlt oder ist ungültig.' }, { status: 401 });
     }
     const token = authHeader.split(' ')[1];
+
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; username: string; isAdmin: boolean };
-        console.log(`[GET /api/containt] Token verified for user: ${decoded.username}`);
+        console.log(`[${requestTimestamp}] GET /api/containt: Token verifiziert für Benutzer: ${decoded.username} (ID: ${decoded.userId})`);
     } catch (error) {
-        console.error(`[GET /api/containt] Invalid token:`, error instanceof Error ? error.message : error);
+        console.error(`[${requestTimestamp}] GET /api/containt: Ungültiges Token. Error: ${error instanceof Error ? error.message : String(error)}`);
         return NextResponse.json({ error: 'Ungültiges oder abgelaufenes Token.' }, { status: 401 });
     }
 
     const poolToUse = getDbPool();
-    console.log(`API GET /api/containt: Using database connection (Host: ${process.env.DATABASE_URL?.split('@')[1]?.split(':')[0] || 'N/A'})`);
     let client: PoolClient | undefined;
     try {
         client = await poolToUse.connect();
         const query = `
             SELECT
-    b.id, b.name, b.email, b.tel, b.betreff, b.beschreibung,
-    b.beschwerdegrund, b.datum, b.uhrzeit, b.haltestelle, b.linie, 
-    b.erstelltam, b.status, b.abgeschlossenam, b.bearbeiter_id,
-    u.name || ' ' || u.nachname AS bearbeiter_name 
-    FROM
-    "beschwerde" b
-    LEFT JOIN
-    "users" u ON b.bearbeiter_id = u.id
-    ORDER BY
-    b.erstelltam DESC;
+                b.id, b.name, b.email, b.tel, b.betreff, b.beschreibung,
+                b.beschwerdegrund, b.datum, b.uhrzeit, b.haltestelle, b.linie, 
+                b.erstelltam, b.status, b.abgeschlossenam, b.bearbeiter_id,
+                u.name || ' ' || u.nachname AS bearbeiter_name 
+            FROM
+                "beschwerde" b
+            LEFT JOIN
+                "users" u ON b.bearbeiter_id = u.id
+            ORDER BY
+                b.erstelltam DESC;
         `;
         const result = await client.query<BeschwerdeData>(query);
         return NextResponse.json(result.rows, { status: 200 });
     } catch (error) {
-        console.error('Fehler beim Abrufen von Beschwerden (/api/containt):', error);
+        console.error(`[${requestTimestamp}] Fehler beim Abrufen von Beschwerden (/api/containt):`, error);
         const errorMessage = error instanceof Error ? error.message : 'Unbekannter Datenbankfehler';
         return NextResponse.json({ error: 'Fehler beim Abrufen von Beschwerden.', details: errorMessage }, { status: 500 });
     } finally {
@@ -77,15 +78,13 @@ export async function GET(request: NextRequest) {
     }
 }
 
-
-// --- NEU ÜBERARBEITETE PATCH FUNKTION ---
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
     const requestTimestamp = new Date().toISOString();
     console.log(`[${requestTimestamp}] API PATCH /api/containt: Verarbeitungsversuch gestartet.`);
 
     if (!JWT_SECRET) {
         console.error(`[${requestTimestamp}] FATAL für PATCH /api/containt: JWT_SECRET nicht definiert.`);
-        return NextResponse.json({ error: 'Serverkonfigurationsfehler.', details: 'JWT Secret nicht konfiguriert.' }, { status: 500 });
+        return NextResponse.json({ error: 'Serverkonfigurationsfehler.' }, { status: 500 });
     }
 
     const authHeader = request.headers.get('Authorization');
@@ -111,8 +110,8 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     try {
         requestBody = await request.json();
         itemId = parseInt(requestBody.id, 10);
-        newStatus = requestBody.status; // Kann undefined sein, wenn nur Bearbeiter zugewiesen wird
-        assignMeAsBearbeiter = requestBody.assign_me_as_bearbeiter === true; // Explizit auf true prüfen
+        newStatus = requestBody.status;
+        assignMeAsBearbeiter = requestBody.assign_me_as_bearbeiter === true;
 
         if (isNaN(itemId)) {
             return NextResponse.json({ error: 'Ungültige oder fehlende ID im Request-Body.' }, { status: 400 });
@@ -125,16 +124,16 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({ error: 'Ungültiger JSON-Body oder fehlerhafte Datenstruktur.' }, { status: 400 });
     }
 
-    console.log(`[${requestTimestamp}] PATCH /api/containt: Verarbeite Item ID ${itemId} - Neuer Status: "${newStatus}", Bearbeiter zuweisen: ${assignMeAsBearbeiter}`);
+    console.log(`[${requestTimestamp}] PATCH /api/containt: Verarbeite Beschwerde ID ${itemId} - Neuer Status: "${newStatus}", Bearbeiter zuweisen: ${assignMeAsBearbeiter}`);
 
     let client: PoolClient | undefined;
     try {
         const pool = getDbPool();
         client = await pool.connect();
-        await client.query('BEGIN'); // Transaktion starten
+        await client.query('BEGIN');
 
         const currentItemResult = await client.query<BeschwerdeData>(
-            'SELECT id, status, bearbeiter_id FROM beschwerde WHERE id = $1 FOR UPDATE', // id auch selektieren
+            'SELECT id, status, bearbeiter_id FROM beschwerde WHERE id = $1 FOR UPDATE',
             [itemId]
         );
 
@@ -145,15 +144,13 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         const currentItemDbState = currentItemResult.rows[0];
 
         const setClauses: string[] = [];
-        const updateQueryParams: any[] = [];
+        const updateQueryParams: (string | number | boolean | null)[] = [];
         let paramIndex = 1;
-        let actionResponsePayload: { action_required?: "relock_ui" } = {};
-        let bearbeiterWurdeNeuZugewiesen = false;
+        const actionResponsePayload: { action_required?: "relock_ui" } = {};
 
         if (assignMeAsBearbeiter && currentItemDbState.bearbeiter_id === null && decodedTokenInfo.userId) {
             setClauses.push(`bearbeiter_id = $${paramIndex++}`);
             updateQueryParams.push(decodedTokenInfo.userId);
-            bearbeiterWurdeNeuZugewiesen = true; // Merken, dass hier eine Zuweisung stattgefunden hat
         }
 
         if (newStatus) {
@@ -166,30 +163,32 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
                 if (currentItemDbState.status === 'Gelöst' || currentItemDbState.status === 'Abgelehnt') {
                     setClauses.push(`bearbeiter_id = NULL`);
                     actionResponsePayload.action_required = "relock_ui";
-                    // Wenn Bearbeiter entfernt wird, wurde er nicht "neu zugewiesen" im Sinne des aktuellen Users
-                    bearbeiterWurdeNeuZugewiesen = false;
                 }
             }
         }
-
-        let itemToSend = { ...currentItemDbState, ...actionResponsePayload }; // Fallback, falls kein Update
+        
+        let itemToSend: BeschwerdeData & { action_required?: "relock_ui" } = { 
+            ...currentItemDbState, 
+            bearbeiter_name: currentItemDbState.bearbeiter_name || null, // Behalte existierenden Namen oder setze null
+            ...actionResponsePayload 
+        };
 
         if (setClauses.length > 0) {
             updateQueryParams.push(itemId);
-            const updateQueryText = `UPDATE beschwerde SET ${setClauses.join(', ')} WHERE id = $${paramIndex} RETURNING id;`; // Nur ID zurückgeben, da wir danach eh neu selektieren
-
+            const updateQueryText = `UPDATE beschwerde SET ${setClauses.join(', ')} WHERE id = $${paramIndex} RETURNING id;`;
             console.log(`[${requestTimestamp}] PATCH /api/containt (Beschwerde): SQL Update: ${updateQueryText} -- Params: ${JSON.stringify(updateQueryParams)}`);
-            const updateResult = await client.query<{ id: number }>(updateQueryText, updateQueryParams);
+            const updateResult = await client.query<{id: number}>(updateQueryText, updateQueryParams);
             if (updateResult.rowCount === 0) {
                 await client.query('ROLLBACK');
-                return NextResponse.json({ error: 'Beschwerde konnte nicht aktualisiert werden (Reihe nicht gefunden nach Update).' }, { status: 404 });
+                return NextResponse.json({ error: 'Beschwerde konnte nicht aktualisiert werden.' }, { status: 404 });
             }
         }
 
-        // Immer (nach Update oder auch wenn nur Zuweisung versucht wurde aber fehlschlug weil schon einer da war)
-        // das Item mit dem potenziell neuen Bearbeiter-Namen holen
         const finalSelectQuery = `
-            SELECT b.*, u.name || ' ' || u.nachname AS bearbeiter_name
+            SELECT b.id, b.name, b.email, b.tel, b.betreff, b.beschreibung,
+                   b.beschwerdegrund, b.datum, b.uhrzeit, b.haltestelle, b.linie, 
+                   b.erstelltam, b.status, b.abgeschlossenam, b.bearbeiter_id,
+                   u.name || ' ' || u.nachname AS bearbeiter_name
             FROM beschwerde b
             LEFT JOIN users u ON b.bearbeiter_id = u.id
             WHERE b.id = $1;
@@ -197,23 +196,22 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         const finalItemResult = await client.query<BeschwerdeData>(finalSelectQuery, [itemId]);
 
         if (finalItemResult.rows.length === 0) {
-            // Sollte nicht passieren, wenn das Item existiert
             await client.query('ROLLBACK');
             return NextResponse.json({ error: 'Beschwerde nach Update/Selektion nicht gefunden.' }, { status: 404 });
         }
-        itemToSend = { ...finalItemResult.rows[0], ...actionResponsePayload };
-
+        itemToSend = { ...finalItemResult.rows[0], ...actionResponsePayload }; 
+        
         await client.query('COMMIT');
-
+        
         console.log(`[${requestTimestamp}] PATCH /api/containt (Beschwerde): Item ID ${itemId} erfolgreich verarbeitet. Antwort: ${JSON.stringify(itemToSend)}`);
         return NextResponse.json(itemToSend, { status: 200 });
 
     } catch (error) {
-        // ... (bestehende Fehlerbehandlung mit Rollback) ...
         if (client) { try { await client.query('ROLLBACK'); } catch (rbError) { console.error('Fehler beim Rollback (Beschwerde):', rbError); } }
         console.error(`[${requestTimestamp}] PATCH /api/containt (Beschwerde) Fehler für ID ${itemId}:`, error);
-        // ... (Rest der Fehlerbehandlung)
-        return NextResponse.json({ error: 'Interner Serverfehler', details: (error as Error).message }, { status: 500 });
+        const errorMessage = error instanceof Error ? error.message : 'Interner Serverfehler';
+        const errorDetails = error instanceof Error ? error.message : 'Unbekannter Fehler';
+        return NextResponse.json({ error: errorMessage, details: errorDetails }, { status: 500 });
     } finally {
         if (client) client.release();
     }

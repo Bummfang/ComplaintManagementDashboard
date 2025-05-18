@@ -15,7 +15,7 @@ interface TokenPayload {
 
 export async function POST(request: NextRequest) {
     const requestTimestamp = new Date().toISOString();
-    // console.log(`[${requestTimestamp}] API POST /api/verify-token: Verification attempt received.`);
+    console.log(`[${requestTimestamp}] API POST /api/verify-token: Verification attempt received.`);
 
     if (!JWT_SECRET) {
         console.error(`[${new Date().toISOString()}] FATAL for /api/verify-token: JWT_SECRET is not defined.`);

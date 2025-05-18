@@ -1,6 +1,6 @@
-// app/api/like/route.ts
+// src/app/api/like/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import { type QueryResultRow, type PoolClient, DatabaseError } from 'pg';
+import { type QueryResultRow, type PoolClient} from 'pg';
 import { getDbPool } from '@/lib/db';
 import jwt from 'jsonwebtoken';
 
@@ -20,10 +20,9 @@ interface LobData extends QueryResultRow {
     status?: AllowedStatusLob;
     abgeschlossenam?: string | null;
     bearbeiter_id?: number | null;
-    bearbeiter_name?: string | null; // Ist korrekt vorhanden
+    bearbeiter_name?: string | null;
 }
 
-// GET Funktion ist von dir schon korrekt angepasst worden
 export async function GET(request: NextRequest) {
     const requestTimestamp = new Date().toISOString();
     if (!JWT_SECRET) {
@@ -37,7 +36,7 @@ export async function GET(request: NextRequest) {
     const token = authHeader.split(' ')[1];
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; username: string; isAdmin: boolean };
-        // console.log(`[${requestTimestamp}] GET /api/like: Token verifiziert für Benutzer: ${decoded.username}`);
+        console.log(`[${requestTimestamp}] GET /api/like: Token verifiziert für Benutzer: ${decoded.username} (ID: ${decoded.userId})`);
     } catch (error) {
         console.error(`[${requestTimestamp}] GET /api/like: Ungültiges Token. Error: ${error instanceof Error ? error.message : String(error)}`);
         return NextResponse.json({ error: 'Ungültiges oder abgelaufenes Token.' }, { status: 401 });
@@ -72,7 +71,6 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// ANGEPASSTE PATCH FUNKTION
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
     const requestTimestamp = new Date().toISOString();
     console.log(`[${requestTimestamp}] API PATCH /api/like: Verarbeitungsversuch gestartet.`);
@@ -81,7 +79,6 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         console.error(`[${requestTimestamp}] FATAL für PATCH /api/like: JWT_SECRET nicht definiert.`);
         return NextResponse.json({ error: 'Serverkonfigurationsfehler.' }, { status: 500 });
     }
-
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return NextResponse.json({ error: 'Authentifizierungstoken fehlt oder ist ungültig.' }, { status: 401 });
@@ -139,9 +136,9 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         const currentItemDbState = currentItemResult.rows[0];
 
         const setClauses: string[] = [];
-        const updateQueryParams: any[] = [];
+        const updateQueryParams: (string | number | boolean | null)[] = []; // Specific type
         let paramIndex = 1;
-        let actionResponsePayload: { action_required?: "relock_ui" } = {};
+        const actionResponsePayload: { action_required?: "relock_ui" } = {}; // Declared with const
         
         if (assignMeAsBearbeiter && currentItemDbState.bearbeiter_id === null && decodedTokenInfo.userId) {
             setClauses.push(`bearbeiter_id = $${paramIndex++}`);
@@ -162,7 +159,12 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             }
         }
         
-        let itemToSend: LobData & { action_required?: "relock_ui" };
+        // itemToSend is declared with let because it's reassigned later
+        let itemToSend: LobData & { action_required?: "relock_ui" } = {
+            ...currentItemDbState,
+            bearbeiter_name: currentItemDbState.bearbeiter_name || null, // Preserve existing name or set null
+            ...actionResponsePayload
+        };
 
         if (setClauses.length > 0) {
             updateQueryParams.push(itemId);
@@ -174,7 +176,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
                 return NextResponse.json({ error: 'Lob konnte nicht aktualisiert werden.' }, { status: 404 });
             }
         }
-
+        
         const finalSelectQuery = `
             SELECT l.*, u.name || ' ' || u.nachname AS bearbeiter_name
             FROM lob l
@@ -187,6 +189,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             await client.query('ROLLBACK');
             return NextResponse.json({ error: 'Lob nach Update/Selektion nicht gefunden.' }, { status: 404 });
         }
+        // Reassignment of itemToSend
         itemToSend = { ...finalItemResult.rows[0], ...actionResponsePayload };
         
         await client.query('COMMIT');
@@ -197,7 +200,9 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     } catch (error) {
         if (client) { try { await client.query('ROLLBACK'); } catch (rbError) { console.error('Fehler beim Rollback (Lob):', rbError); } }
         console.error(`[${requestTimestamp}] PATCH /api/like (Lob) Fehler für ID ${itemId}:`, error);
-        return NextResponse.json({ error: 'Interner Serverfehler beim Aktualisieren des Lob-Eintrags.', details: (error as Error).message }, { status: 500 });
+        const errorMessage = error instanceof Error ? error.message : 'Interner Serverfehler';
+        const errorDetails = error instanceof Error ? error.message : 'Unbekannter Fehler';
+        return NextResponse.json({ error: errorMessage, details: errorDetails }, { status: 500 });
     } finally {
         if (client) client.release();
     }

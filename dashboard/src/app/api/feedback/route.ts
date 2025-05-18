@@ -1,6 +1,5 @@
-// app/api/feedback/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import { type QueryResultRow, type PoolClient, DatabaseError } from 'pg';
+import { type QueryResultRow, type PoolClient } from 'pg';
 import { getDbPool } from '@/lib/db';
 import jwt from 'jsonwebtoken';
 
@@ -20,10 +19,9 @@ interface AnregungData extends QueryResultRow {
     status?: AllowedStatusAnregung;
     abgeschlossenam?: string | null;
     bearbeiter_id?: number | null;
-    bearbeiter_name?: string | null; // Ist korrekt vorhanden
+    bearbeiter_name?: string | null;
 }
 
-// GET Funktion ist von dir schon korrekt angepasst worden
 export async function GET(request: NextRequest) {
     const requestTimestamp = new Date().toISOString();
     if (!JWT_SECRET) {
@@ -37,9 +35,9 @@ export async function GET(request: NextRequest) {
     const token = authHeader.split(' ')[1];
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; username: string; isAdmin: boolean };
-        // console.log(`[${requestTimestamp}] GET /api/feedback: Token verifiziert für Benutzer: ${decoded.username}`);
+        console.log(`[${requestTimestamp}] GET /api/feedback: Token verifiziert für Benutzer: ${decoded.username} (ID: ${decoded.userId})`);
     } catch (error) {
-        console.error(`[${requestTimestamp}] GET /api/feedback: Ungültiges Token. Fehler: ${error instanceof Error ? error.message : String(error)}`);
+        console.error(`[${requestTimestamp}] GET /api/feedback: Ungültiges Token. Error: ${error instanceof Error ? error.message : String(error)}`);
         return NextResponse.json({ error: 'Ungültiges oder abgelaufenes Token.' }, { status: 401 });
     }
 
@@ -72,7 +70,6 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// ANGEPASSTE PATCH FUNKTION
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
     const requestTimestamp = new Date().toISOString();
     console.log(`[${requestTimestamp}] API PATCH /api/feedback: Verarbeitungsversuch gestartet.`);
@@ -81,7 +78,6 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         console.error(`[${requestTimestamp}] FATAL für PATCH /api/feedback: JWT_SECRET nicht definiert.`);
         return NextResponse.json({ error: 'Serverkonfigurationsfehler.' }, { status: 500 });
     }
-
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return NextResponse.json({ error: 'Authentifizierungstoken fehlt oder ist ungültig.' }, { status: 401 });
@@ -139,10 +135,10 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         const currentItemDbState = currentItemResult.rows[0];
 
         const setClauses: string[] = [];
-        const updateQueryParams: any[] = [];
+        const updateQueryParams: (string | number | boolean | null)[] = []; // Specific type
         let paramIndex = 1;
-        let actionResponsePayload: { action_required?: "relock_ui" } = {};
-
+        const actionResponsePayload: { action_required?: "relock_ui" } = {}; // Declared with const
+        
         if (assignMeAsBearbeiter && currentItemDbState.bearbeiter_id === null && decodedTokenInfo.userId) {
             setClauses.push(`bearbeiter_id = $${paramIndex++}`);
             updateQueryParams.push(decodedTokenInfo.userId);
@@ -162,7 +158,12 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             }
         }
         
-        let itemToSend: AnregungData & { action_required?: "relock_ui" };
+        // itemToSend is declared with let because it's reassigned later
+        let itemToSend: AnregungData & { action_required?: "relock_ui" } = {
+            ...currentItemDbState,
+            bearbeiter_name: currentItemDbState.bearbeiter_name || null, // Preserve existing name or set null
+            ...actionResponsePayload
+        };
 
         if (setClauses.length > 0) {
             updateQueryParams.push(itemId);
@@ -176,7 +177,9 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         }
         
         const finalSelectQuery = `
-            SELECT a.*, u.name || ' ' || u.nachname AS bearbeiter_name
+            SELECT a.id, a.name, a.email, a.tel, a.betreff, a.beschreibung, 
+                   a.erstelltam, a.status, a.abgeschlossenam, a.bearbeiter_id,
+                   u.name || ' ' || u.nachname AS bearbeiter_name
             FROM anregung a
             LEFT JOIN users u ON a.bearbeiter_id = u.id
             WHERE a.id = $1;
@@ -187,6 +190,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             await client.query('ROLLBACK');
             return NextResponse.json({ error: 'Anregung nach Update/Selektion nicht gefunden.' }, { status: 404 });
         }
+        // Reassignment of itemToSend
         itemToSend = { ...finalItemResult.rows[0], ...actionResponsePayload };
         
         await client.query('COMMIT');
@@ -197,7 +201,9 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     } catch (error) {
         if (client) { try { await client.query('ROLLBACK'); } catch (rbError) { console.error('Fehler beim Rollback (Anregung):', rbError); } }
         console.error(`[${requestTimestamp}] PATCH /api/feedback (Anregung) Fehler für ID ${itemId}:`, error);
-        return NextResponse.json({ error: 'Interner Serverfehler beim Aktualisieren der Anregung.', details: (error as Error).message }, { status: 500 });
+        const errorMessage = error instanceof Error ? error.message : 'Interner Serverfehler';
+        const errorDetails = error instanceof Error ? error.message : 'Unbekannter Fehler';
+        return NextResponse.json({ error: errorMessage, details: errorDetails }, { status: 500 });
     } finally {
         if (client) client.release();
     }
