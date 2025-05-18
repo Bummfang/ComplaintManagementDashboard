@@ -1,12 +1,15 @@
+// app/components/DataItemCard.tsx
 "use client";
 
 import { motion } from 'framer-motion';
-import { CopyIcon, CheckIcon, ClockIcon, Lock, Unlock } from 'lucide-react'; // Lock Icons hinzugefügt
-import { useState } from 'react'; // useState importieren
+import { CopyIcon, CheckIcon, ClockIcon, Lock, Unlock, UserIcon } from 'lucide-react'; // UserIcon ist schon da, gut!
+import { useState, useEffect } from 'react';
 import {
     DataItem, BeschwerdeItem, LobItem, AnregungItem, ViewType, AnyItemStatus
 } from '../types';
 import { formatDate, formatTime, formatDateTime } from '../utils';
+import { useAuth } from '../contexts/AuthContext';
+import { API_ENDPOINTS } from '../constants';
 
 const getStatusTextColorClass = (status?: AnyItemStatus | null): string => {
     switch (status) {
@@ -48,7 +51,7 @@ const DataField = ({
                         className="ml-2 p-0.5 text-slate-500 hover:text-slate-300 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                         title={isCopied ? "Kopiert!" : "Kopieren"} whileTap={{ scale: 0.9 }} transition={{ duration: 0.1 }}
                     >
-                        {isCopied ? <CheckIcon size={14} className="text-emerald-400"/> : <CopyIcon size={14} />}
+                        {isCopied ? <CheckIcon size={14} className="text-emerald-400" /> : <CopyIcon size={14} />}
                     </motion.button>
                 )}
             </div>
@@ -68,53 +71,116 @@ const contentItemVariants = {
 };
 
 interface DataItemCardProps {
-    item: DataItem;
+    item: DataItem & { action_required?: "relock_ui" };
     currentView: ViewType;
     copiedCellKey: string | null;
     onCopyToClipboard: (textToCopy: string, cellKey: string) => void;
     onStatusChange: (itemId: number, newStatus: AnyItemStatus, itemType: ViewType) => void;
     cardAccentsEnabled: boolean;
+    onItemUpdate: (updatedItem: DataItem & { action_required?: "relock_ui" }) => void; // Prop ist hier korrekt definiert
 }
 
 export default function DataItemCard({
-    item, currentView, copiedCellKey, onCopyToClipboard, onStatusChange, cardAccentsEnabled,
+    item, currentView, copiedCellKey, onCopyToClipboard, onStatusChange, cardAccentsEnabled, onItemUpdate // << onItemUpdate jetzt hier destrukturieren
 }: DataItemCardProps) {
     const itemTypePrefix = currentView === "beschwerden" ? "CMP-" : currentView === "lob" ? "LOB-" : "ANG-";
-    
-    // NEU: State für den Sperrstatus der Karte und für die Wackelanimation
+    const { user, token } = useAuth();
+
     const [isLocked, setIsLocked] = useState(true);
     const [shakeLockAnim, setShakeLockAnim] = useState(false);
 
     let currentItemStatus: AnyItemStatus | undefined | null;
     let itemAbgeschlossenAm: string | null | undefined;
+    let itemBearbeiterId: number | null | undefined = undefined;
+    let itemBearbeiterName: string | null | undefined = undefined; 
+    
+    
     const isStatusRelevantView = currentView === 'beschwerden' || currentView === 'lob' || currentView === 'anregungen';
 
-    if ('status' in item) {
+    if (item && 'bearbeiter_id' in item) {
+        itemBearbeiterId = item.bearbeiter_id;
+    }
+    if (item && 'bearbeiter_name' in item) { // << NEU
+        itemBearbeiterName = item.bearbeiter_name;
+    }
+    if (item && 'status' in item) {
         currentItemStatus = item.status as AnyItemStatus | undefined | null;
     }
-    if ('abgeschlossenam' in item) {
+    if (item && 'abgeschlossenam' in item) {
         itemAbgeschlossenAm = item.abgeschlossenam;
     }
     
-    // if(isStatusRelevantView) { // Debug log
-    //  console.log(`[DataItemCard] View: ${currentView}, Item ID: ${item.id}, Status: ${currentItemStatus}, Abgeschlossen: ${itemAbgeschlossenAm}, Item:`, item);
-    // }
 
-    // NEU: Funktion zum Umschalten des Sperrstatus
-    const handleToggleLock = () => {
-        setIsLocked(prev => !prev);
+    // useEffect für automatisches Sperren
+    useEffect(() => {
+        if (
+            isStatusRelevantView &&
+            item.status === "Offen" &&
+            item.bearbeiter_id === null &&
+            !isLocked && // Nur wenn Schloss aktuell offen ist
+            item.action_required === "relock_ui"
+        ) {
+            console.log(`DataItemCard ID ${item.id}: Aktion "relock_ui" empfangen. Schloss wird gesperrt.`);
+            setIsLocked(true);
+        }
+    }, [item.status, item.bearbeiter_id, item.action_required, isLocked, isStatusRelevantView, item.id]);
+
+
+    const handleToggleLock = async () => {
+        const wasLocked = isLocked;
+        const newLockState = !wasLocked;
+        setIsLocked(newLockState); // Optimistisches UI-Update
+
         if (shakeLockAnim) {
             setShakeLockAnim(false);
         }
+
+        if (wasLocked && !newLockState && itemBearbeiterId === null && user?.userId && token && isStatusRelevantView) {
+            try {
+                console.log(`DataItemCard ID ${item.id}: Versuche Bearbeiter ${user.username} (ID: ${user.userId}) zuzuweisen.`);
+                const apiEndpoint = API_ENDPOINTS[currentView as keyof typeof API_ENDPOINTS];
+                if (!apiEndpoint) {
+                    console.error("Kein API Endpunkt für Zuweisung für View:", currentView);
+                    throw new Error("API Endpunkt nicht konfiguriert.");
+                }
+
+                const response = await fetch(apiEndpoint, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        id: item.id,
+                        assign_me_as_bearbeiter: true
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: "Fehlerhafte Serverantwort" }));
+                    console.error(`DataItemCard ID ${item.id}: Fehler beim Zuweisen des Bearbeiters - Status ${response.status}`, errorData);
+                    setIsLocked(true); // Rollback UI-Update
+                    triggerShakeLock(); // Signalisiere Fehler am Schloss
+                    return;
+                }
+                
+                const updatedItemFromServer = await response.json();
+                console.log(`DataItemCard ID ${item.id}: Bearbeiter erfolgreich zugewiesen. Antwort:`, updatedItemFromServer);
+                onItemUpdate(updatedItemFromServer); // Informiere Parent über Update
+
+            } catch (err) {
+                console.error(`DataItemCard ID ${item.id}: Schwerer Fehler beim Zuweisen des Bearbeiters:`, err);
+                setIsLocked(true); // Rollback UI-Update
+                triggerShakeLock();
+            }
+        }
     };
 
-    // NEU: Funktion zum Auslösen der Wackelanimation
     const triggerShakeLock = () => {
         setShakeLockAnim(true);
-        setTimeout(() => setShakeLockAnim(false), 400); // Dauer der Animation
+        setTimeout(() => setShakeLockAnim(false), 400);
     };
 
-    // NEU: Wrapper für onStatusChange, der die Sperre prüft
     const handleProtectedStatusChange = (itemId: number, newStatus: AnyItemStatus, viewForApi: ViewType) => {
         if (isLocked) {
             triggerShakeLock();
@@ -122,10 +188,10 @@ export default function DataItemCard({
             onStatusChange(itemId, newStatus, viewForApi);
         }
     };
-
+    
     let actionButton = null;
-    let effectiveStatusForButtons: AnyItemStatus = "Offen"; 
-
+    let effectiveStatusForButtons: AnyItemStatus = "Offen";
+    // ... (actionButton Logik bleibt identisch, verwendet handleProtectedStatusChange) ...
     if (isStatusRelevantView) {
         if (currentItemStatus && ["Offen", "In Bearbeitung", "Gelöst", "Abgelehnt"].includes(currentItemStatus)) {
             effectiveStatusForButtons = currentItemStatus;
@@ -136,7 +202,6 @@ export default function DataItemCard({
             effectiveStatusForButtons = "Offen"; 
         }
 
-        // HIER werden die onClick Handler mit handleProtectedStatusChange angepasst
         switch (effectiveStatusForButtons) {
             case "Offen":
                 actionButton = ( <motion.button onClick={() => handleProtectedStatusChange(item.id, "In Bearbeitung", currentView)} className="w-full mt-3 text-amber-300 hover:text-amber-200 bg-amber-600/30 hover:bg-amber-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg" title="Bearbeitung starten" whileHover={{ scale: 1.03, y: -2, transition: { type: "spring", stiffness: 400, damping: 15 } }} whileTap={{ scale: 0.97 }} > Bearbeitung starten </motion.button> );
@@ -151,6 +216,7 @@ export default function DataItemCard({
         }
     }
 
+
     const cardKey = `card-${currentView}-${item.id}`;
     const statusForAccent = currentItemStatus || effectiveStatusForButtons;
     const backgroundClass = isStatusRelevantView && statusForAccent && cardAccentsEnabled
@@ -159,7 +225,6 @@ export default function DataItemCard({
 
     let abgeschlossenText: string | null = null;
     let abgeschlossenValueClassName = "text-slate-500 italic";
-
     if (isStatusRelevantView) {
         if (itemAbgeschlossenAm) {
             abgeschlossenText = formatDateTime(itemAbgeschlossenAm);
@@ -193,12 +258,17 @@ export default function DataItemCard({
                     <DataField label="Name" value={item.name} onCopy={onCopyToClipboard} isCopied={copiedCellKey === `${cardKey}-name`} fieldKey={`${cardKey}-name`} />
                     <DataField label="Email" value={item.email} onCopy={onCopyToClipboard} isCopied={copiedCellKey === `${cardKey}-email`} fieldKey={`${cardKey}-email`} />
                     <DataField label="Tel." value={item.tel} onCopy={onCopyToClipboard} isCopied={copiedCellKey === `${cardKey}-tel`} fieldKey={`${cardKey}-tel`} />
-                    <DataField label="Erstellt am" value={formatDateTime(item.erstelltam)} onCopy={onCopyToClipboard} isCopied={copiedCellKey === `${cardKey}-erstelltam`} fieldKey={`${cardKey}-erstelltam`} copyValue={item.erstelltam} icon={ClockIcon}/>
+                    <DataField label="Erstellt am" value={formatDateTime(item.erstelltam)} onCopy={onCopyToClipboard} isCopied={copiedCellKey === `${cardKey}-erstelltam`} fieldKey={`${cardKey}-erstelltam`} copyValue={item.erstelltam} icon={ClockIcon} />
+                    
+                    {/* ANZEIGE BEARBEITER-ID */}
+                    {itemBearbeiterId !== null && itemBearbeiterId !== undefined && (
+                         <DataField label="Bearbeiter" value={String(itemBearbeiterName)} fieldKey={`${cardKey}-bearbeiter`} icon={UserIcon} />
+                    )}
 
                     {isStatusRelevantView && (
                         <DataField
-                            label="Status" 
-                            value={currentItemStatus === null || currentItemStatus === undefined ? 'Nicht gesetzt' : currentItemStatus} 
+                            label="Status"
+                            value={currentItemStatus === null || currentItemStatus === undefined ? 'Nicht gesetzt' : currentItemStatus}
                             onCopy={onCopyToClipboard}
                             isCopied={copiedCellKey === `${cardKey}-status`} fieldKey={`${cardKey}-status`}
                             valueClassName={getStatusTextColorClass(currentItemStatus)}
@@ -238,35 +308,31 @@ export default function DataItemCard({
             </div>
 
             {isStatusRelevantView && actionButton && (
-                <motion.div 
-                    variants={contentItemVariants} 
+                <motion.div
+                    variants={contentItemVariants}
                     className="px-4 md:px-5 pb-4 pt-2 border-t border-slate-700/50 mt-auto"
                 >
-                    {/* NEU: Schloss-Icon Container */}
-                    <div className="flex justify-end items-center mb-2"> {/* Positioniert das Schloss rechtsbündig, mit etwas Abstand nach unten */}
+                    <div className="flex justify-end items-center mb-2">
                         <motion.button
                             onClick={handleToggleLock}
                             className={`p-1.5 rounded-full transition-colors duration-150 ease-in-out
                                         ${isLocked ? 'text-slate-400 hover:text-sky-400' : 'text-emerald-400 hover:text-emerald-300'}
                                         focus:outline-none focus-visible:ring-2 ${isLocked ? 'focus-visible:ring-sky-500' : 'focus-visible:ring-emerald-500'} focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800`}
                             title={isLocked ? "Bearbeitung entsperren" : "Bearbeitung sperren"}
-                            animate={shakeLockAnim ? { 
-                                // Stärkere Wackelsequenz für x-Achse
-                                x: [0, -8, 8, -6, 6, -4, 4, 0], 
-                                // Skalierung hinzufügen: pulsiert auf 110% und zurück
-                                scale: [1, 1.1, 1, 2, 1], 
-                                transition: { duration: 0.4, ease: "easeInOut" } 
-                            } : { 
-                                x: 0, 
-                                scale: 1 // Wichtig: Skalierung im Ruhezustand auf 1 setzen
+                            animate={shakeLockAnim ? {
+                                x: [0, -8, 8, -6, 6, -4, 4, 0],
+                                scale: [1, 1.1, 1, 1.05, 1], // Korrigierte Skalierung
+                                transition: { duration: 0.4, ease: "easeInOut" }
+                            } : {
+                                x: 0,
+                                scale: 1
                             }}
-                            whileHover={{ scale: 1.1 }} // Diese Skalierung bleibt für den Hover-Effekt
+                            whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                         >
                             {isLocked ? <Lock size={20} /> : <Unlock size={20} />}
                         </motion.button>
                     </div>
-                    {/* Bestehende Aktionsbuttons, deren onClick-Handler oben bereits angepasst wurden */}
                     {actionButton}
                 </motion.div>
             )}
