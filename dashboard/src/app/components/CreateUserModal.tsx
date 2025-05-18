@@ -3,7 +3,7 @@
 
 import { useState, FormEvent, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { XMarkIcon, AtSymbolIcon, UserCircleIcon, LockClosedIcon, ShieldCheckIcon, CheckCircleIcon } from '@heroicons/react/24/outline'; // CheckCircleIcon für Erfolg
+import { XMarkIcon, UserCircleIcon, LockClosedIcon, ShieldCheckIcon, CheckCircleIcon } from '@heroicons/react/24/outline'; // CheckCircleIcon für Erfolg
 
 export interface NewUserFormData {
   name: string;
@@ -80,9 +80,7 @@ export default function CreateUserModal({
       // Erfolgsbehandlung (z.B. Modal schließen) wird von AdminSection übernommen
       // nachdem submissionSuccess gesetzt wurde
     } catch (err) {
-      // Fehlerbehandlung (Anzeige von submissionError) wird von AdminSection übernommen
-      // Hier muss nichts extra getan werden, da der Fehler nach oben weitergegeben wird
-      // und submissionError dann aktualisiert wird.
+      console.log(err);
     } finally {
       setIsSubmitting(false);
     }

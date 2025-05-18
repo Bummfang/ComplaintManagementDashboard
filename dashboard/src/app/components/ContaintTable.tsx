@@ -4,7 +4,7 @@
 import { motion, MotionProps, Transition as MotionTransition } from "framer-motion";
 import { useEffect, useState, useCallback, useMemo } from "react";
 
-import { useAuth, User as AuthUser } from '../contexts/AuthContext'; // User als AuthUser importieren, falls nötig
+import { useAuth } from '../contexts/AuthContext'; 
 import { useRouter } from 'next/navigation';
 
 import { DataItem, ViewType, StatusFilterMode, BeschwerdeItem } from '../types';
