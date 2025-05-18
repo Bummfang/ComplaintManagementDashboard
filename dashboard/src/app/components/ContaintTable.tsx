@@ -4,7 +4,7 @@
 import { motion, MotionProps, Transition as MotionTransition } from "framer-motion";
 import { useEffect, useState, useCallback, useMemo } from "react";
 
-import { useAuth } from '../contexts/AuthContext'; 
+import { useAuth } from '../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 
 import { DataItem, ViewType, StatusFilterMode, BeschwerdeItem } from '../types';
@@ -14,7 +14,7 @@ import ViewTabs from './ViewTabs';
 import FilterControls from './FilterControls';
 import DataItemCard from './DataItemCard';
 import StatisticsView from './StatisticsView';
-import AdminSection from './AdminSection'; // NEU: Admin-Sektion importieren
+import AdminSection from './AdminSection';
 
 // BackgroundBlob Komponente (unverändert)
 interface BackgroundBlobProps {
@@ -50,8 +50,10 @@ const BackgroundBlob = ({ className, animateProps, transitionProps }: Background
   );
 };
 
+export type DateFilterTarget = 'erstelltam' | 'datum';
+
 export default function ContaintTable() {
-  const { isAuthenticated, user, token, isLoadingAuth, logout } = useAuth(); // user ist hier AuthUser
+  const { isAuthenticated, user, token, isLoadingAuth, logout } = useAuth();
   const router = useRouter();
 
   const [currentView, setCurrentView] = useState<ViewType>("beschwerden");
@@ -63,6 +65,8 @@ export default function ContaintTable() {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [emailSearchTerm, setEmailSearchTerm] = useState<string>("");
   const [idSearchTerm, setIdSearchTerm] = useState<string>("");
+  const [haltestelleSearchTerm, setHaltestelleSearchTerm] = useState<string>(""); // NEU
+  const [linieSearchTerm, setLinieSearchTerm] = useState<string>("");           // NEU
   const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
   const [startDateInput, setStartDateInput] = useState<string>("");
   const [endDateInput, setEndDateInput] = useState<string>("");
@@ -71,33 +75,29 @@ export default function ContaintTable() {
   const [isDbConnected, setIsDbConnected] = useState<boolean>(true);
   const [lastDataUpdateTimestamp, setLastDataUpdateTimestamp] = useState<Date | null>(null);
   const [cardAccentsEnabled, setCardAccentsEnabled] = useState<boolean>(true);
-
-  // Modal-Zustände und Handler sind jetzt in AdminSection.tsx
+  const [dateFilterTarget, setDateFilterTarget] = useState<DateFilterTarget>('erstelltam');
 
   const fetchData = useCallback(async (view: ViewType, isBackgroundUpdate = false) => {
-    // Daten nicht laden für Admin- oder Statistik-Ansicht über diesen Weg
+    // ... (fetchData bleibt unverändert)
     if (view === "statistik" || view === "admin") {
       setIsLoadingData(false);
       setData([]);
       setError(null);
       return;
     }
-
     if (!token) {
       if (!isBackgroundUpdate) setIsLoadingData(false);
       console.warn("ContaintTable: fetchData called without a token.");
       return;
     }
-
     const apiEndpoint = API_ENDPOINTS[view];
     if (!apiEndpoint) {
-        setIsLoadingData(false);
-        const errorMessage = `Kein API Endpunkt definiert für die Ansicht: ${view}`;
-        setError(errorMessage);
-        console.error(errorMessage);
-        return;
+      setIsLoadingData(false);
+      const errorMessage = `Kein API Endpunkt definiert für die Ansicht: ${view}`;
+      setError(errorMessage);
+      console.error(errorMessage);
+      return;
     }
-
     if (!isBackgroundUpdate) {
       setIsLoadingData(true);
       setError(null);
@@ -140,11 +140,18 @@ export default function ContaintTable() {
         setSearchTerm("");
         setEmailSearchTerm("");
         setIdSearchTerm("");
+        setHaltestelleSearchTerm(""); // NEU: Zurücksetzen
+        setLinieSearchTerm("");       // NEU: Zurücksetzen
         setStartDateInput("");
         setEndDateInput("");
         setAppliedStartDate(null);
         setAppliedEndDate(null);
         setShowAdvancedFilters(false);
+        if (currentView !== "beschwerden") {
+          setDateFilterTarget("erstelltam");
+          setHaltestelleSearchTerm(""); // Sicherstellen, dass auch hier zurückgesetzt wird
+          setLinieSearchTerm("");
+        }
       }
     } else if (!isLoadingAuth && !isAuthenticated) {
       setData([]);
@@ -164,12 +171,14 @@ export default function ContaintTable() {
   const filteredData = useMemo(() => {
     if (currentView === "statistik" || currentView === "admin" || !data || data.length === 0) return [];
     let tempData = [...data];
+
     if (currentView === "beschwerden" && activeStatusFilter !== "alle") {
       tempData = tempData.filter(item => {
         if ("status" in item) { const beschwerde = item as BeschwerdeItem; return beschwerde.status === activeStatusFilter; }
         return false;
       });
     }
+
     if (searchTerm.trim() !== "") {
       const lowerSearchTerm = searchTerm.trim().toLowerCase();
       tempData = tempData.filter(item => item.name?.toLowerCase().includes(lowerSearchTerm));
@@ -184,30 +193,79 @@ export default function ContaintTable() {
         tempData = tempData.filter(item => item.id === searchId);
       }
     }
+
+    // NEU: Filter für Haltestelle und Linie (nur für Beschwerden)
+    if (currentView === "beschwerden") {
+      if (haltestelleSearchTerm.trim() !== "") {
+        const lowerHaltestelleSearchTerm = haltestelleSearchTerm.trim().toLowerCase();
+        tempData = tempData.filter(item => {
+          if ('haltestelle' in item) {
+            const beschwerdeItem = item as BeschwerdeItem;
+            return beschwerdeItem.haltestelle?.toLowerCase().includes(lowerHaltestelleSearchTerm);
+          }
+          return false;
+        });
+      }
+      if (linieSearchTerm.trim() !== "") {
+        const lowerLinieSearchTerm = linieSearchTerm.trim().toLowerCase();
+        tempData = tempData.filter(item => {
+          if ('linie' in item) {
+            const beschwerdeItem = item as BeschwerdeItem;
+            return beschwerdeItem.linie?.toLowerCase().includes(lowerLinieSearchTerm);
+          }
+          return false;
+        });
+      }
+    }
+
+
     if (appliedStartDate || appliedEndDate) {
       const sDate = appliedStartDate ? new Date(appliedStartDate) : null;
       const eDate = appliedEndDate ? new Date(appliedEndDate) : null;
       if (sDate) sDate.setHours(0, 0, 0, 0);
       if (eDate) eDate.setHours(23, 59, 59, 999);
+
       tempData = tempData.filter(item => {
-        if (!item.erstelltam) return false;
+        let dateStringToFilter: string | null = null;
+        if (dateFilterTarget === 'erstelltam') {
+          dateStringToFilter = item.erstelltam;
+        } else if (dateFilterTarget === 'datum' && currentView === 'beschwerden' && 'datum' in item) {
+          const beschwerdeItem = item as BeschwerdeItem;
+          dateStringToFilter = beschwerdeItem.datum;
+        }
+
+        if (!dateStringToFilter) return false;
         try {
-          const itemDate = new Date(item.erstelltam);
-          if (isNaN(itemDate.getTime())) return false;
+          const itemDate = new Date(dateStringToFilter);
+          if (dateFilterTarget === 'datum' && dateStringToFilter.length === 10) {
+            const [year, month, day] = dateStringToFilter.split('-').map(Number);
+            itemDate.setFullYear(year, month - 1, day);
+            itemDate.setHours(0, 0, 0, 0);
+          }
+          if (isNaN(itemDate.getTime())) {
+            console.warn("Ungültiges Datum für Filterung:", dateStringToFilter, item);
+            return false;
+          }
           let match = true;
           if (sDate && itemDate < sDate) match = false;
           if (eDate && itemDate > eDate) match = false;
           return match;
         } catch (e) {
-          console.error("Error parsing date for filtering:", item.erstelltam, e);
+          console.error("Error parsing date for filtering:", dateStringToFilter, e);
           return false;
         }
       });
     }
     return tempData;
-  }, [data, currentView, activeStatusFilter, appliedStartDate, appliedEndDate, searchTerm, emailSearchTerm, idSearchTerm]);
+  }, [
+    data, currentView, activeStatusFilter,
+    appliedStartDate, appliedEndDate, dateFilterTarget,
+    searchTerm, emailSearchTerm, idSearchTerm,
+    haltestelleSearchTerm, linieSearchTerm // NEU: Abhängigkeiten
+  ]);
 
   const handleCopyToClipboard = async (textToCopy: string, cellKey: string) => {
+    // ... (unverändert)
     if (!textToCopy) return;
     try {
       await navigator.clipboard.writeText(textToCopy);
@@ -222,6 +280,7 @@ export default function ContaintTable() {
   };
 
   const performStatusChangeAsync = useCallback(async (itemId: number, newStatus: BeschwerdeItem["status"]) => {
+    // ... (unverändert)
     if (!token) {
       setError("Nicht autorisiert für Statusänderung. Bitte neu anmelden.");
       logout();
@@ -233,10 +292,10 @@ export default function ContaintTable() {
     ));
     setError(null);
     try {
-        const beschwerdenEndpoint = API_ENDPOINTS.beschwerden; // API_ENDPOINTS.beschwerden ist string | null
-        if (!beschwerdenEndpoint) {
-            throw new Error("API Endpunkt für Beschwerden-Statusänderung nicht definiert.");
-        }
+      const beschwerdenEndpoint = API_ENDPOINTS.beschwerden;
+      if (!beschwerdenEndpoint) {
+        throw new Error("API Endpunkt für Beschwerden-Statusänderung nicht definiert.");
+      }
       const response = await fetch(beschwerdenEndpoint, {
         method: 'PATCH',
         headers: {
@@ -259,15 +318,15 @@ export default function ContaintTable() {
     } catch (err) {
       setData(originalData);
       setError(err instanceof Error ? err.message : "Statusupdate ist fehlgeschlagen.");
-      throw err; // Wichtig, damit der Aufrufer den Fehler bemerkt
+      throw err;
     }
   }, [token, data, logout, fetchData, currentView, setError, setData]);
 
   const handleStatusChangeForCard = (itemId: number, newStatus: BeschwerdeItem["status"]): void => {
-    if (currentView === "beschwerden") {
+    // ... (unverändert)
+     if (currentView === "beschwerden") {
       performStatusChangeAsync(itemId, newStatus).catch(err => {
         console.error("ContaintTable: Fehler beim Aufruf von performStatusChangeAsync:", err);
-        // Fehler wird bereits in performStatusChangeAsync und an das UI weitergegeben
       });
     } else {
       setError("Statusänderung in dieser Ansicht nicht möglich.");
@@ -279,9 +338,8 @@ export default function ContaintTable() {
   const handleClearDateFilter = () => { setStartDateInput(""); setEndDateInput(""); setAppliedStartDate(null); setAppliedEndDate(null); };
   const isDateFilterApplied = useMemo(() => !!(appliedStartDate || appliedEndDate), [appliedStartDate, appliedEndDate]);
 
-  // Der alte handleCreateNewUser Button und Funktion wurden entfernt.
-
   if (isLoadingAuth) {
+    // ... (unverändert)
     return (
       <div className="min-h-screen w-full bg-gradient-to-br from-[#0D0D12] via-[#111318] to-[#0a0a0f] text-white font-sans flex justify-center items-center">
         <p>Authentifizierung wird geprüft...</p>
@@ -290,6 +348,7 @@ export default function ContaintTable() {
   }
 
   if (!isAuthenticated) {
+    // ... (unverändert)
     return (
       <div className="min-h-screen w-full bg-gradient-to-br from-[#0D0D12] via-[#111318] to-[#0a0a0f] text-white font-sans flex flex-col justify-center items-center p-4">
         <p className="mb-4 text-xl text-center">Bitte melden Sie sich an, um auf diese Inhalte zuzugreifen.</p>
@@ -305,6 +364,7 @@ export default function ContaintTable() {
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-[#0D0D12] via-[#111318] to-[#0a0a0f] text-white font-sans relative pt-16 pb-16 overflow-hidden">
+      {/* BackgroundBlobs und StatusBar unverändert */}
       <BackgroundBlob
         className="w-[700px] h-[700px] bg-sky-900/80 -top-1/4 -left-1/3"
         animateProps={{ x: [-200, 100, -200], y: [-150, 80, -150], rotate: [0, 100, 0], scale: [1, 1.2, 1], opacity: [0.03, 0.08, 0.03] }}
@@ -334,17 +394,14 @@ export default function ContaintTable() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        {/* user Prop wird an ViewTabs übergeben */}
         <ViewTabs currentView={currentView} setCurrentView={setCurrentView} user={user} />
 
         <div className="flex flex-col md:flex-row justify-between items-center my-4">
           <h1 className="text-xl md:text-4xl font-semibold text-neutral-200 text-center md:text-left mb-2 md:mb-0">
             {VIEW_TITLES[currentView] || "Übersicht"}
           </h1>
-          {/* Der Button "Neuen Nutzer anlegen" wurde von hier entfernt */}
         </div>
 
-        {/* FilterControls nur anzeigen, wenn nicht Admin- oder Statistik-Ansicht */}
         {currentView !== "statistik" && currentView !== "admin" && (
           <FilterControls
             currentView={currentView}
@@ -354,6 +411,8 @@ export default function ContaintTable() {
             setSearchTerm={setSearchTerm}
             emailSearchTerm={emailSearchTerm} setEmailSearchTerm={setEmailSearchTerm}
             idSearchTerm={idSearchTerm} setIdSearchTerm={setIdSearchTerm}
+            haltestelleSearchTerm={haltestelleSearchTerm} setHaltestelleSearchTerm={setHaltestelleSearchTerm} // NEU
+            linieSearchTerm={linieSearchTerm} setLinieSearchTerm={setLinieSearchTerm}                         // NEU
             showAdvancedFilters={showAdvancedFilters} setShowAdvancedFilters={setShowAdvancedFilters}
             startDateInput={startDateInput} setStartDateInput={setStartDateInput}
             endDateInput={endDateInput} setEndDateInput={setEndDateInput}
@@ -361,22 +420,24 @@ export default function ContaintTable() {
             isDateFilterApplied={isDateFilterApplied}
             cardAccentsEnabled={cardAccentsEnabled}
             setCardAccentsEnabled={setCardAccentsEnabled}
+            dateFilterTarget={dateFilterTarget}
+            setDateFilterTarget={setDateFilterTarget}
           />
         )}
 
-        {/* Fehlermeldung für allgemeinen Datenabruf (nicht für Admin- oder Statistikansicht relevant) */}
         {error && currentView !== "statistik" && currentView !== "admin" && (
+          // ... (Fehlermeldung unverändert)
           <div className="my-4 p-3 bg-red-700/80 text-red-100 border border-red-600 rounded-md shadow-lg" role="alert">
             <p><strong>Fehler:</strong> {error}</p>
           </div>
         )}
 
-        {/* Hauptinhaltsbereich basierend auf currentView */}
         {currentView === "admin" ? (
           <AdminSection />
         ) : currentView === "statistik" ? (
           <StatisticsView />
         ) : isLoadingData && !error ? (
+          // ... (Ladeanzeige unverändert)
           <div className="text-center py-10 text-neutral-400">Lade Daten...</div>
         ) : !isLoadingData && filteredData.length === 0 && !error ? (
           <div className="text-center py-10 text-neutral-500">
@@ -384,13 +445,17 @@ export default function ContaintTable() {
             {searchTerm.trim() !== "" && ` Person "${searchTerm}"`}
             {emailSearchTerm.trim() !== "" && `${searchTerm.trim() !== "" ? ' und' : ''} E-Mail "${emailSearchTerm}"`}
             {idSearchTerm.trim() !== "" && `${(searchTerm.trim() !== "" || emailSearchTerm.trim() !== "") ? ' und' : ''} ID "${idSearchTerm}"`}
-            {currentView === "beschwerden" && activeStatusFilter !== "alle" && `${(searchTerm.trim() !== "" || emailSearchTerm.trim() !== "" || idSearchTerm.trim() !== "") ? ' und' : ''} Status "${FILTER_LABELS[activeStatusFilter]}"`}
-            {(appliedStartDate || appliedEndDate) && `${(searchTerm.trim() !== "" || emailSearchTerm.trim() !== "" || idSearchTerm.trim() !== "" || (currentView === "beschwerden" && activeStatusFilter !== "alle")) ? ' und' : ''} im gewählten Zeitraum`}
-            {searchTerm.trim() === "" && emailSearchTerm.trim() === "" && idSearchTerm.trim() === "" && (currentView !== "beschwerden" || activeStatusFilter === "alle") && !(appliedStartDate || appliedEndDate) && ` die Ansicht "${VIEW_TITLES[currentView]}"`}
+            {/* NEU: Haltestellen- und Linienfilter in der Nachricht */}
+            {currentView === "beschwerden" && haltestelleSearchTerm.trim() !== "" && `${(searchTerm.trim() !== "" || emailSearchTerm.trim() !== "" || idSearchTerm.trim() !== "") ? ' und' : ''} Haltestelle "${haltestelleSearchTerm}"`}
+            {currentView === "beschwerden" && linieSearchTerm.trim() !== "" && `${(searchTerm.trim() !== "" || emailSearchTerm.trim() !== "" || idSearchTerm.trim() !== "" || haltestelleSearchTerm.trim() !== "") ? ' und' : ''} Linie "${linieSearchTerm}"`}
+            {currentView === "beschwerden" && activeStatusFilter !== "alle" && `${(searchTerm.trim() !== "" || emailSearchTerm.trim() !== "" || idSearchTerm.trim() !== "" || haltestelleSearchTerm.trim() !== "" || linieSearchTerm.trim() !== "") ? ' und' : ''} Status "${FILTER_LABELS[activeStatusFilter]}"`}
+            {(appliedStartDate || appliedEndDate) && `${(searchTerm.trim() !== "" || emailSearchTerm.trim() !== "" || idSearchTerm.trim() !== "" || (currentView === "beschwerden" && (haltestelleSearchTerm.trim() !== "" || linieSearchTerm.trim() !== "" || activeStatusFilter !== "alle"))) ? ' und' : ''} im gewählten Zeitraum (${dateFilterTarget === 'datum' ? 'Vorfalldatum' : 'Erstellungsdatum'})`}
+            {searchTerm.trim() === "" && emailSearchTerm.trim() === "" && idSearchTerm.trim() === "" && (!currentView || currentView !== "beschwerden" || (haltestelleSearchTerm.trim() === "" && linieSearchTerm.trim() === "" && activeStatusFilter === "alle")) && !(appliedStartDate || appliedEndDate) && ` die Ansicht "${VIEW_TITLES[currentView]}"`}
             gefunden.
           </div>
         ) : !isLoadingData && filteredData.length > 0 && !error ? (
-          <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
+          // ... (Datenanzeige unverändert)
+           <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
             {filteredData.map((item) => (
               <DataItemCard
                 key={item.id}
@@ -405,7 +470,6 @@ export default function ContaintTable() {
           </motion.div>
         ) : null}
       </motion.div>
-      {/* Das CreateUserModal wird jetzt innerhalb von AdminSection gerendert */}
     </div>
   );
 }

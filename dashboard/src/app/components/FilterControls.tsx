@@ -2,32 +2,43 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Mail, Filter, Hash, AlertTriangle, CheckCircle, Trash2, Palette } from "lucide-react"; 
-import { ViewType, StatusFilterMode } from '../types'; // Pfad anpassen
-import { FILTER_LABELS } from '../constants'; // Pfad anpassen
+import { Search, X, Mail, Filter, Hash, AlertTriangle, CheckCircle, Trash2, Palette, CalendarDays, PencilLine, MapPin, Waypoints } from "lucide-react";
+import type { Dispatch, SetStateAction } from 'react'; // Wichtig für explizite Typen
+import { ViewType, StatusFilterMode } from '../types';
+import { FILTER_LABELS } from '../constants';
+import { DateFilterTarget } from './ContaintTable'; // Stellt sicher, dass der Pfad und Exportname korrekt sind
 
+// Hilfstyp für die verschiedenen Setter-Funktionen der Suchfelder
+type SearchSetter = Dispatch<SetStateAction<string>> | ((value: string) => void);
+
+// Alle Props, die FilterControls von ContaintTable erhält, müssen hier definiert sein
 interface FilterControlsProps {
     currentView: ViewType;
     activeStatusFilter: StatusFilterMode;
-    setActiveStatusFilter: (filter: StatusFilterMode) => void;
+    setActiveStatusFilter: Dispatch<SetStateAction<StatusFilterMode>>;
     searchTerm: string;
-    setSearchTerm: (term: string) => void;
+    setSearchTerm: Dispatch<SetStateAction<string>>;
     emailSearchTerm: string;
-    setEmailSearchTerm: (term: string) => void;
+    setEmailSearchTerm: Dispatch<SetStateAction<string>>;
     idSearchTerm: string;
-    setIdSearchTerm: (term: string) => void;
+    setIdSearchTerm: (term: string) => void; // Spezifischer Typ, da es die Eingabe manipuliert
+    haltestelleSearchTerm: string;
+    setHaltestelleSearchTerm: Dispatch<SetStateAction<string>>;
+    linieSearchTerm: string;
+    setLinieSearchTerm: Dispatch<SetStateAction<string>>;
     showAdvancedFilters: boolean;
-    setShowAdvancedFilters: (show: boolean) => void;
+    setShowAdvancedFilters: Dispatch<SetStateAction<boolean>>;
     startDateInput: string;
-    setStartDateInput: (date: string) => void;
+    setStartDateInput: Dispatch<SetStateAction<string>>;
     endDateInput: string;
-    setEndDateInput: (date: string) => void;
+    setEndDateInput: Dispatch<SetStateAction<string>>;
     handleApplyDateFilter: () => void;
     handleClearDateFilter: () => void;
     isDateFilterApplied: boolean;
-    // Props für den Farbakzent-Umschalter hinzugefügt
     cardAccentsEnabled: boolean;
-    setCardAccentsEnabled: (enabled: boolean) => void;
+    setCardAccentsEnabled: Dispatch<SetStateAction<boolean>>;
+    dateFilterTarget: DateFilterTarget;
+    setDateFilterTarget: Dispatch<SetStateAction<DateFilterTarget>>;
 }
 
 // Globale Animationsvarianten (unverändert)
@@ -60,6 +71,10 @@ export default function FilterControls({
     setEmailSearchTerm,
     idSearchTerm,
     setIdSearchTerm,
+    haltestelleSearchTerm,
+    setHaltestelleSearchTerm,
+    linieSearchTerm,
+    setLinieSearchTerm,
     showAdvancedFilters,
     setShowAdvancedFilters,
     startDateInput,
@@ -69,13 +84,31 @@ export default function FilterControls({
     handleApplyDateFilter,
     handleClearDateFilter,
     isDateFilterApplied,
-    cardAccentsEnabled, 
-    setCardAccentsEnabled, 
+    cardAccentsEnabled,
+    setCardAccentsEnabled,
+    dateFilterTarget,
+    setDateFilterTarget,
 }: FilterControlsProps) {
 
     const dateFilterActiveColorClasses = "bg-sky-500/90 hover:bg-sky-400 text-white shadow-[0_0_18px_3px_rgba(56,189,248,0.5)] animate-pulse focus-visible:ring-sky-300";
     const dateFilterDefaultColorClasses = neonButtonSkyClasses;
     const warningIconColor = "text-amber-400";
+
+    const searchInputs: Array<{
+        Icon: React.ElementType;
+        placeholder: string;
+        value: string;
+        setter: SearchSetter; // Verwendung des Hilfstyps
+        title: string;
+        views: ViewType[];
+    }> = [
+        { Icon: Search, placeholder: "Personensuche", value: searchTerm, setter: setSearchTerm, title: "Suche zurücksetzen", views: ["beschwerden", "lob", "anregungen"] as ViewType[] },
+        { Icon: Mail, placeholder: "E-Mail Suche", value: emailSearchTerm, setter: setEmailSearchTerm, title: "E-Mail-Suche zurücksetzen", views: ["beschwerden", "lob", "anregungen"] as ViewType[] },
+        { Icon: Hash, placeholder: "ID (Nr.)...", value: idSearchTerm, setter: setIdSearchTerm, title: "ID-Suche zurücksetzen", views: ["beschwerden", "lob", "anregungen"] as ViewType[] },
+        { Icon: MapPin, placeholder: "Haltestelle...", value: haltestelleSearchTerm, setter: setHaltestelleSearchTerm, title: "Haltestellensuche zurücksetzen", views: ["beschwerden"] as ViewType[] },
+        { Icon: Waypoints, placeholder: "Linie...", value: linieSearchTerm, setter: setLinieSearchTerm, title: "Liniensuche zurücksetzen", views: ["beschwerden"] as ViewType[] },
+    ];
+
 
     return (
         <motion.div
@@ -92,8 +125,8 @@ export default function FilterControls({
                                 key={filterKey}
                                 onClick={() => setActiveStatusFilter(filterKey)}
                                 className={`relative flex-shrink-0 px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm rounded-full transition-colors duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-opacity-75 whitespace-nowrap
-                                    ${activeStatusFilter === filterKey 
-                                        ? 'text-white font-semibold' 
+                                    ${activeStatusFilter === filterKey
+                                        ? 'text-white font-semibold'
                                         : 'text-slate-300 hover:text-sky-200 hover:shadow-[0_0_10px_1px_rgba(56,189,248,0.2)]'
                                     }`}
                                 whileHover={{ scale: activeStatusFilter === filterKey ? 1 : 1.03 }}
@@ -112,38 +145,36 @@ export default function FilterControls({
                     </div>
                 )}
 
-                {[
-                    { Icon: Search, placeholder: "Personensuche", value: searchTerm, setter: setSearchTerm, title: "Suche zurücksetzen" },
-                    { Icon: Mail, placeholder: "E-Mail Suche", value: emailSearchTerm, setter: setEmailSearchTerm, title: "E-Mail-Suche zurücksetzen" },
-                    { Icon: Hash, placeholder: "ID (Nr.)...", value: idSearchTerm, setter: (val: string) => setIdSearchTerm(val.replace(/\D/g, '')), title: "ID-Suche zurücksetzen" }
-                ].map(({ Icon, placeholder, value, setter, title }) => (
-                    <motion.div key={placeholder} variants={itemVariants} className="relative w-full md:w-auto md:min-w-[180px] lg:min-w-[200px] group">
-                        <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
-                            <Icon size={16} className="text-slate-400 group-focus-within:text-sky-400 transition-colors" />
-                        </span>
-                        <input
-                            type="text"
-                            placeholder={placeholder}
-                            value={value}
-                            onChange={(e) => setter(e.target.value)}
-                            className="bg-slate-700/50 hover:bg-slate-700/80 text-slate-100 border border-slate-600/80 rounded-full pl-10 pr-8 py-2 text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:bg-slate-700/90 appearance-none w-full transition-all duration-200 ease-out shadow-inner focus:shadow-md focus:shadow-sky-500/30"
-                            style={{ colorScheme: 'dark' }}
-                        />
-                        {value && (
-                            <motion.button
-                                onClick={() => setter("")}
-                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-500 hover:text-sky-300"
-                                title={title}
-                                initial={{ opacity: 0, scale: 0.7 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.7 }}
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                            >
-                                <X size={18} />
-                            </motion.button>
-                        )}
-                    </motion.div>
+                {searchInputs.map(({ Icon, placeholder, value, setter, title, views }) => (
+                    views.includes(currentView) && (
+                        <motion.div key={placeholder} variants={itemVariants} className="relative w-full md:w-auto md:min-w-[180px] lg:min-w-[200px] group">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                                <Icon size={16} className="text-slate-400 group-focus-within:text-sky-400 transition-colors" />
+                            </span>
+                            <input
+                                type="text"
+                                placeholder={placeholder}
+                                value={value}
+                                onChange={(e) => setter(e.target.value)} // Keine Typassertion mehr, da SearchSetter beide Fälle abdeckt
+                                className="bg-slate-700/50 hover:bg-slate-700/80 text-slate-100 border border-slate-600/80 rounded-full pl-10 pr-8 py-2 text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:bg-slate-700/90 appearance-none w-full transition-all duration-200 ease-out shadow-inner focus:shadow-md focus:shadow-sky-500/30"
+                                style={{ colorScheme: 'dark' }}
+                            />
+                            {value && (
+                                <motion.button
+                                    onClick={() => setter("")} // Keine Typassertion mehr
+                                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-500 hover:text-sky-300"
+                                    title={title}
+                                    initial={{ opacity: 0, scale: 0.7 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.7 }}
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                >
+                                    <X size={18} />
+                                </motion.button>
+                            )}
+                        </motion.div>
+                    )
                 ))}
 
                 <motion.div variants={itemVariants} className="flex items-center self-center md:self-auto ml-auto gap-2.5">
@@ -169,7 +200,7 @@ export default function FilterControls({
                         whileTap={{ scale: 0.95 }}
                     >
                         <Palette size={16} />
-                         <AnimatePresence mode="wait" initial={false}>
+                        <AnimatePresence mode="wait" initial={false}>
                             <motion.span
                                 key={cardAccentsEnabled ? "AkzenteAn" : "AkzenteAus"}
                                 initial={{ opacity: 0, y: 5 }}
@@ -221,12 +252,42 @@ export default function FilterControls({
                             animate="visible"
                             className="pt-5 flex flex-wrap items-end gap-x-4 gap-y-4"
                         >
+                            {currentView === 'beschwerden' && (
+                                <motion.div variants={itemVariants} className="flex flex-col items-start">
+                                    <label htmlFor="dateFilterTarget" className="text-xs text-slate-300 mb-1.5 ml-1">Filterziel Datum</label>
+                                    <div className="flex items-center gap-2 p-1 bg-slate-700/50 rounded-full shadow-inner">
+                                        {(['erstelltam', 'datum'] as DateFilterTarget[]).map(target => (
+                                            <motion.button
+                                                key={target}
+                                                onClick={() => setDateFilterTarget(target)}
+                                                className={`relative px-3 py-1.5 text-xs rounded-full transition-colors duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400
+                                                    ${dateFilterTarget === target ? 'text-white font-medium' : 'text-slate-300 hover:text-sky-300'}`}
+                                                whileHover={{ scale: dateFilterTarget === target ? 1 : 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                            >
+                                                <span className="relative z-10 flex items-center gap-1">
+                                                    {target === 'erstelltam' ? <PencilLine size={13}/> : <CalendarDays size={13} />}
+                                                    {target === 'erstelltam' ? 'Erstellt' : 'Vorfall'}
+                                                </span>
+                                                {dateFilterTarget === target && (
+                                                    <motion.div
+                                                        layoutId="dateFilterTargetPill"
+                                                        className="absolute inset-0 bg-sky-600/70 rounded-full shadow-md -z-0"
+                                                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                                                    />
+                                                )}
+                                            </motion.button>
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            )}
+
                             <motion.div variants={itemVariants} className="flex flex-col items-start">
                                 <label htmlFor="startDate" className="text-xs text-slate-300 mb-1.5 ml-1">Startdatum</label>
                                 <input placeholder="Startdatum" type="date" id="startDate" value={startDateInput} onChange={(e) => setStartDateInput(e.target.value)} className="bg-slate-700/50 hover:bg-slate-700/80 text-slate-100 border border-slate-600/80 rounded-full px-3.5 py-2 text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 appearance-none w-full sm:w-auto shadow-inner focus:shadow-md focus:shadow-sky-500/30" style={{ colorScheme: 'dark' }} />
                             </motion.div>
                             <motion.div variants={itemVariants} className="flex flex-col items-start">
-                                 <label htmlFor="endDate" className="text-xs text-slate-300 mb-1.5 ml-1">Enddatum</label>
+                                <label htmlFor="endDate" className="text-xs text-slate-300 mb-1.5 ml-1">Enddatum</label>
                                 <input type="date" id="endDate" value={endDateInput} onChange={(e) => setEndDateInput(e.target.value)} min={startDateInput || undefined} className="bg-slate-700/50 hover:bg-slate-700/80 text-slate-100 border border-slate-600/80 rounded-full px-3.5 py-2 text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 appearance-none w-full sm:w-auto shadow-inner focus:shadow-md focus:shadow-sky-500/30" style={{ colorScheme: 'dark' }} />
                             </motion.div>
 
@@ -268,7 +329,7 @@ export default function FilterControls({
                                 >
                                     <p className={`text-xs ${warningIconColor} italic flex items-center justify-start md:justify-end`}>
                                         <AlertTriangle size={14} className="mr-1.5 inline-block animate-pulse" />
-                                        Die Ergebnisse sind nach dem gewählten Zeitraum gefiltert.
+                                        Die Ergebnisse sind nach dem gewählten Zeitraum gefiltert (Ziel: {dateFilterTarget === 'datum' ? 'Vorfalldatum' : 'Erstellungsdatum'}).
                                     </p>
                                 </motion.div>
                             )}
