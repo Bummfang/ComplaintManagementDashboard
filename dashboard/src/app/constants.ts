@@ -1,23 +1,22 @@
 // app/constants.ts
-import { ViewType, StatusFilterMode } from './types'; // Pfad ggf. anpassen, falls 'types.ts' woanders liegt
+import { ViewType, StatusFilterMode } from './types';
 
-// Bestehende API Endpunkte für die Hauptanwendung
-export const API_ENDPOINTS: Record<ViewType, string> = {
+export const API_ENDPOINTS: Record<ViewType, string | null> = { // Erlaube null für API-Endpunkte
   beschwerden: "/api/containt",
   lob: "/api/like",
   anregungen: "/api/feedback",
-  statistik: "/api/statistics", // NEU: Endpunkt für Statistik (Platzhalter)
+  statistik: "/api/statistics",
+  admin: null, // NEU: Admin-Sektion lädt initial keine spezifischen Daten über diesen Weg
 };
 
-// Bestehende Titel für die Ansichten
 export const VIEW_TITLES: Record<ViewType, string> = {
   beschwerden: "Beschwerdeübersicht",
   lob: "Lobübersicht",
   anregungen: "Anregungsübersicht",
-  statistik: "Statistikübersicht", // NEU: Titel für Statistik
+  statistik: "Statistikübersicht",
+  admin: "Administration", // NEU: Titel für Admin-Sektion
 };
 
-// Bestehende Labels für Filter
 export const FILTER_LABELS: Record<StatusFilterMode, string> = {
   "alle": "Alle",
   "Offen": "Offen",
@@ -26,13 +25,7 @@ export const FILTER_LABELS: Record<StatusFilterMode, string> = {
   "Abgelehnt": "Abgelehnt",
 };
 
-
-// Name der Login-Anwendung (Bitte anpassen, falls gewünscht)
-export const LOGIN_APP_NAME = "BM"; // Beispiel, bitte den echten Namen eintragen
-
-// Firmeninformationen
+export const LOGIN_APP_NAME = "BM";
 export const COMPANY_NAME = "Cottbusverkehr";
 export const COMPANY_SUBTITLE = "Ein Unternehmen der Stadt Cottbus/Chóśebuz";
-
-// API Endpunkt für den Login-Vorgang
-export const LOGIN_API_ENDPOINT = '/api/login'; // Pfad zur zukünftigen Login-API-Route
+export const LOGIN_API_ENDPOINT = '/api/login';

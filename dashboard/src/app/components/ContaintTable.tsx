@@ -1,19 +1,20 @@
 // app/components/ContaintTable.tsx
 "use client";
 
-import { motion, MotionProps, Transition as MotionTransition } from "framer-motion"; 
+import { motion, MotionProps, Transition as MotionTransition } from "framer-motion";
 import { useEffect, useState, useCallback, useMemo } from "react";
 
 import { useAuth } from '../contexts/AuthContext'; 
 import { useRouter } from 'next/navigation';
 
-import { DataItem, ViewType, StatusFilterMode, BeschwerdeItem } from '../types'; 
-import { API_ENDPOINTS, VIEW_TITLES, FILTER_LABELS } from '../constants'; 
+import { DataItem, ViewType, StatusFilterMode, BeschwerdeItem } from '../types';
+import { API_ENDPOINTS, VIEW_TITLES, FILTER_LABELS } from '../constants';
 import StatusBar from './StatusBar';
 import ViewTabs from './ViewTabs';
 import FilterControls from './FilterControls';
 import DataItemCard from './DataItemCard';
-import StatisticsView from './StatisticsView'; // NEU: Importname auf StatisticsView geändert
+import StatisticsView from './StatisticsView';
+import AdminSection from './AdminSection'; // NEU: Admin-Sektion importieren
 
 // BackgroundBlob Komponente (unverändert)
 interface BackgroundBlobProps {
@@ -50,7 +51,7 @@ const BackgroundBlob = ({ className, animateProps, transitionProps }: Background
 };
 
 export default function ContaintTable() {
-  const { isAuthenticated, user, token, isLoadingAuth, logout } = useAuth();
+  const { isAuthenticated, user, token, isLoadingAuth, logout } = useAuth(); // user ist hier AuthUser
   const router = useRouter();
 
   const [currentView, setCurrentView] = useState<ViewType>("beschwerden");
@@ -71,11 +72,13 @@ export default function ContaintTable() {
   const [lastDataUpdateTimestamp, setLastDataUpdateTimestamp] = useState<Date | null>(null);
   const [cardAccentsEnabled, setCardAccentsEnabled] = useState<boolean>(true);
 
+  // Modal-Zustände und Handler sind jetzt in AdminSection.tsx
 
   const fetchData = useCallback(async (view: ViewType, isBackgroundUpdate = false) => {
-    if (view === "statistik") {
+    // Daten nicht laden für Admin- oder Statistik-Ansicht über diesen Weg
+    if (view === "statistik" || view === "admin") {
       setIsLoadingData(false);
-      setData([]); 
+      setData([]);
       setError(null);
       return;
     }
@@ -85,15 +88,22 @@ export default function ContaintTable() {
       console.warn("ContaintTable: fetchData called without a token.");
       return;
     }
+
+    const apiEndpoint = API_ENDPOINTS[view];
+    if (!apiEndpoint) {
+        setIsLoadingData(false);
+        const errorMessage = `Kein API Endpunkt definiert für die Ansicht: ${view}`;
+        setError(errorMessage);
+        console.error(errorMessage);
+        return;
+    }
+
     if (!isBackgroundUpdate) {
       setIsLoadingData(true);
       setError(null);
     }
     try {
-      if (!API_ENDPOINTS[view]) {
-        throw new Error(`Kein API Endpunkt definiert für die Ansicht: ${view}`);
-      }
-      const response = await fetch(API_ENDPOINTS[view], {
+      const response = await fetch(apiEndpoint, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -107,7 +117,7 @@ export default function ContaintTable() {
           logout();
           return;
         }
-        throw new Error(errorData.error || `Fehler beim Laden der Daten für '${view}': Status ${response.status}`);
+        throw new Error(errorData.error || `Fehler beim Laden der Daten für '${VIEW_TITLES[view] || view}': Status ${response.status}`);
       }
       const fetchedData: DataItem[] = await response.json();
       setData(fetchedData);
@@ -120,12 +130,12 @@ export default function ContaintTable() {
     } finally {
       if (!isBackgroundUpdate) setIsLoadingData(false);
     }
-  }, [token, logout]); 
+  }, [token, logout]);
 
   useEffect(() => {
     if (isAuthenticated && token) {
-      fetchData(currentView); 
-      if (currentView !== "statistik") {
+      fetchData(currentView);
+      if (currentView !== "statistik" && currentView !== "admin") {
         setActiveStatusFilter("alle");
         setSearchTerm("");
         setEmailSearchTerm("");
@@ -139,11 +149,11 @@ export default function ContaintTable() {
     } else if (!isLoadingAuth && !isAuthenticated) {
       setData([]);
     }
-  }, [currentView, isAuthenticated, token, isLoadingAuth, fetchData]); // fetchData als Dependency hinzugefügt
+  }, [currentView, isAuthenticated, token, isLoadingAuth, fetchData]);
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
-    if (isAuthenticated && token && currentView !== "statistik") { 
+    if (isAuthenticated && token && currentView !== "statistik" && currentView !== "admin") {
       intervalId = setInterval(() => {
         fetchData(currentView, true);
       }, 30000);
@@ -152,7 +162,7 @@ export default function ContaintTable() {
   }, [currentView, isAuthenticated, token, fetchData]);
 
   const filteredData = useMemo(() => {
-    if (currentView === "statistik" || !data || data.length === 0) return [];
+    if (currentView === "statistik" || currentView === "admin" || !data || data.length === 0) return [];
     let tempData = [...data];
     if (currentView === "beschwerden" && activeStatusFilter !== "alle") {
       tempData = tempData.filter(item => {
@@ -223,10 +233,11 @@ export default function ContaintTable() {
     ));
     setError(null);
     try {
-      if (!API_ENDPOINTS.beschwerden) {
-        throw new Error("API Endpunkt für Beschwerden-Statusänderung nicht definiert.");
-      }
-      const response = await fetch(API_ENDPOINTS.beschwerden, {
+        const beschwerdenEndpoint = API_ENDPOINTS.beschwerden; // API_ENDPOINTS.beschwerden ist string | null
+        if (!beschwerdenEndpoint) {
+            throw new Error("API Endpunkt für Beschwerden-Statusänderung nicht definiert.");
+        }
+      const response = await fetch(beschwerdenEndpoint, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -248,7 +259,7 @@ export default function ContaintTable() {
     } catch (err) {
       setData(originalData);
       setError(err instanceof Error ? err.message : "Statusupdate ist fehlgeschlagen.");
-      throw err;
+      throw err; // Wichtig, damit der Aufrufer den Fehler bemerkt
     }
   }, [token, data, logout, fetchData, currentView, setError, setData]);
 
@@ -256,6 +267,7 @@ export default function ContaintTable() {
     if (currentView === "beschwerden") {
       performStatusChangeAsync(itemId, newStatus).catch(err => {
         console.error("ContaintTable: Fehler beim Aufruf von performStatusChangeAsync:", err);
+        // Fehler wird bereits in performStatusChangeAsync und an das UI weitergegeben
       });
     } else {
       setError("Statusänderung in dieser Ansicht nicht möglich.");
@@ -266,11 +278,8 @@ export default function ContaintTable() {
   const handleApplyDateFilter = () => { setAppliedStartDate(startDateInput || null); setAppliedEndDate(endDateInput || null); };
   const handleClearDateFilter = () => { setStartDateInput(""); setEndDateInput(""); setAppliedStartDate(null); setAppliedEndDate(null); };
   const isDateFilterApplied = useMemo(() => !!(appliedStartDate || appliedEndDate), [appliedStartDate, appliedEndDate]);
-  const handleCreateNewUser = () => {
-    console.log("Admin Aktion: 'Neuen Nutzer anlegen' geklickt.");
-    alert("Funktion 'Neuen Nutzer anlegen' noch nicht implementiert.");
-  };
 
+  // Der alte handleCreateNewUser Button und Funktion wurden entfernt.
 
   if (isLoadingAuth) {
     return (
@@ -302,12 +311,12 @@ export default function ContaintTable() {
         transitionProps={{ duration: 55, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
       />
       <BackgroundBlob
-        className="w-[800px] h-[800px] bg-emerald-800/70 -bottom-1/3 -right-1/4" 
+        className="w-[800px] h-[800px] bg-emerald-800/70 -bottom-1/3 -right-1/4"
         animateProps={{ x: [150, -100, 150], y: [100, -80, 100], rotate: [0, -120, 0], scale: [1.1, 1.3, 1.1], opacity: [0.04, 0.09, 0.04] }}
         transitionProps={{ duration: 60, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
       />
-       <BackgroundBlob
-        className="w-[900px] h-[900px] bg-slate-700/60 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" 
+      <BackgroundBlob
+        className="w-[900px] h-[900px] bg-slate-700/60 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
         animateProps={{ scale: [1, 1.1, 1], opacity: [0.02, 0.05, 0.02] }}
         transitionProps={{ duration: 70, repeat: Infinity, repeatType: "mirror", ease: "linear" }}
       />
@@ -318,33 +327,26 @@ export default function ContaintTable() {
         isAuthenticated={isAuthenticated}
         logout={logout}
       />
-      
+
       <motion.div
         className="w-full max-w-none p-4 md:p-8 mx-auto relative z-10"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <ViewTabs currentView={currentView} setCurrentView={setCurrentView} />
-        
+        {/* user Prop wird an ViewTabs übergeben */}
+        <ViewTabs currentView={currentView} setCurrentView={setCurrentView} user={user} />
+
         <div className="flex flex-col md:flex-row justify-between items-center my-4">
-            <h1 className="text-xl md:text-4xl font-semibold text-neutral-200 text-center md:text-left mb-2 md:mb-0"> 
-                {VIEW_TITLES[currentView] || "Übersicht"} 
-            </h1>
-            {user?.isAdmin && (
-                <motion.button
-                    onClick={handleCreateNewUser}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-md transition-colors text-sm"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                >
-                    Neuen Nutzer anlegen
-                </motion.button>
-            )}
+          <h1 className="text-xl md:text-4xl font-semibold text-neutral-200 text-center md:text-left mb-2 md:mb-0">
+            {VIEW_TITLES[currentView] || "Übersicht"}
+          </h1>
+          {/* Der Button "Neuen Nutzer anlegen" wurde von hier entfernt */}
         </div>
 
-        {currentView !== "statistik" && (
-            <FilterControls
+        {/* FilterControls nur anzeigen, wenn nicht Admin- oder Statistik-Ansicht */}
+        {currentView !== "statistik" && currentView !== "admin" && (
+          <FilterControls
             currentView={currentView}
             activeStatusFilter={activeStatusFilter}
             setActiveStatusFilter={setActiveStatusFilter}
@@ -357,19 +359,23 @@ export default function ContaintTable() {
             endDateInput={endDateInput} setEndDateInput={setEndDateInput}
             handleApplyDateFilter={handleApplyDateFilter} handleClearDateFilter={handleClearDateFilter}
             isDateFilterApplied={isDateFilterApplied}
-            cardAccentsEnabled={cardAccentsEnabled} 
-            setCardAccentsEnabled={setCardAccentsEnabled} 
-            />
+            cardAccentsEnabled={cardAccentsEnabled}
+            setCardAccentsEnabled={setCardAccentsEnabled}
+          />
         )}
 
-        {error && currentView !== "statistik" && ( 
+        {/* Fehlermeldung für allgemeinen Datenabruf (nicht für Admin- oder Statistikansicht relevant) */}
+        {error && currentView !== "statistik" && currentView !== "admin" && (
           <div className="my-4 p-3 bg-red-700/80 text-red-100 border border-red-600 rounded-md shadow-lg" role="alert">
             <p><strong>Fehler:</strong> {error}</p>
           </div>
         )}
 
-        {currentView === "statistik" ? (
-            <StatisticsView /> // NEU: StatisticsView wird hier gerendert
+        {/* Hauptinhaltsbereich basierend auf currentView */}
+        {currentView === "admin" ? (
+          <AdminSection />
+        ) : currentView === "statistik" ? (
+          <StatisticsView />
         ) : isLoadingData && !error ? (
           <div className="text-center py-10 text-neutral-400">Lade Daten...</div>
         ) : !isLoadingData && filteredData.length === 0 && !error ? (
@@ -393,12 +399,13 @@ export default function ContaintTable() {
                 copiedCellKey={copiedCellKey}
                 onCopyToClipboard={handleCopyToClipboard}
                 onStatusChange={handleStatusChangeForCard}
-                cardAccentsEnabled={cardAccentsEnabled} 
+                cardAccentsEnabled={cardAccentsEnabled}
               />
             ))}
           </motion.div>
         ) : null}
       </motion.div>
+      {/* Das CreateUserModal wird jetzt innerhalb von AdminSection gerendert */}
     </div>
   );
 }
