@@ -1,19 +1,20 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { CopyIcon, CheckIcon, ClockIcon } from 'lucide-react';
+import { CopyIcon, CheckIcon, ClockIcon, Lock, Unlock } from 'lucide-react'; // Lock Icons hinzugefügt
+import { useState } from 'react'; // useState importieren
 import {
     DataItem, BeschwerdeItem, LobItem, AnregungItem, ViewType, AnyItemStatus
 } from '../types';
 import { formatDate, formatTime, formatDateTime } from '../utils';
 
-const getStatusTextColorClass = (status?: AnyItemStatus | null): string => { // Erlaube null
+const getStatusTextColorClass = (status?: AnyItemStatus | null): string => {
     switch (status) {
         case "Offen": return "text-sky-400 font-medium";
         case "In Bearbeitung": return "text-amber-400 font-medium";
         case "Gelöst": return "text-green-400 font-medium";
         case "Abgelehnt": return "text-red-400 font-medium";
-        default: return "text-slate-200"; 
+        default: return "text-slate-200";
     }
 };
 
@@ -80,7 +81,11 @@ export default function DataItemCard({
 }: DataItemCardProps) {
     const itemTypePrefix = currentView === "beschwerden" ? "CMP-" : currentView === "lob" ? "LOB-" : "ANG-";
     
-    let currentItemStatus: AnyItemStatus | undefined | null; // Kann auch null sein von der DB
+    // NEU: State für den Sperrstatus der Karte und für die Wackelanimation
+    const [isLocked, setIsLocked] = useState(true);
+    const [shakeLockAnim, setShakeLockAnim] = useState(false);
+
+    let currentItemStatus: AnyItemStatus | undefined | null;
     let itemAbgeschlossenAm: string | null | undefined;
     const isStatusRelevantView = currentView === 'beschwerden' || currentView === 'lob' || currentView === 'anregungen';
 
@@ -91,46 +96,62 @@ export default function DataItemCard({
         itemAbgeschlossenAm = item.abgeschlossenam;
     }
     
-    // DEBUG: Logge die Item-Daten, um den Status zu überprüfen
-    if(isStatusRelevantView) {
-        console.log(`[DataItemCard] View: ${currentView}, Item ID: ${item.id}, Status: ${currentItemStatus}, Abgeschlossen: ${itemAbgeschlossenAm}, Item:`, item);
-    }
+    // if(isStatusRelevantView) { // Debug log
+    //  console.log(`[DataItemCard] View: ${currentView}, Item ID: ${item.id}, Status: ${currentItemStatus}, Abgeschlossen: ${itemAbgeschlossenAm}, Item:`, item);
+    // }
+
+    // NEU: Funktion zum Umschalten des Sperrstatus
+    const handleToggleLock = () => {
+        setIsLocked(prev => !prev);
+        if (shakeLockAnim) {
+            setShakeLockAnim(false);
+        }
+    };
+
+    // NEU: Funktion zum Auslösen der Wackelanimation
+    const triggerShakeLock = () => {
+        setShakeLockAnim(true);
+        setTimeout(() => setShakeLockAnim(false), 400); // Dauer der Animation
+    };
+
+    // NEU: Wrapper für onStatusChange, der die Sperre prüft
+    const handleProtectedStatusChange = (itemId: number, newStatus: AnyItemStatus, viewForApi: ViewType) => {
+        if (isLocked) {
+            triggerShakeLock();
+        } else {
+            onStatusChange(itemId, newStatus, viewForApi);
+        }
+    };
 
     let actionButton = null;
-    let effectiveStatusForButtons: AnyItemStatus = "Offen"; // Standard für Button-Logik, falls Status null/undefined
+    let effectiveStatusForButtons: AnyItemStatus = "Offen"; 
 
     if (isStatusRelevantView) {
         if (currentItemStatus && ["Offen", "In Bearbeitung", "Gelöst", "Abgelehnt"].includes(currentItemStatus)) {
             effectiveStatusForButtons = currentItemStatus;
         } else if (currentItemStatus === null || currentItemStatus === undefined) {
-            // Behandle null oder undefined Status (alte Daten) als "Offen" für die Button-Logik
-            effectiveStatusForButtons = "Offen"; 
-            // Zeige den echten Status (oder "Nicht gesetzt") trotzdem an
-            if (currentItemStatus === null) currentItemStatus = undefined; // Für Anzeige, damit getStatusTextColorClass default greift
+            effectiveStatusForButtons = "Offen";
+            if (currentItemStatus === null) currentItemStatus = undefined; 
         } else {
-            // Ein unerwarteter String-Wert im Statusfeld
-            effectiveStatusForButtons = "Offen"; // Fallback für Button-Logik
+            effectiveStatusForButtons = "Offen"; 
         }
 
-
-        switch (effectiveStatusForButtons) { // Verwende effectiveStatusForButtons für die Button-Logik
+        // HIER werden die onClick Handler mit handleProtectedStatusChange angepasst
+        switch (effectiveStatusForButtons) {
             case "Offen":
-                actionButton = ( <motion.button onClick={() => onStatusChange(item.id, "In Bearbeitung", currentView)} className="w-full mt-3 text-amber-300 hover:text-amber-200 bg-amber-600/30 hover:bg-amber-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg" title="Bearbeitung starten" whileHover={{ scale: 1.03, y: -2, transition: { type: "spring", stiffness: 400, damping: 15 } }} whileTap={{ scale: 0.97 }} > Bearbeitung starten </motion.button> );
+                actionButton = ( <motion.button onClick={() => handleProtectedStatusChange(item.id, "In Bearbeitung", currentView)} className="w-full mt-3 text-amber-300 hover:text-amber-200 bg-amber-600/30 hover:bg-amber-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg" title="Bearbeitung starten" whileHover={{ scale: 1.03, y: -2, transition: { type: "spring", stiffness: 400, damping: 15 } }} whileTap={{ scale: 0.97 }} > Bearbeitung starten </motion.button> );
                 break;
             case "In Bearbeitung":
-                actionButton = ( <div className="flex space-x-2 mt-3"> <motion.button onClick={() => onStatusChange(item.id, "Gelöst", currentView)} className="flex-1 text-green-300 hover:text-green-200 bg-green-600/30 hover:bg-green-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg" title="Als gelöst markieren" whileHover={{ scale: 1.03, y: -2, transition: { type: "spring", stiffness: 400, damping: 15 } }} whileTap={{ scale: 0.97 }} > Gelöst </motion.button> <motion.button onClick={() => onStatusChange(item.id, "Abgelehnt", currentView)} className="flex-1 text-red-300 hover:text-red-200 bg-red-600/30 hover:bg-red-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg" title="Ablehnen" whileHover={{ scale: 1.03, y: -2, transition: { type: "spring", stiffness: 400, damping: 15 } }} whileTap={{ scale: 0.97 }} > Ablehnen </motion.button> </div> );
+                actionButton = ( <div className="flex space-x-2 mt-3"> <motion.button onClick={() => handleProtectedStatusChange(item.id, "Gelöst", currentView)} className="flex-1 text-green-300 hover:text-green-200 bg-green-600/30 hover:bg-green-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg" title="Als gelöst markieren" whileHover={{ scale: 1.03, y: -2, transition: { type: "spring", stiffness: 400, damping: 15 } }} whileTap={{ scale: 0.97 }} > Gelöst </motion.button> <motion.button onClick={() => handleProtectedStatusChange(item.id, "Abgelehnt", currentView)} className="flex-1 text-red-300 hover:text-red-200 bg-red-600/30 hover:bg-red-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg" title="Ablehnen" whileHover={{ scale: 1.03, y: -2, transition: { type: "spring", stiffness: 400, damping: 15 } }} whileTap={{ scale: 0.97 }} > Ablehnen </motion.button> </div> );
                 break;
             case "Gelöst":
             case "Abgelehnt":
-                actionButton = ( <motion.button onClick={() => onStatusChange(item.id, "Offen", currentView)} className="w-full mt-3 text-sky-300 hover:text-sky-200 bg-sky-600/30 hover:bg-sky-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg" title="Wieder öffnen" whileHover={{ scale: 1.03, y: -2, transition: { type: "spring", stiffness: 400, damping: 15 } }} whileTap={{ scale: 0.97 }} > Wieder öffnen </motion.button> );
+                actionButton = ( <motion.button onClick={() => handleProtectedStatusChange(item.id, "Offen", currentView)} className="w-full mt-3 text-sky-300 hover:text-sky-200 bg-sky-600/30 hover:bg-sky-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg" title="Wieder öffnen" whileHover={{ scale: 1.03, y: -2, transition: { type: "spring", stiffness: 400, damping: 15 } }} whileTap={{ scale: 0.97 }} > Wieder öffnen </motion.button> );
                 break;
-            // Kein 'default' mehr hier, da effectiveStatusForButtons immer einen der oberen Werte hat
         }
     }
 
-
     const cardKey = `card-${currentView}-${item.id}`;
-    // Für Akzentfarben den tatsächlichen `currentItemStatus` verwenden, oder `effectiveStatusForButtons` wenn `currentItemStatus` null/undefined ist
     const statusForAccent = currentItemStatus || effectiveStatusForButtons;
     const backgroundClass = isStatusRelevantView && statusForAccent && cardAccentsEnabled
         ? getCardBackgroundAccentClasses(statusForAccent)
@@ -144,7 +165,6 @@ export default function DataItemCard({
             abgeschlossenText = formatDateTime(itemAbgeschlossenAm);
             abgeschlossenValueClassName = "text-green-400";
         } else if (currentItemStatus === "Offen" || currentItemStatus === "In Bearbeitung" || currentItemStatus === null || currentItemStatus === undefined) {
-            // Wenn Status null/undefined (alte Daten), behandle wie "Offen" für diese Anzeige
             const displayStatus = currentItemStatus === "In Bearbeitung" ? "In Bearbeitung" : "Ausstehend";
             abgeschlossenText = displayStatus;
             abgeschlossenValueClassName = currentItemStatus === "In Bearbeitung" ? "text-amber-400 italic" : "text-slate-500 italic";
@@ -175,13 +195,13 @@ export default function DataItemCard({
                     <DataField label="Tel." value={item.tel} onCopy={onCopyToClipboard} isCopied={copiedCellKey === `${cardKey}-tel`} fieldKey={`${cardKey}-tel`} />
                     <DataField label="Erstellt am" value={formatDateTime(item.erstelltam)} onCopy={onCopyToClipboard} isCopied={copiedCellKey === `${cardKey}-erstelltam`} fieldKey={`${cardKey}-erstelltam`} copyValue={item.erstelltam} icon={ClockIcon}/>
 
-                    {isStatusRelevantView && ( // Zeige Status immer an, wenn relevant, auch wenn null/undefined
+                    {isStatusRelevantView && (
                         <DataField
                             label="Status" 
                             value={currentItemStatus === null || currentItemStatus === undefined ? 'Nicht gesetzt' : currentItemStatus} 
                             onCopy={onCopyToClipboard}
                             isCopied={copiedCellKey === `${cardKey}-status`} fieldKey={`${cardKey}-status`}
-                            valueClassName={getStatusTextColorClass(currentItemStatus)} // getStatusTextColorClass sollte null/undefined behandeln
+                            valueClassName={getStatusTextColorClass(currentItemStatus)}
                         />
                     )}
                     {isStatusRelevantView && abgeschlossenText !== null && (
@@ -218,7 +238,35 @@ export default function DataItemCard({
             </div>
 
             {isStatusRelevantView && actionButton && (
-                <motion.div variants={contentItemVariants} className="px-4 md:px-5 pb-4 pt-2 border-t border-slate-700/50 mt-auto">
+                <motion.div 
+                    variants={contentItemVariants} 
+                    className="px-4 md:px-5 pb-4 pt-2 border-t border-slate-700/50 mt-auto"
+                >
+                    {/* NEU: Schloss-Icon Container */}
+                    <div className="flex justify-end items-center mb-2"> {/* Positioniert das Schloss rechtsbündig, mit etwas Abstand nach unten */}
+                        <motion.button
+                            onClick={handleToggleLock}
+                            className={`p-1.5 rounded-full transition-colors duration-150 ease-in-out
+                                        ${isLocked ? 'text-slate-400 hover:text-sky-400' : 'text-emerald-400 hover:text-emerald-300'}
+                                        focus:outline-none focus-visible:ring-2 ${isLocked ? 'focus-visible:ring-sky-500' : 'focus-visible:ring-emerald-500'} focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800`}
+                            title={isLocked ? "Bearbeitung entsperren" : "Bearbeitung sperren"}
+                            animate={shakeLockAnim ? { 
+                                // Stärkere Wackelsequenz für x-Achse
+                                x: [0, -8, 8, -6, 6, -4, 4, 0], 
+                                // Skalierung hinzufügen: pulsiert auf 110% und zurück
+                                scale: [1, 1.1, 1, 2, 1], 
+                                transition: { duration: 0.4, ease: "easeInOut" } 
+                            } : { 
+                                x: 0, 
+                                scale: 1 // Wichtig: Skalierung im Ruhezustand auf 1 setzen
+                            }}
+                            whileHover={{ scale: 1.1 }} // Diese Skalierung bleibt für den Hover-Effekt
+                            whileTap={{ scale: 0.9 }}
+                        >
+                            {isLocked ? <Lock size={20} /> : <Unlock size={20} />}
+                        </motion.button>
+                    </div>
+                    {/* Bestehende Aktionsbuttons, deren onClick-Handler oben bereits angepasst wurden */}
                     {actionButton}
                 </motion.div>
             )}

@@ -40,7 +40,6 @@ export type DateFilterTarget = 'erstelltam' | 'datum';
 
 export default function ContaintTable() {
     const { isAuthenticated, user, token, isLoadingAuth, logout } = useAuth();
-    const router = useRouter();
 
     const [currentView, setCurrentView] = useState<ViewType>("beschwerden");
     const [data, setData] = useState<DataItem[]>([]);
@@ -283,7 +282,7 @@ export default function ContaintTable() {
                                 cardAccentsEnabled={cardAccentsEnabled}
                             />
                         ))}
-                    </motion.div>
+                    </motion.div> 
                  ) : null}
             </motion.div>
         </div>
