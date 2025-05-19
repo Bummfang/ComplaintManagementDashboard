@@ -1,14 +1,15 @@
-// app/components/ContaintTable.tsx
 "use client";
 
-import { motion, MotionProps, Transition as MotionTransition } from "framer-motion"; // MotionProps und Transition importiert, falls für BackgroundBlob benötigt
+// motion bleibt für andere Animationen erhalten,
+// MotionProps und MotionTransition könnten entfernt werden, wenn sie nur für BackgroundBlob benötigt wurden.
+// Ich lasse sie vorerst drin, falls andere motion-Komponenten sie implizit nutzen könnten,
+// aber wenn BackgroundBlob der einzige Nutzer war, können sie weg.
+import { motion, MotionProps, Transition as MotionTransition } from "framer-motion";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useAuth } from '../contexts/AuthContext';
-// useRouter importieren, falls noch nicht geschehen und für Redirects benötigt wird (aktuell nicht im Code genutzt)
-// import { useRouter } from 'next/navigation'; 
 
 import {
-    DataItem, ViewType, StatusFilterMode, BeschwerdeItem, // BeschwerdeItem für Typ-Casts
+    DataItem, ViewType, StatusFilterMode, BeschwerdeItem,
     AnyItemStatus
 } from '../types';
 import { API_ENDPOINTS, VIEW_TITLES } from '../constants';
@@ -19,33 +20,15 @@ import DataItemCard from './DataItemCard';
 import StatisticsView from './StatisticsView';
 import AdminSection from './AdminSection';
 
-interface BackgroundBlobProps {
-    className: string;
-    animateProps: MotionProps['animate'];
-    transitionProps: MotionTransition;
-}
-type AnimatableXYProperties = {
-    x?: string | number | string[] | number[];
-    y?: string | number | string[] | number[];
-};
-const BackgroundBlob = ({ className, animateProps, transitionProps }: BackgroundBlobProps) => {
-    const initialMotionValues: MotionProps['initial'] = { scale: 0.8, opacity: 0, };
-    if (typeof animateProps === 'object' && animateProps !== null && !Array.isArray(animateProps)) {
-        const target = animateProps as AnimatableXYProperties;
-        if (target.x && Array.isArray(target.x) && typeof target.x[0] === 'number') { initialMotionValues.x = target.x[0]; }
-        if (target.y && Array.isArray(target.y) && typeof target.y[0] === 'number') { initialMotionValues.y = target.y[0]; }
-    }
-    return (<motion.div className={`absolute rounded-full filter blur-xl pointer-events-none ${className}`} initial={initialMotionValues} animate={animateProps} transition={transitionProps} />);
-};
+// Die Definition von BackgroundBlob, BackgroundBlobProps und AnimatableXYProperties wurde entfernt.
 
 export type DateFilterTarget = 'erstelltam' | 'datum';
 
 export default function ContaintTable() {
     const { isAuthenticated, user, token, isLoadingAuth, logout } = useAuth();
-    // const router = useRouter(); // Einkommentieren, falls benötigt
 
     const [currentView, setCurrentView] = useState<ViewType>("beschwerden");
-    const [data, setData] = useState<(DataItem & { action_required?: "relock_ui" })[]>([]); // Typ angepasst, um action_required zu erlauben
+    const [data, setData] = useState<(DataItem & { action_required?: "relock_ui" })[]>([]);
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [copiedCellKey, setCopiedCellKey] = useState<string | null>(null);
@@ -87,7 +70,7 @@ export default function ContaintTable() {
                 if (response.status === 401) { setError("Ihre Sitzung ist abgelaufen oder ungültig. Bitte melden Sie sich erneut an."); logout(); return; }
                 throw new Error(errorData.error || `Fehler beim Laden der Daten für '${VIEW_TITLES[view] || view}': Status ${response.status}`);
             }
-            const fetchedDataFromApi: (DataItem & { action_required?: "relock_ui" })[] = await response.json(); // API kann action_required senden
+            const fetchedDataFromApi: (DataItem & { action_required?: "relock_ui" })[] = await response.json();
             setData(fetchedDataFromApi);
             setIsDbConnected(true);
             setLastDataUpdateTimestamp(new Date());
@@ -98,7 +81,7 @@ export default function ContaintTable() {
         } finally {
             if (!isBackgroundUpdate) setIsLoadingData(false);
         }
-    }, [token, logout, setIsLoadingData, setData, setError, setIsDbConnected, setLastDataUpdateTimestamp]); // Abhängigkeiten vervollständigt
+    }, [token, logout, setIsLoadingData, setData, setError, setIsDbConnected, setLastDataUpdateTimestamp, currentView]); // currentView zur useCallback Dependency hinzugefügt, da es in fetchData indirekt genutzt wird (VIEW_TITLES[view])
 
     useEffect(() => {
         if (isAuthenticated && token) {
@@ -127,8 +110,6 @@ export default function ContaintTable() {
         return () => clearInterval(intervalId);
     }, [currentView, isAuthenticated, token, fetchData]);
 
-
-    // handleItemUpdate ist jetzt hier korrekt definiert
     const handleItemUpdate = useCallback((updatedItem: DataItem & { action_required?: "relock_ui" }) => {
         setData(prevData =>
             prevData.map(item =>
@@ -141,15 +122,15 @@ export default function ContaintTable() {
         console.log(`ContaintTable: Item ${updatedItem.id} lokal durch onItemUpdate aktualisiert.`, updatedItem);
     }, [setData, setLastDataUpdateTimestamp]);
 
-
     const filteredData = useMemo(() => {
         let tempData = [...data];
+        // Die console.logs für ID-Filterung können hier bleiben oder entfernt/angepasst werden.
+        // Ich lasse sie vorerst drin, falls du sie noch brauchst.
         console.log("-----------------------------------------");
         console.log("ID-Filter: Start der Filterberechnung");
         console.log("ID-Filter: idSearchTerm (aus Input):", idSearchTerm);
         console.log("ID-Filter: Ursprüngliche tempData Länge:", tempData.length);
         if (currentView === "statistik" || currentView === "admin" || !data || data.length === 0) return [];
-
 
         if (activeStatusFilter !== "alle" && (currentView === "beschwerden" || currentView === "lob" || currentView === "anregungen")) {
             tempData = tempData.filter(item => 'status' in item && item.status === activeStatusFilter);
@@ -166,21 +147,15 @@ export default function ContaintTable() {
         if (idSearchTerm.trim() !== "") {
             const trimmedIdSearchTerm = idSearchTerm.trim();
             const searchId = parseInt(trimmedIdSearchTerm, 10);
-
             if (!isNaN(searchId)) {
                 console.log(`ID-Filter: Wende Filter an für searchId: ${searchId}.`);
                 console.log(`ID-Filter: tempData VOR Filterung (nur IDs):`, JSON.parse(JSON.stringify(tempData.map(item => item.id))));
-                // Die Eingabe ist eine gültige Zahl, also nach exakter ID filtern
                 tempData = tempData.filter(item => item.id === searchId);
                 console.log(`ID-Filter: tempData NACH Filterung für searchId: ${searchId} (nur IDs):`, JSON.parse(JSON.stringify(tempData.map(item => item.id))));
             } else {
-                // Die Eingabe ist nicht leer, ABER keine gültige Zahl (z.B. "abc" oder "12x").
-                // Da IDs Zahlen sind, kann kein Eintrag einer solchen Eingabe entsprechen.
-                // Also: Zeige keine Ergebnisse an.
                 console.log(`ID-Filter: idSearchTerm "${trimmedIdSearchTerm}" ist keine gültige Zahl. Leere tempData.`);
                 tempData = [];
             }
-
         } else {
             console.log("ID-Filter: idSearchTerm ist leer, ID-Filter wird übersprungen.");
         }
@@ -201,7 +176,6 @@ export default function ContaintTable() {
             const eDate = appliedEndDate ? new Date(appliedEndDate) : null;
             if (sDate) sDate.setHours(0, 0, 0, 0);
             if (eDate) eDate.setHours(23, 59, 59, 999);
-
             tempData = tempData.filter(item => {
                 let dateStringToFilter: string | null = item.erstelltam;
                 if (dateFilterTarget === 'datum' && currentView === 'beschwerden' && 'datum' in item) {
@@ -230,29 +204,24 @@ export default function ContaintTable() {
 
     const handleCopyToClipboard = useCallback(async (textToCopy: string, cellKey: string) => {
         if (!textToCopy) {
-            console.warn("handleCopyToClipboard: Kein Text zum Kopieren übergeben.");
-            return;
+            console.warn("handleCopyToClipboard: Kein Text zum Kopieren übergeben."); return;
         }
-
         if (!navigator.clipboard) {
             console.error("handleCopyToClipboard: Clipboard API nicht verfügbar.");
             setError("Kopieren nicht möglich: Clipboard API nicht unterstützt oder nicht sicher (HTTPS benötigt).");
-            setTimeout(() => setError(null), 3000); // Fehlermeldung nach 3 Sek. ausblenden
-            return;
+            setTimeout(() => setError(null), 3000); return;
         }
-
         try {
             await navigator.clipboard.writeText(textToCopy);
             console.log(`ContaintTable: Text erfolgreich in Zwischenablage kopiert für Key ${cellKey}: "${textToCopy}"`);
-            setCopiedCellKey(cellKey); // UI-Feedback für die spezifische Zelle aktivieren
-            setTimeout(() => setCopiedCellKey(null), 1500); // Feedback nach 1.5 Sek. zurücksetzen
+            setCopiedCellKey(cellKey);
+            setTimeout(() => setCopiedCellKey(null), 1500);
         } catch (err) {
             console.error("handleCopyToClipboard: Fehler beim Kopieren in die Zwischenablage:", err);
             setError("Kopieren in die Zwischenablage fehlgeschlagen.");
-            setTimeout(() => setError(null), 3000); // Fehlermeldung nach 3 Sek. ausblenden
-            setCopiedCellKey(null); // Sicherstellen, dass kein "Kopiert"-Feedback aktiv bleibt
+            setTimeout(() => setError(null), 3000);
+            setCopiedCellKey(null);
         }
-
     }, [setCopiedCellKey, setError]);
 
     const performStatusChangeAsync = useCallback(async (itemId: number, newStatus: AnyItemStatus, viewForApi: ViewType) => {
@@ -273,12 +242,12 @@ export default function ContaintTable() {
                 if (response.status === 401) { setError("Sitzung abgelaufen."); logout(); return; }
                 throw new Error(errorData.details || errorData.error || `Statusupdate fehlgeschlagen (${response.status})`);
             }
-            fetchData(currentView, true);
+            fetchData(currentView, true); // fetchData benötigt currentView
             console.log(`ContaintTable: Status für Item ${itemId} geändert, Daten werden neu geladen.`);
         } catch (err) {
             setError(err instanceof Error ? err.message : `Statusupdate für ${VIEW_TITLES[viewForApi]} fehlgeschlagen.`);
         }
-    }, [token, currentView, fetchData, logout, setError]); // Abhängigkeiten vervollständigt
+    }, [token, currentView, fetchData, logout, setError]);
 
     const handleStatusChangeForCard = (itemId: number, newStatus: AnyItemStatus, itemTypeView: ViewType): void => {
         if (itemTypeView === "beschwerden" || itemTypeView === "lob" || itemTypeView === "anregungen") {
@@ -291,17 +260,15 @@ export default function ContaintTable() {
     const handleApplyDateFilter = useCallback(() => {
         setAppliedStartDate(startDateInput || null);
         setAppliedEndDate(endDateInput || null);
-        // Optional: Konsolenausgabe für Debugging
         console.log(`Datumsfilter angewendet: Start=${startDateInput || 'N/A'}, Ende=${endDateInput || 'N/A'}`);
-    }, [startDateInput, endDateInput, setAppliedStartDate, setAppliedEndDate]); // Abhängigkeiten hinzugefügt
+    }, [startDateInput, endDateInput, setAppliedStartDate, setAppliedEndDate]);
     const handleClearDateFilter = useCallback(() => {
         setStartDateInput("");
         setEndDateInput("");
         setAppliedStartDate(null);
         setAppliedEndDate(null);
-        // Optional: Konsolenausgabe für Debugging
         console.log("Datumsfilter zurückgesetzt.");
-    }, [setStartDateInput, setEndDateInput, setAppliedStartDate, setAppliedEndDate]); // Abhängigkeiten hinzugefügt
+    }, [setStartDateInput, setEndDateInput, setAppliedStartDate, setAppliedEndDate]);
     const isDateFilterApplied = useMemo(() => !!(appliedStartDate || appliedEndDate), [appliedStartDate, appliedEndDate]);
 
     if (isLoadingAuth) { return <div className="text-center py-10">Authentifizierung wird geladen...</div> }
@@ -309,9 +276,7 @@ export default function ContaintTable() {
 
     return (
         <div className="min-h-screen w-full bg-gradient-to-br from-[#0D0D12] via-[#111318] to-[#0a0a0f] text-white font-sans relative pt-16 pb-16 overflow-hidden">
-            <BackgroundBlob className="w-[700px] h-[700px] bg-sky-900/80 -top-1/4 -left-1/3" animateProps={{ x: [-200, 100, -200], y: [-150, 80, -150], rotate: [0, 100, 0], scale: [1, 1.2, 1], opacity: [0.03, 0.08, 0.03] }} transitionProps={{ duration: 55, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }} />
-            <BackgroundBlob className="w-[800px] h-[800px] bg-emerald-800/70 -bottom-1/3 -right-1/4" animateProps={{ x: [150, -100, 150], y: [100, -80, 100], rotate: [0, -120, 0], scale: [1.1, 1.3, 1.1], opacity: [0.04, 0.09, 0.04] }} transitionProps={{ duration: 60, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }} />
-            <BackgroundBlob className="w-[900px] h-[900px] bg-slate-700/60 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" animateProps={{ scale: [1, 1.1, 1], opacity: [0.02, 0.05, 0.02] }} transitionProps={{ duration: 70, repeat: Infinity, repeatType: "mirror", ease: "linear" }} />
+            {/* BackgroundBlob-Aufrufe wurden hier entfernt */}
 
             <StatusBar isDbConnected={isDbConnected} lastDataUpdateTimestamp={lastDataUpdateTimestamp} />
 
@@ -346,19 +311,19 @@ export default function ContaintTable() {
                                 </div>
                             ) : !isLoadingData && filteredData.length > 0 && !error ? (
                                 <>
-                                 {console.log("%cRENDERING filteredData (IDs):", "color:lime; font-weight:bold;", JSON.parse(JSON.stringify(filteredData.map(item => item.id))))}
-                                <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
-                                    {filteredData.map((item) => (
-                                        <DataItemCard
-                                            key={`${currentView}-${item.id}`}
-                                            item={item} currentView={currentView}
-                                            copiedCellKey={copiedCellKey} onCopyToClipboard={handleCopyToClipboard}
-                                            onStatusChange={(itemId, newStatus) => handleStatusChangeForCard(itemId, newStatus as AnyItemStatus, currentView)}
-                                            cardAccentsEnabled={cardAccentsEnabled}
-                                            onItemUpdate={handleItemUpdate}
-                                        />
-                                    ))}
-                                </motion.div>
+                                    {console.log("%cRENDERING filteredData (IDs):", "color:lime; font-weight:bold;", JSON.parse(JSON.stringify(filteredData.map(item => item.id))))}
+                                    <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
+                                        {filteredData.map((item) => (
+                                            <DataItemCard
+                                                key={`${currentView}-${item.id}`}
+                                                item={item} currentView={currentView}
+                                                copiedCellKey={copiedCellKey} onCopyToClipboard={handleCopyToClipboard}
+                                                onStatusChange={(itemId, newStatus) => handleStatusChangeForCard(itemId, newStatus as AnyItemStatus, currentView)}
+                                                cardAccentsEnabled={cardAccentsEnabled}
+                                                onItemUpdate={handleItemUpdate}
+                                            />
+                                        ))}
+                                    </motion.div>
                                 </>
                             ) : null}
             </motion.div>
