@@ -4,7 +4,7 @@
 // MotionProps und MotionTransition könnten entfernt werden, wenn sie nur für BackgroundBlob benötigt wurden.
 // Ich lasse sie vorerst drin, falls andere motion-Komponenten sie implizit nutzen könnten,
 // aber wenn BackgroundBlob der einzige Nutzer war, können sie weg.
-import { motion, MotionProps, Transition as MotionTransition } from "framer-motion";
+import { motion } from "framer-motion";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useAuth } from '../contexts/AuthContext';
 
@@ -81,7 +81,8 @@ export default function ContaintTable() {
         } finally {
             if (!isBackgroundUpdate) setIsLoadingData(false);
         }
-    }, [token, logout, setIsLoadingData, setData, setError, setIsDbConnected, setLastDataUpdateTimestamp, currentView]); // currentView zur useCallback Dependency hinzugefügt, da es in fetchData indirekt genutzt wird (VIEW_TITLES[view])
+    // KORREKTUR HIER: `currentView` aus dem Dependency Array entfernt
+    }, [token, logout, setIsLoadingData, setData, setError, setIsDbConnected, setLastDataUpdateTimestamp]);
 
     useEffect(() => {
         if (isAuthenticated && token) {
@@ -262,6 +263,7 @@ export default function ContaintTable() {
         setAppliedEndDate(endDateInput || null);
         console.log(`Datumsfilter angewendet: Start=${startDateInput || 'N/A'}, Ende=${endDateInput || 'N/A'}`);
     }, [startDateInput, endDateInput, setAppliedStartDate, setAppliedEndDate]);
+
     const handleClearDateFilter = useCallback(() => {
         setStartDateInput("");
         setEndDateInput("");
@@ -269,6 +271,7 @@ export default function ContaintTable() {
         setAppliedEndDate(null);
         console.log("Datumsfilter zurückgesetzt.");
     }, [setStartDateInput, setEndDateInput, setAppliedStartDate, setAppliedEndDate]);
+
     const isDateFilterApplied = useMemo(() => !!(appliedStartDate || appliedEndDate), [appliedStartDate, appliedEndDate]);
 
     if (isLoadingAuth) { return <div className="text-center py-10">Authentifizierung wird geladen...</div> }

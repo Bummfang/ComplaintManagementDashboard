@@ -1,15 +1,12 @@
-// app/components/DataItemCard/CardFront.tsx
 "use client";
 
 import { motion } from 'framer-motion';
 import { ClockIcon, UserIcon } from 'lucide-react';
-import { CardSpecificDataItem, ViewType, BeschwerdeItem } from '@/app/types'; // Pfade anpassen
+// Stelle sicher, dass InternalCardData hier importiert wird, falls es nicht global ist:
+import { CardSpecificDataItem, ViewType, BeschwerdeItem, InternalCardData } from '@/app/types'; // Pfade anpassen, InternalCardData hinzugefügt (angenommen es kommt von hier)
 import { formatDateTime, formatDate, formatTime } from '@/app/utils'; // Pfade anpassen
 import DataField from '@/app/components/ui/DataField'; // Pfad anpassen
-// Entferne den direkten Import von getStatusTextColorClass
-// import { getStatusTextColorClass } from './hooks/useStatusLogic'; 
 
-// Framer Motion Varianten für das Einblenden der Inhalte der Karte
 const contentItemVariants = {
     hidden: { opacity: 0, x: -20, scale: 0.95 },
     visible: { opacity: 1, x: 0, scale: 1, transition: { type: "spring", stiffness: 180, damping: 20 } }
@@ -24,8 +21,8 @@ interface CardFrontProps {
     abgeschlossenText: string | null;
     abgeschlossenValueClassName: string;
     isStatusRelevantView: boolean;
-    statusDisplayClass: string; // NEUE Prop für die Status-Textfarbe
-    statusToDisplay: string;    // NEUE Prop für den anzuzeigenden Status-Text
+    statusDisplayClass: string;
+    statusToDisplay: string;
 }
 
 const CardFront: React.FC<CardFrontProps> = ({
@@ -37,13 +34,14 @@ const CardFront: React.FC<CardFrontProps> = ({
     abgeschlossenText,
     abgeschlossenValueClassName,
     isStatusRelevantView,
-    statusDisplayClass, // Verwende die übergebene Klasse
-    statusToDisplay,    // Verwende den übergebenen Status-Text
+    statusDisplayClass,
+    statusToDisplay,
 }) => {
     const cardKey = `card-${currentView}-${item.id}`;
 
     // Helfer, um zu prüfen, ob das Item ein BeschwerdeItem ist (für typsicheren Zugriff)
-    const isBeschwerde = (dataItem: CardSpecificDataItem): dataItem is BeschwerdeItem & { internal_details?: any, action_required?: any } => {
+    // KORREKTUR HIER: internal_details Typ an 'InternalCardData | undefined' angepasst
+    const isBeschwerde = (dataItem: CardSpecificDataItem): dataItem is BeschwerdeItem & { internal_details?: InternalCardData | undefined, action_required?: "relock_ui" | undefined } => {
         return currentView === 'beschwerden' && 'beschwerdegrund' in dataItem;
     };
     const beschwerdeItem = isBeschwerde(item) ? item : null;
@@ -90,7 +88,7 @@ const CardFront: React.FC<CardFrontProps> = ({
                 />
                 
                 {item.bearbeiter_id !== null && item.bearbeiter_id !== undefined && (
-                     <DataField
+                    <DataField
                         label="Bearbeiter"
                         value={String(item.bearbeiter_name || `ID: ${item.bearbeiter_id}`)}
                         fieldKey={`${cardKey}-bearbeiter`}
@@ -101,14 +99,14 @@ const CardFront: React.FC<CardFrontProps> = ({
                 {isStatusRelevantView && (
                     <DataField
                         label="Status"
-                        value={statusToDisplay} // Verwende die Prop
+                        value={statusToDisplay}
                         onCopy={onCopyToClipboard}
                         isCopied={copiedCellKey === `${cardKey}-status`}
                         fieldKey={`${cardKey}-status`}
-                        valueClassName={statusDisplayClass} // Verwende die Prop
+                        valueClassName={statusDisplayClass}
                     />
                 )}
-                 {isStatusRelevantView && abgeschlossenText !== null && (
+                {isStatusRelevantView && abgeschlossenText !== null && (
                     <DataField
                         label="Bearbeitungsende"
                         value={abgeschlossenText}

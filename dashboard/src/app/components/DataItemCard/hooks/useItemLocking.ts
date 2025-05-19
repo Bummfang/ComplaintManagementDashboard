@@ -1,4 +1,3 @@
-// app/components/DataItemCard/hooks/useItemLocking.ts
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
@@ -39,10 +38,11 @@ export function useItemLocking({
             if (item.bearbeiter_id && user && item.bearbeiter_id === user.userId) {
                 setIsLocked(false);
             } else {
-                 setIsLocked(initialLockedState);
+                setIsLocked(initialLockedState);
             }
         }
-    }, [item.id, item.bearbeiter_id, item.status, item.action_required, user?.userId, initialLockedState]);
+    // KORREKTUR HIER: `user?.userId` zu `user` im Dependency Array geändert
+    }, [item.id, item.bearbeiter_id, item.status, item.action_required, user, initialLockedState]);
 
 
     const triggerShakeLock = useCallback(() => {

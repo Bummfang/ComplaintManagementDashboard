@@ -6,8 +6,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     CardSpecificDataItem,
     ViewType,
-    AnyItemStatus as StrictStatus, 
-    InternalCardData
+    AnyItemStatus as StrictStatus
 } from '@/app/types'; 
 import { useAuth } from '@/app/contexts/AuthContext'; 
 

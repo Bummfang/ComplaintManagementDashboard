@@ -4,7 +4,7 @@
 import { motion } from 'framer-motion';
 import { Settings2Icon, Lock, Unlock } from 'lucide-react';
 import React, { useState } from 'react';
-import { ViewType, AnyItemStatus as StrictStatus } from '@/app/types'; // Pfad anpassen
+import { AnyItemStatus as StrictStatus } from '@/app/types'; // Pfad anpassen
 
 const contentItemVariants = {
     hidden: { opacity: 0, y: 10 },
@@ -43,7 +43,7 @@ const CardActions: React.FC<CardActionsProps> = ({
     const [isLockIconHovered, setIsLockIconHovered] = useState(false); // Für reguläres Hover auf dem Schloss
 
     const disableResolveButtons = isLocked || (isClarificationMissingInSavedDetails && status === "In Bearbeitung");
-    const isAnyActionButtonDisabledByLock = isLocked && status !== undefined; // Prüft, ob irgendein Haupt-Aktionsbutton wegen Lock deaktiviert wäre
+   // const isAnyActionButtonDisabledByLock = isLocked && status !== undefined; // Prü ft, ob irgendein Haupt-Aktionsbutton wegen Lock deaktiviert wäre
 
     const handleMainActionButtonHover = (isHovering: boolean) => {
         // Animation für Settings-Icon, wenn Klärung fehlt
