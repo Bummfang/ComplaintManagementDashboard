@@ -1,96 +1,118 @@
-// app/types.ts
+// app/components/DataItemCard/hooks/useStatusLogic.ts
+"use client";
 
-// Status-Typen für die einzelnen Ansichten (bleiben spezifisch)
-export type AllowedBeschwerdeStatus = "Offen" | "In Bearbeitung" | "Gelöst" | "Abgelehnt";
-export type AllowedLobStatus = "Offen" | "In Bearbeitung" | "Gelöst" | "Abgelehnt";
-export type AllowedAnregungStatus = "Offen" | "In Bearbeitung" | "Gelöst" | "Abgelehnt";
+import { useMemo } from 'react';
+// Importiere AnyItemStatus aus deinen Typen. Wir nennen es hier intern StrictStatus,
+// da es kein null/undefined beinhaltet. item.status kann aber undefined sein.
+import { CardSpecificDataItem, ViewType, AnyItemStatus as StrictStatus } from '@/app/types'; 
+import { formatDateTime } from '@/app/utils'; // Stelle sicher, dass der Pfad zu deinen Utils korrekt ist
 
-// Basis-Interface für Felder, die null aus der DB sein könnten
-interface NullableBaseFields {
-    name: string | null;
-    email: string | null;
-    tel?: string | null; // Optional und kann null sein
-    betreff: string | null;
-    beschreibung: string | null;
-}
-
-// Item-Typen, die NullableBaseFields erweitern
-export interface BeschwerdeItem extends NullableBaseFields {
-    id: number;
-    beschwerdegrund: string | null; // Kann auch null sein
-    datum: string; // Annahme: Datum ist immer vorhanden
-    uhrzeit: string; // Annahme: Uhrzeit ist immer vorhanden
-    haltestelle?: string | null; // Optional und kann null sein
-    linie?: string | null; // Optional und kann null sein
-    erstelltam: string; // Annahme: Erstelltam ist immer vorhanden
-    status?: AllowedBeschwerdeStatus; // Status ist optional
-    abgeschlossenam?: string | null;
-    bearbeiter_id?: number | null;
-    bearbeiter_name?: string | null;
-}
-
-export interface LobItem extends NullableBaseFields {
-    id: number;
-    erstelltam: string;
-    status?: AllowedLobStatus;
-    abgeschlossenam?: string | null;
-    bearbeiter_id?: number | null;
-    bearbeiter_name?: string | null;
-}
-
-export interface AnregungItem extends NullableBaseFields {
-    id: number;
-    erstelltam: string;
-    status?: AllowedAnregungStatus;
-    abgeschlossenam?: string | null;
-    bearbeiter_id?: number | null;
-    bearbeiter_name?: string | null;
-}
-
-// DataItem ist eine Union aller möglichen Item-Typen
-export type DataItem = BeschwerdeItem | LobItem | AnregungItem;
-
-export type ViewType = "beschwerden" | "lob" | "anregungen" | "statistik" | "admin";
-
-// StatusFilterMode für die Filter-Komponente
-export type StatusFilterMode = "alle" | AllowedBeschwerdeStatus; // Oder eine Union aller Allowed Status, falls übergreifend gefiltert wird
+// Hilfstyp für die Parameter der Utility-Funktionen, um null/undefined explizit zu erlauben,
+// da effectiveStatus auch undefined sein kann.
+type UtilityStatusParam = StrictStatus | null | undefined;
 
 /**
- * Repräsentiert alle möglichen Statuswerte, die ein Item haben kann,
- * inklusive der Möglichkeit, dass der Status nicht gesetzt (null oder undefined) ist.
- * Dies ist wichtig für item.status in den Datenobjekten.
+ * Utility function to get the text color class based on item status.
+ * @param status The status of the item.
+ * @returns Tailwind CSS class string for text color.
  */
-export type AnyItemStatus = AllowedBeschwerdeStatus | AllowedLobStatus | AllowedAnregungStatus | null | undefined;
-
-// --- Definitionen für DataItemCard ---
-export interface InternalCardData {
-    generalNotes: string;
-    clarificationType: 'written' | 'phone' | null;
-    teamLeadInformed: boolean;
-    departmentHeadInformed: boolean;
-    forwardedToSubcontractor: boolean;
-    forwardedToInsurance: boolean;
-    moneyRefunded: boolean;
-    refundAmount: string;
-}
-
-export const defaultInternalDetails: InternalCardData = {
-    generalNotes: "",
-    clarificationType: null,
-    teamLeadInformed: false,
-    departmentHeadInformed: false,
-    forwardedToSubcontractor: false,
-    forwardedToInsurance: false,
-    moneyRefunded: false,
-    refundAmount: "",
+export const getStatusTextColorClass = (status?: UtilityStatusParam): string => {
+    switch (status) {
+        case "Offen": return "text-sky-400 font-medium";
+        case "In Bearbeitung": return "text-amber-400 font-medium";
+        case "Gelöst": return "text-green-400 font-medium";
+        case "Abgelehnt": return "text-red-400 font-medium";
+        default: return "text-slate-200"; // Default for null, undefined, or unknown status
+    }
 };
 
 /**
- * Der spezifische Typ für das `item`-Prop der DataItemCard.
- * Erbt die (jetzt präziseren) Felder von DataItem und fügt
- * `internal_details` und `action_required` hinzu.
+ * Utility function to get background accent classes for the card based on item status.
+ * @param status The status of the item.
+ * @returns Tailwind CSS class string for background.
  */
-export type CardSpecificDataItem = DataItem & {
-    internal_details?: InternalCardData;
-    action_required?: "relock_ui"; // Wird von ContaintTable übergeben
+export const getCardBackgroundAccentClasses = (status?: UtilityStatusParam): string => {
+    const baseFallback = "bg-slate-800/60"; // Default background
+    switch (status) {
+        case "Offen": return "bg-sky-900/[.4]";
+        case "In Bearbeitung": return "bg-amber-900/[.3]";
+        case "Gelöst": return "bg-green-900/[.4]";
+        case "Abgelehnt": return "bg-red-900/[.3]";
+        default: return baseFallback;
+    }
 };
+
+interface UseStatusLogicProps {
+    item: CardSpecificDataItem;
+    currentView: ViewType;
+}
+
+// Stelle sicher, dass diese Funktion korrekt exportiert wird.
+export function useStatusLogic({ item, currentView }: UseStatusLogicProps) {
+    const isStatusRelevantView = useMemo(() => {
+        return currentView === 'beschwerden' || currentView === 'lob' || currentView === 'anregungen';
+    }, [currentView]);
+
+    // effectiveStatus kann einer der definierten Status (StrictStatus) sein oder undefined.
+    const effectiveStatus: StrictStatus | undefined = useMemo(() => {
+        if (!isStatusRelevantView) {
+            return undefined; 
+        }
+
+        // item.status ist laut deiner Typdefinition (z.B. status?: AllowedBeschwerdeStatus)
+        // vom Typ StrictStatus | undefined.
+        const currentItemStatus = item.status; 
+
+        if (currentItemStatus && ["Offen", "In Bearbeitung", "Gelöst", "Abgelehnt"].includes(currentItemStatus as string)) {
+            // Hier wissen wir, dass currentItemStatus ein gültiger String aus StrictStatus ist.
+            return currentItemStatus as StrictStatus;
+        }
+        
+        // Fallback für relevante Views, wenn Status nicht gesetzt/gültig
+        return "Offen"; 
+    }, [item.status, isStatusRelevantView]);
+
+    const statusTextColorClass = useMemo(() => {
+        return getStatusTextColorClass(effectiveStatus);
+    }, [effectiveStatus]);
+
+    const cardBackgroundAccentClass = useMemo(() => {
+        // effectiveStatus ist hier entweder StrictStatus oder undefined.
+        // Wenn isStatusRelevantView true ist, ist effectiveStatus immer ein StrictStatus (z.B. "Offen").
+        return isStatusRelevantView && effectiveStatus
+            ? getCardBackgroundAccentClasses(effectiveStatus)
+            : getCardBackgroundAccentClasses(undefined); // Fallback für nicht-relevante Views
+    }, [effectiveStatus, isStatusRelevantView]);
+
+    const { abgeschlossenText, abgeschlossenValueClassName } = useMemo(() => {
+        let text: string | null = null;
+        let className = "text-slate-500 italic"; 
+
+        if (isStatusRelevantView) {
+            // Wenn isStatusRelevantView true ist, ist effectiveStatus hier immer ein StrictStatus string.
+            if (item.abgeschlossenam) {
+                text = formatDateTime(item.abgeschlossenam);
+                className = "text-green-400";
+            } else if (effectiveStatus === "Offen") {
+                text = "Ausstehend";
+                className = "text-slate-500 italic";
+            } else if (effectiveStatus === "In Bearbeitung") {
+                text = "In Bearbeitung";
+                className = "text-amber-400 italic";
+            } else if (effectiveStatus === "Gelöst" || effectiveStatus === "Abgelehnt") {
+                text = `Abgeschlossen (Datum n.a.)`;
+                className = getStatusTextColorClass(effectiveStatus); // effectiveStatus ist hier sicher ein gültiger String
+            }
+        }
+        return { abgeschlossenText: text, abgeschlossenValueClassName: className };
+    }, [item.abgeschlossenam, effectiveStatus, isStatusRelevantView]);
+
+    return {
+        isStatusRelevantView,
+        effectiveStatus, // Typ ist StrictStatus | undefined
+        statusTextColorClass,
+        cardBackgroundAccentClass,
+        abgeschlossenText,
+        abgeschlossenValueClassName,
+    };
+}

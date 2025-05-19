@@ -3,25 +3,17 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    MessageSquareTextIcon, ArrowLeftIcon, SaveIcon, XCircleIcon, AlertCircleIcon,
-    StickyNoteIcon, ListChecksIcon, CreditCardIcon, MailIcon, PhoneIcon
+    ArrowLeftIcon, SaveIcon, XCircleIcon, AlertCircleIcon,
+    StickyNoteIcon, ListChecksIcon, CreditCardIcon, MailIcon, PhoneIcon, Edit3Icon, CheckSquare, Square
 } from 'lucide-react';
 import React from 'react';
 import { InternalCardData } from '@/app/types'; // Pfad anpassen
 import FormSection from '@/app/components/ui/FormSection'; // Pfad anpassen
 
-// Framer Motion Varianten (können auch global oder in einer varianten.ts Datei definiert werden)
+// Framer Motion Varianten
 const contentItemVariants = {
     hidden: { opacity: 0, x: -20, scale: 0.95 },
-    visible: { opacity: 1, x: 0, scale: 1, transition: { type: "spring", stiffness: 180, damping: 20 } }
-};
-
-// Diese Variante ist spezifisch für den Flip-Effekt und sollte in der Haupt-DataItemCard verwendet werden,
-// aber wir definieren sie hier, falls die CardBack-Komponente sie direkt für ihre eigene Ein-/Ausblendung nutzen möchte.
-const flipContentVariants = {
-    initial: { opacity: 0, rotateY: 90 }, // Startet von der Seite gedreht
-    animate: { opacity: 1, rotateY: 0, transition: { duration: 0.4, ease: "easeInOut" } },
-    exit: { opacity: 0, rotateY: -90, transition: { duration: 0.3, ease: "easeInOut" } }, // Dreht zur anderen Seite weg
+    visible: { opacity: 1, x: 0, scale: 1, transition: { type: "spring", stiffness: 180, damping: 20, delay: 0.05 } }
 };
 
 interface CardBackProps {
@@ -30,8 +22,8 @@ interface CardBackProps {
     onSave: () => void;
     onCancel: () => void;
     validationError: string | null;
-    cardKey: string; // Für eindeutige IDs der Formularelemente
-    isSubmitting?: boolean; // Optional, um Buttons während des Speicherns zu deaktivieren
+    cardKey: string;
+    isSubmitting?: boolean;
 }
 
 const CardBack: React.FC<CardBackProps> = ({
@@ -43,17 +35,39 @@ const CardBack: React.FC<CardBackProps> = ({
     cardKey,
     isSubmitting = false,
 }) => {
-    // Basis-CSS-Klassen für Formularelemente
-    const formElementBaseClass = "w-full p-2.5 text-sm rounded-md transition-colors duration-150 shadow-sm";
-    const formInputTextClass = `${formElementBaseClass} bg-slate-900/60 border border-slate-700 text-slate-100 placeholder-slate-500 focus:bg-slate-900/80 focus:border-sky-500 focus:ring-1 focus:ring-sky-500`;
-    const formCheckboxRadioBaseClass = "h-4 w-4 rounded cursor-pointer transition-all duration-150 shadow";
-    const formCheckboxRadioFocusClass = "focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 focus:ring-offset-slate-800";
-    const formCheckboxClass = `${formCheckboxRadioBaseClass} bg-slate-700 border-slate-600 text-sky-500 ${formCheckboxRadioFocusClass}`;
+    const formElementBaseClass = "w-full text-sm rounded-lg transition-all duration-200 ease-in-out shadow-sm disabled:opacity-60 disabled:cursor-not-allowed";
+    const formInputTextClass = `${formElementBaseClass} bg-slate-700/60 border border-slate-600/80 text-slate-100 placeholder-slate-400/90 focus:bg-slate-700/80 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 py-2.5 px-3.5`;
+    
+    const CustomCheckbox = ({ id, checked, onChange, label, disabled }: { id: string, checked: boolean, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, label: string, disabled?: boolean }) => (
+        <label 
+            htmlFor={id} 
+            className={`group flex items-center text-sm text-slate-200 hover:text-sky-200 transition-colors cursor-pointer p-3 rounded-lg hover:bg-slate-700/50 border border-transparent hover:border-slate-600/70 
+                        ${disabled ? 'opacity-60 cursor-not-allowed hover:bg-transparent hover:border-transparent' : ''}`}
+        >
+            <div className="relative flex items-center justify-center w-5 h-5">
+                <input
+                    id={id} type="checkbox" checked={checked} onChange={onChange}
+                    disabled={disabled} className="sr-only peer" 
+                />
+                <Square 
+                    size={20} 
+                    className={`absolute text-slate-500 group-hover:text-sky-500 transition-all duration-150 ${checked ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`} 
+                    strokeWidth={2.5}
+                />
+                <CheckSquare 
+                    size={20} 
+                    className={`absolute text-sky-400 transition-all duration-150 ${checked ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} 
+                    strokeWidth={2.5}
+                />
+            </div>
+            <span className="ml-3 select-none">{label}</span>
+        </label>
+    );
 
     const clarificationTypes = [
         { value: 'written', label: 'Schriftlich', icon: MailIcon },
         { value: 'phone', label: 'Telefonisch', icon: PhoneIcon }
-    ] as const; // 'as const' für strengere Typisierung von type.value
+    ] as const;
 
     const optionalInternalNotes = [
         { key: 'teamLeadInformed', label: 'Teamleiter informiert' },
@@ -62,71 +76,71 @@ const CardBack: React.FC<CardBackProps> = ({
         { key: 'forwardedToInsurance', label: 'Weiterleitung an Versicherungsabteilung' },
     ];
 
-    return (
-        // Die äußere motion.div für die Flip-Animation wird in DataItemCard sein.
-        // Diese motion.div hier ist für den Inhalt der Rückseite selbst.
-        <motion.div 
-            key={`${cardKey}-back-content`} // Eindeutiger Key für AnimatePresence
-            variants={flipContentVariants} // Oder eine andere passende Variante für den Inhalt
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className="p-4 md:p-5 flex flex-col flex-grow justify-between h-full" // h-full für Layout
-        >
-            {/* Scrollbarer Bereich für Formularinhalte */}
-            <div className="overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600/70 scrollbar-track-slate-700/30 pr-1 pb-4 flex-grow">
-                <motion.div variants={contentItemVariants} className="flex justify-between items-center pb-3 border-b border-slate-700/80 mb-5 sticky top-0 bg-slate-800/80 backdrop-blur-sm z-10 pt-3 -mt-4 -mx-4 md:-mx-5 px-4 md:px-5">
-                    <h4 className="text-lg font-semibold text-slate-100 flex items-center">
-                        <MessageSquareTextIcon size={22} className="mr-2.5 text-sky-400 flex-shrink-0" /> Interne Bearbeitung
-                    </h4>
-                    <motion.button
-                        onClick={onCancel}
-                        disabled={isSubmitting}
-                        className="p-1.5 rounded-full text-slate-400 hover:text-sky-300 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 disabled:opacity-50"
-                        title="Abbrechen & Zurück"
-                        whileHover={{ scale: isSubmitting ? 1 : 1.1 }}
-                        whileTap={{ scale: isSubmitting ? 1 : 0.9 }}
-                    >
-                        <ArrowLeftIcon size={18} />
-                    </motion.button>
-                </motion.div>
+    // Button Styling Klassen
+    const baseButtonClass = "px-6 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 ease-out flex items-center justify-center shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800/90 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-md disabled:hover:y-0 disabled:hover:scale-100";
+    const primaryButtonClass = `${baseButtonClass} bg-sky-600 hover:bg-sky-500 text-white focus-visible:ring-sky-400 shadow-sky-500/30 hover:shadow-sky-500/40`;
+    const secondaryButtonClass = `${baseButtonClass} bg-slate-600 hover:bg-slate-500 text-slate-100 focus-visible:ring-slate-400 shadow-slate-500/20 hover:shadow-slate-500/30`;
 
-                <FormSection title="Allgemeine Notizen" icon={StickyNoteIcon} htmlFor={`${cardKey}-generalNotes`}>
+
+    return (
+        <motion.div 
+            key={`${cardKey}-back-content`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: {delay: 0.1, duration: 0.3} }}
+            exit={{ opacity: 0, transition: {duration: 0.2} }}
+            className="p-4 md:p-5 flex flex-col flex-grow justify-between h-full overflow-x-hidden" 
+        >
+            <motion.div 
+                variants={contentItemVariants} 
+                className="flex justify-between items-center pb-4 border-b border-slate-600/70 sticky top-0 bg-slate-800/80 backdrop-blur-md z-20 pt-3 -mx-4 md:-mx-5 px-4 md:px-5 shadow-lg shadow-slate-900/30"
+            >
+                <h4 className="text-lg font-semibold text-sky-400 flex items-center">
+                    <Edit3Icon size={20} className="mr-2.5 flex-shrink-0" /> Interne Bearbeitung
+                </h4>
+                <motion.button
+                    onClick={onCancel} disabled={isSubmitting}
+                    className="p-1.5 rounded-full text-slate-400 hover:text-sky-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 disabled:opacity-50"
+                    title="Abbrechen & Zurück"
+                    whileHover={{ scale: isSubmitting ? 1 : 1.15, rotate: isSubmitting ? 0 : -5 }}
+                    whileTap={{ scale: isSubmitting ? 1 : 0.9 }}
+                >
+                    <ArrowLeftIcon size={20} />
+                </motion.button>
+            </motion.div>
+
+            <div className="overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-slate-500/70 scrollbar-track-slate-700/40 pr-1.5 -mr-1.5 pb-6 flex-grow pt-6">
+                <FormSection title="Allgemeine Notizen" icon={StickyNoteIcon} htmlFor={`${cardKey}-generalNotes`} className="mb-6">
                     <textarea
-                        id={`${cardKey}-generalNotes`}
-                        value={internalDetails.generalNotes}
+                        id={`${cardKey}-generalNotes`} value={internalDetails.generalNotes}
                         onChange={e => onDetailChange('generalNotes', e.target.value)}
-                        rows={4}
-                        className={`${formInputTextClass} min-h-[80px]`}
+                        rows={4} className={`${formInputTextClass} min-h-[100px]`}
                         placeholder="Interne Vermerke, Beobachtungen, nächste Schritte..."
                         disabled={isSubmitting}
                     />
                 </FormSection>
 
-                <FormSection title="Klärungsart" required icon={AlertCircleIcon}>
-                    <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+                <FormSection title="Klärungsart" required icon={AlertCircleIcon} className="mb-6">
+                    <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
                         {clarificationTypes.map(type => {
                             const IconComponent = type.icon;
+                            const isSelected = internalDetails.clarificationType === type.value;
                             return (
                                 <label
                                     key={type.value}
-                                    className={`flex-1 flex items-center justify-center text-sm transition-all duration-150 cursor-pointer p-3 rounded-lg border-2 shadow-sm hover:shadow-md
-                                        ${internalDetails.clarificationType === type.value
-                                            ? 'bg-sky-600/40 border-sky-500 text-sky-100 ring-1 ring-sky-500'
-                                            : 'bg-slate-700/50 border-slate-600 hover:bg-slate-700/70 hover:border-slate-500 text-slate-300 hover:text-slate-100'
+                                    className={`flex-1 flex items-center justify-center text-sm font-medium transition-all duration-200 cursor-pointer p-4 rounded-xl border-2 shadow-lg hover:shadow-sky-500/20
+                                        ${isSelected
+                                            ? 'bg-sky-500/90 border-sky-400 text-white ring-2 ring-sky-300 ring-offset-2 ring-offset-slate-800'
+                                            : `bg-slate-700/70 border-slate-600 hover:border-sky-500 text-slate-200 hover:text-white ${isSubmitting ? '' : 'hover:bg-slate-700/90'}`
                                         }
                                         ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}
                                     `}
                                 >
                                     <input
-                                        type="radio"
-                                        name={`${cardKey}-clarificationType`}
-                                        checked={internalDetails.clarificationType === type.value}
+                                        type="radio" name={`${cardKey}-clarificationType`} checked={isSelected}
                                         onChange={() => onDetailChange('clarificationType', type.value)}
-                                        className="sr-only" // Screenreader-only
-                                        disabled={isSubmitting}
+                                        className="sr-only" disabled={isSubmitting}
                                     />
-                                    <IconComponent size={16} className={`mr-2 flex-shrink-0 ${internalDetails.clarificationType === type.value ? 'text-sky-300' : 'text-slate-400'}`} />
+                                    <IconComponent size={18} className={`mr-2.5 flex-shrink-0 ${isSelected ? 'text-white' : 'text-sky-300'}`} />
                                     {type.label}
                                 </label>
                             );
@@ -134,58 +148,44 @@ const CardBack: React.FC<CardBackProps> = ({
                     </div>
                 </FormSection>
 
-                <FormSection title="Optionale interne Vermerke" icon={ListChecksIcon}>
-                    <div className="space-y-1.5">
+                <FormSection title="Optionale interne Vermerke" icon={ListChecksIcon} className="mb-6">
+                    <div className="space-y-2">
                         {optionalInternalNotes.map(opt => (
-                            <label
-                                key={opt.key}
-                                className={`flex items-center text-sm text-slate-200 hover:text-sky-300 transition-colors cursor-pointer p-2.5 rounded-md hover:bg-slate-700/50 border border-transparent hover:border-slate-600 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={!!internalDetails[opt.key as keyof InternalCardData]}
-                                    onChange={e => onDetailChange(opt.key as keyof InternalCardData, e.target.checked)}
-                                    className={`mr-2.5 ${formCheckboxClass} ${isSubmitting ? 'cursor-not-allowed' : ''}`}
-                                    disabled={isSubmitting}
-                                />
-                                {opt.label}
-                            </label>
+                            <CustomCheckbox
+                                key={opt.key} id={`${cardKey}-${opt.key}`}
+                                checked={!!internalDetails[opt.key as keyof InternalCardData]}
+                                onChange={e => onDetailChange(opt.key as keyof InternalCardData, e.target.checked)}
+                                label={opt.label} disabled={isSubmitting}
+                            />
                         ))}
                     </div>
                 </FormSection>
                 
-                <FormSection icon={CreditCardIcon}> {/* Kein Titel, nur Icon als visueller Hinweis */}
-                    <label className={`flex items-center text-sm text-slate-200 hover:text-sky-300 transition-colors cursor-pointer p-2.5 rounded-md hover:bg-slate-700/50 border border-transparent hover:border-slate-600 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}>
-                        <input
-                            type="checkbox"
-                            checked={internalDetails.moneyRefunded}
-                            onChange={e => onDetailChange('moneyRefunded', e.target.checked)}
-                            className={`mr-2.5 ${formCheckboxClass} ${isSubmitting ? 'cursor-not-allowed' : ''}`}
-                            disabled={isSubmitting}
-                        />
-                        Geld erstattet
-                    </label>
+                <FormSection icon={CreditCardIcon} className="mb-4">
+                     <CustomCheckbox
+                        id={`${cardKey}-moneyRefunded`}
+                        checked={internalDetails.moneyRefunded}
+                        onChange={e => onDetailChange('moneyRefunded', e.target.checked)}
+                        label="Geld erstattet" disabled={isSubmitting}
+                    />
                     <AnimatePresence>
                         {internalDetails.moneyRefunded && (
                             <motion.div
                                 initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                                animate={{ opacity: 1, height: 'auto', marginTop: '0.75rem' }} // mt-3
+                                animate={{ opacity: 1, height: 'auto', marginTop: '0.75rem' }}
                                 exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom:0 }}
-                                className="pl-7" // Einzug für den Betrag
+                                className="pl-9"
                             >
                                 <label htmlFor={`${cardKey}-refundAmount`} className="block text-xs font-medium text-slate-300 mb-1.5">
                                     Erstatteter Betrag (€) <span className="text-red-400">*</span>:
                                 </label>
                                 <input
-                                    type="number"
-                                    id={`${cardKey}-refundAmount`}
+                                    type="number" id={`${cardKey}-refundAmount`}
                                     value={internalDetails.refundAmount}
                                     onChange={e => onDetailChange('refundAmount', e.target.value)}
                                     placeholder="z.B. 10.50"
-                                    className={`${formInputTextClass} text-sm`}
-                                    min="0.01"
-                                    step="0.01"
-                                    disabled={isSubmitting}
+                                    className={`${formInputTextClass} text-sm py-2 px-3`}
+                                    min="0.01" step="0.01" disabled={isSubmitting}
                                 />
                             </motion.div>
                         )}
@@ -193,41 +193,37 @@ const CardBack: React.FC<CardBackProps> = ({
                 </FormSection>
             </div>
 
-            {/* Buttons und Validierungsfehler am unteren Rand (außerhalb des scrollbaren Bereichs) */}
-            <div className="mt-auto pt-4 border-t border-slate-700/60">
+            <div className="mt-auto pt-5 border-t border-slate-600/70">
                 {validationError && (
                     <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mb-3 p-2.5 text-xs text-red-200 bg-red-800/50 rounded-md flex items-center shadow"
+                        initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                        className="mb-4 p-3 text-sm text-red-100 bg-red-600/60 border border-red-500/80 rounded-lg flex items-center shadow-lg"
                     >
-                        <AlertCircleIcon size={16} className="mr-2 flex-shrink-0" />
+                        <AlertCircleIcon size={20} className="mr-2.5 flex-shrink-0" />
                         {validationError}
                     </motion.div>
                 )}
                 <motion.div
-                    variants={contentItemVariants} // Kann auch eine eigene Variante haben
-                    className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3"
+                    variants={contentItemVariants} // Behält die Einblendanimation für den Button-Container
+                    className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4"
                 >
                     <motion.button
-                        onClick={onCancel}
-                        disabled={isSubmitting}
-                        className="px-4 py-2 text-xs font-semibold rounded-lg text-slate-200 bg-slate-600 hover:bg-slate-500 transition-colors flex items-center justify-center shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                        whileHover={{ scale: isSubmitting ? 1 : 1.03, y: isSubmitting ? 0 : -1 }}
-                        whileTap={{ scale: isSubmitting ? 1 : 0.97 }}
+                        onClick={onCancel} disabled={isSubmitting}
+                        className={secondaryButtonClass} // NEUE Klasse
+                        whileHover={{ scale: isSubmitting ? 1 : 1.05, y: isSubmitting ? 0 : -3, boxShadow: "0px 8px 20px -3px rgba(100, 116, 139, 0.35)"}} // Angepasster Hover
+                        whileTap={{ scale: isSubmitting ? 1 : 0.98, y: 0 }}
                     >
-                        <XCircleIcon size={16} className="mr-1.5" /> Abbrechen
+                        <XCircleIcon size={18} className="mr-2 opacity-90" /> Abbrechen
                     </motion.button>
                     <motion.button
-                        onClick={onSave}
-                        disabled={isSubmitting}
-                        className="px-4 py-2 text-xs font-semibold rounded-lg text-white bg-sky-600 hover:bg-sky-500 transition-colors flex items-center justify-center shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                        whileHover={{ scale: isSubmitting ? 1 : 1.03, y: isSubmitting ? 0 : -1 }}
-                        whileTap={{ scale: isSubmitting ? 1 : 0.97 }}
+                        onClick={onSave} disabled={isSubmitting}
+                        className={primaryButtonClass} // NEUE Klasse
+                        whileHover={{ scale: isSubmitting ? 1 : 1.05, y: isSubmitting ? 0 : -3, boxShadow: "0px 8px 20px -3px rgba(14, 165, 233, 0.4)"}} // Angepasster Hover
+                        whileTap={{ scale: isSubmitting ? 1 : 0.98, y: 0 }}
                     >
                         {isSubmitting ? (
                              <>
-                                <motion.svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <motion.svg className="animate-spin -ml-1 mr-2.5 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </motion.svg>
@@ -235,7 +231,7 @@ const CardBack: React.FC<CardBackProps> = ({
                             </>
                         ) : (
                             <>
-                                <SaveIcon size={16} className="mr-1.5" /> Speichern
+                                <SaveIcon size={18} className="mr-2 opacity-90" /> Speichern
                             </>
                         )}
                     </motion.button>
