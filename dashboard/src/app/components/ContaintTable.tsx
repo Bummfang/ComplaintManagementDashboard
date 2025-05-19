@@ -143,9 +143,13 @@ export default function ContaintTable() {
 
 
     const filteredData = useMemo(() => {
-
-        if (currentView === "statistik" || currentView === "admin" || !data || data.length === 0) return [];
         let tempData = [...data];
+        console.log("-----------------------------------------");
+        console.log("ID-Filter: Start der Filterberechnung");
+        console.log("ID-Filter: idSearchTerm (aus Input):", idSearchTerm);
+        console.log("ID-Filter: Ursprüngliche tempData Länge:", tempData.length);
+        if (currentView === "statistik" || currentView === "admin" || !data || data.length === 0) return [];
+
 
         if (activeStatusFilter !== "alle" && (currentView === "beschwerden" || currentView === "lob" || currentView === "anregungen")) {
             tempData = tempData.filter(item => 'status' in item && item.status === activeStatusFilter);
@@ -160,8 +164,18 @@ export default function ContaintTable() {
             tempData = tempData.filter(item => item.email?.toLowerCase().includes(lowerEmailSearchTerm));
         }
         if (idSearchTerm.trim() !== "") {
-            const searchId = parseInt(idSearchTerm.trim(), 10);
-            if (!isNaN(searchId)) { tempData = tempData.filter(item => item.id === searchId); }
+            const trimmedIdSearchTerm = idSearchTerm.trim();
+            const searchId = parseInt(trimmedIdSearchTerm, 10);
+        
+            if (!isNaN(searchId)) {
+                // Die Eingabe ist eine gültige Zahl, also nach exakter ID filtern
+                tempData = tempData.filter(item => item.id === searchId);
+            } else {
+                // Die Eingabe ist nicht leer, ABER keine gültige Zahl (z.B. "abc" oder "12x").
+                // Da IDs Zahlen sind, kann kein Eintrag einer solchen Eingabe entsprechen.
+                // Also: Zeige keine Ergebnisse an.
+                tempData = []; 
+            }
         }
 
         if (currentView === "beschwerden") {
