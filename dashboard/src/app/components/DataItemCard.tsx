@@ -1,12 +1,34 @@
 "use client";
 
-import { motion, AnimatePresence } from 'framer-motion'; // AnimatePresence hinzugefügt
-import { CopyIcon, CheckIcon, ClockIcon, Lock, Unlock, UserIcon, Settings2Icon, ArrowLeftIcon, SaveIcon, XCircleIcon } from 'lucide-react'; // UserIcon ist schon da, gut! // Settings2Icon, ArrowLeftIcon, SaveIcon, XCircleIcon hinzugefügt
+import { motion, AnimatePresence } from 'framer-motion';
+import { CopyIcon, CheckIcon, ClockIcon, Lock, Unlock, UserIcon, Settings2Icon, ArrowLeftIcon, SaveIcon, XCircleIcon, AlertCircleIcon, MessageSquareTextIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { DataItem, BeschwerdeItem, ViewType, AnyItemStatus } from '../types'; // Stellen Sie sicher, dass DataItem ggf. um internal_notes und internal_options erweitert wird
+import { DataItem, BeschwerdeItem, ViewType, AnyItemStatus } from '../types';
 import { formatDate, formatTime, formatDateTime } from '../utils';
 import { useAuth } from '../contexts/AuthContext';
 import { API_ENDPOINTS } from '../constants';
+
+export interface InternalCardData {
+    generalNotes: string;
+    clarificationType: 'written' | 'phone' | null;
+    teamLeadInformed: boolean;
+    departmentHeadInformed: boolean;
+    forwardedToSubcontractor: boolean;
+    forwardedToInsurance: boolean;
+    moneyRefunded: boolean;
+    refundAmount: string;
+}
+
+const defaultInternalDetails: InternalCardData = {
+    generalNotes: "",
+    clarificationType: null,
+    teamLeadInformed: false,
+    departmentHeadInformed: false,
+    forwardedToSubcontractor: false,
+    forwardedToInsurance: false,
+    moneyRefunded: false,
+    refundAmount: "",
+};
 
 const getStatusTextColorClass = (status?: AnyItemStatus | null): string => {
     switch (status) {
@@ -67,7 +89,6 @@ const contentItemVariants = {
     visible: { opacity: 1, x: 0, scale: 1, transition: { type: "spring", stiffness: 180, damping: 20 } }
 };
 
-// NEU: Animation für den Wechsel zwischen Vorder- und Rückseite
 const flipContentVariants = {
     initial: { opacity: 0, rotateY: -90 },
     animate: { opacity: 1, rotateY: 0, transition: { duration: 0.4, ease: "easeInOut" } },
@@ -77,91 +98,66 @@ const flipContentVariants = {
 interface DataItemCardProps {
     item: DataItem & {
         action_required?: "relock_ui",
-        // NEU: Optionale Felder für die Daten der Rückseite. Diese sollten in Ihrer `DataItem` Typdefinition vorhanden sein.
-        internal_notes?: string;
-        internal_options?: Record<string, boolean>;
+        internal_details?: InternalCardData;
     };
     currentView: ViewType;
     copiedCellKey: string | null;
     onCopyToClipboard: (textToCopy: string, cellKey: string) => void;
     onStatusChange: (itemId: number, newStatus: AnyItemStatus, itemType: ViewType) => void;
     cardAccentsEnabled: boolean;
-    onItemUpdate: (updatedItem: DataItem & { // Prop ist hier korrekt definiert
+    onItemUpdate: (updatedItem: DataItem & {
         action_required?: "relock_ui",
-        internal_notes?: string;
-        internal_options?: Record<string, boolean>;
+        internal_details?: InternalCardData;
     }) => void;
 }
 
 export default function DataItemCard({
-    item, currentView, copiedCellKey, onCopyToClipboard, onStatusChange, cardAccentsEnabled, onItemUpdate // << onItemUpdate jetzt hier destrukturieren
+    item, currentView, copiedCellKey, onCopyToClipboard, onStatusChange, cardAccentsEnabled, onItemUpdate
 }: DataItemCardProps) {
     const itemTypePrefix = currentView === "beschwerden" ? "CMP-" : currentView === "lob" ? "LOB-" : "ANG-";
     const { user, token } = useAuth();
 
     const [isLocked, setIsLocked] = useState(true);
     const [shakeLockAnim, setShakeLockAnim] = useState(false);
-
-    // NEU: State für die Anzeige der Rückseite
     const [isFlipped, setIsFlipped] = useState(false);
-    // NEU: State für die Daten der Rückseite, initialisiert mit Werten aus `item` oder Defaults
-    const [internalNotes, setInternalNotes] = useState(item.internal_notes || "");
-    const [internalOptions, setInternalOptions] = useState<Record<string, boolean>>(
-        item.internal_options || {
-            // Beispiel-Optionen. Passen Sie diese an Ihre Bedürfnisse an.
-            optionFollowUp: false,
-            optionRequiresAttention: false,
-            optionArchived: false,
-        }
+    const [internalDetails, setInternalDetails] = useState<InternalCardData>(
+        item.internal_details ? { ...defaultInternalDetails, ...item.internal_details } : { ...defaultInternalDetails }
     );
+    const [validationError, setValidationError] = useState<string | null>(null);
 
     let currentItemStatus: AnyItemStatus | undefined | null;
     let itemAbgeschlossenAm: string | null | undefined;
     let itemBearbeiterId: number | null | undefined = undefined;
     let itemBearbeiterName: string | null | undefined = undefined;
 
-
     const isStatusRelevantView = currentView === 'beschwerden' || currentView === 'lob' || currentView === 'anregungen';
 
-    if (item && 'bearbeiter_id' in item) {
-        itemBearbeiterId = item.bearbeiter_id;
-    }
-    if (item && 'bearbeiter_name' in item) { // << NEU (war schon in Ihrem Code, gut!)
-        itemBearbeiterName = item.bearbeiter_name;
-    }
-    if (item && 'status' in item) {
-        currentItemStatus = item.status as AnyItemStatus | undefined | null;
-    }
-    if (item && 'abgeschlossenam' in item) {
-        itemAbgeschlossenAm = item.abgeschlossenam;
-    }
+    if (item && 'bearbeiter_id' in item) itemBearbeiterId = item.bearbeiter_id;
+    if (item && 'bearbeiter_name' in item) itemBearbeiterName = item.bearbeiter_name;
+    if (item && 'status' in item) currentItemStatus = item.status as AnyItemStatus | undefined | null;
+    if (item && 'abgeschlossenam' in item) itemAbgeschlossenAm = item.abgeschlossenam;
 
-
-    // useEffect für automatisches Sperren
     useEffect(() => {
-        if (
-            isStatusRelevantView &&
-            item.status === "Offen" &&
-            item.bearbeiter_id === null &&
-            !isLocked && // Nur wenn Schloss aktuell offen ist
-            item.action_required === "relock_ui"
-        ) {
-            console.log(`DataItemCard ID ${item.id}: Aktion "relock_ui" empfangen. Schloss wird gesperrt.`);
+        if (isStatusRelevantView && item.status === "Offen" && item.bearbeiter_id === null && !isLocked && item.action_required === "relock_ui") {
             setIsLocked(true);
         }
     }, [item.status, item.bearbeiter_id, item.action_required, isLocked, isStatusRelevantView, item.id]);
 
-    // NEU: Effekt um Rückseiten-Daten zu aktualisieren, wenn `item` sich von außen ändert
     useEffect(() => {
-        setInternalNotes(item.internal_notes || "");
-        setInternalOptions(item.internal_options || { optionFollowUp: false, optionRequiresAttention: false, optionArchived: false });
-    }, [item.internal_notes, item.internal_options, item.id]); // item.id hinzugefügt, falls sich das Item komplett ändert
+        const newDetails = item.internal_details
+            ? { ...defaultInternalDetails, ...item.internal_details }
+            : { ...defaultInternalDetails };
+        setInternalDetails(newDetails);
 
+        if (isFlipped) {
+            setValidationError(null);
+        }
+    }, [item.internal_details, item.id, isFlipped]);
 
     const handleToggleLock = async () => {
         const wasLocked = isLocked;
         const newLockState = !wasLocked;
-        setIsLocked(newLockState); // Optimistisches UI-Update
+        setIsLocked(newLockState);
 
         if (shakeLockAnim) {
             setShakeLockAnim(false);
@@ -191,18 +187,18 @@ export default function DataItemCard({
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ error: "Fehlerhafte Serverantwort" }));
                     console.error(`DataItemCard ID ${item.id}: Fehler beim Zuweisen des Bearbeiters - Status ${response.status}`, errorData);
-                    setIsLocked(true); // Rollback UI-Update
-                    triggerShakeLock(); // Signalisiere Fehler am Schloss
+                    setIsLocked(true);
+                    triggerShakeLock();
                     return;
                 }
-
+                
                 const updatedItemFromServer = await response.json();
                 console.log(`DataItemCard ID ${item.id}: Bearbeiter erfolgreich zugewiesen. Antwort:`, updatedItemFromServer);
-                onItemUpdate(updatedItemFromServer); // Informiere Parent über Update
+                onItemUpdate(updatedItemFromServer);
 
             } catch (err) {
                 console.error(`DataItemCard ID ${item.id}: Schwerer Fehler beim Zuweisen des Bearbeiters:`, err);
-                setIsLocked(true); // Rollback UI-Update
+                setIsLocked(true);
                 triggerShakeLock();
             }
         }
@@ -214,54 +210,58 @@ export default function DataItemCard({
     };
 
     const handleProtectedStatusChange = (itemId: number, newStatus: AnyItemStatus, viewForApi: ViewType) => {
-        if (isLocked && !isFlipped) { // MODIFIZIERT: Sperre nur auf Vorderseite relevant
+        if (isLocked && !isFlipped) { // Nur sperren, wenn auf Vorderseite und nicht geflippt
             triggerShakeLock();
         } else {
             onStatusChange(itemId, newStatus, viewForApi);
         }
     };
 
-    // NEU: Handler für Änderungen auf der Rückseite
-    const handleInternalNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setInternalNotes(e.target.value);
+    const handleInternalDetailChange = <K extends keyof InternalCardData>(
+        key: K,
+        value: InternalCardData[K]
+    ) => {
+        setInternalDetails(prev => {
+            const newState = { ...prev, [key]: value };
+            if (key === 'moneyRefunded' && !value) {
+                newState.refundAmount = "";
+            }
+            return newState;
+        });
+        setValidationError(null);
     };
-
-    const handleInternalOptionChange = (optionKey: string) => {
-        setInternalOptions(prev => ({ ...prev, [optionKey]: !prev[optionKey] }));
-    };
-
-    // NEU: Handler zum Speichern der Daten der Rückseite
+    
     const handleSaveInternalData = () => {
-        const updatedItemWithInternalData = {
-            ...item,
-            internal_notes: internalNotes,
-            internal_options: internalOptions,
-        };
-        onItemUpdate(updatedItemWithInternalData);
-        setIsFlipped(false); // Zurück zur Vorderseite
-        console.log(`DataItemCard ID ${item.id}: Interne Daten gespeichert und an Parent übergeben.`);
+        if (!internalDetails.clarificationType) {
+            setValidationError("Bitte wählen Sie eine Klärungsart (schriftlich oder telefonisch).");
+            return;
+        }
+        if (internalDetails.moneyRefunded && (!internalDetails.refundAmount || parseFloat(internalDetails.refundAmount) <= 0)) {
+            setValidationError("Wenn 'Geld erstattet' gewählt ist, muss ein gültiger Betrag eingetragen werden.");
+            return;
+        }
+        setValidationError(null);
+
+        onItemUpdate({ ...item, internal_details: { ...internalDetails } });
+        setIsFlipped(false);
     };
 
-    // NEU: Handler zum Abbrechen der Bearbeitung auf der Rückseite
     const handleCancelInternalData = () => {
-        // Setze auf ursprüngliche Werte aus `item` zurück
-        setInternalNotes(item.internal_notes || "");
-        setInternalOptions(item.internal_options || { optionFollowUp: false, optionRequiresAttention: false, optionArchived: false });
-        setIsFlipped(false); // Zurück zur Vorderseite
+        setInternalDetails(item.internal_details ? { ...defaultInternalDetails, ...item.internal_details } : { ...defaultInternalDetails });
+        setIsFlipped(false);
+        setValidationError(null);
     };
-
 
     let actionButton = null;
-    let effectiveStatusForButtons: AnyItemStatus = "Offen";
-    // ... (actionButton Logik bleibt identisch, verwendet handleProtectedStatusChange) ...
     if (isStatusRelevantView) {
+        let effectiveStatusForButtons: AnyItemStatus = "Offen";
         if (currentItemStatus && ["Offen", "In Bearbeitung", "Gelöst", "Abgelehnt"].includes(currentItemStatus)) {
             effectiveStatusForButtons = currentItemStatus;
         } else if (currentItemStatus === null || currentItemStatus === undefined) {
             effectiveStatusForButtons = "Offen";
-            if (currentItemStatus === null) currentItemStatus = undefined;
+            if (currentItemStatus === null) currentItemStatus = undefined; 
         } else {
-            effectiveStatusForButtons = "Offen";
+            effectiveStatusForButtons = "Offen"; 
         }
 
         switch (effectiveStatusForButtons) {
@@ -278,13 +278,12 @@ export default function DataItemCard({
         }
     }
 
-
     const cardKey = `card-${currentView}-${item.id}`;
-    const statusForAccent = currentItemStatus || effectiveStatusForButtons;
+    const statusForAccent = currentItemStatus || (isStatusRelevantView ? "Offen" : undefined);
     const backgroundClass = isStatusRelevantView && statusForAccent && cardAccentsEnabled
         ? getCardBackgroundAccentClasses(statusForAccent)
         : 'bg-slate-800/60';
-
+    
     let abgeschlossenText: string | null = null;
     let abgeschlossenValueClassName = "text-slate-500 italic";
     if (isStatusRelevantView) {
@@ -301,48 +300,31 @@ export default function DataItemCard({
         }
     }
 
-    // NEU: Button zum Wechseln der Kartenansicht (Vorder-/Rückseite)
-    const flipCardButton = (
-        <motion.button
-            onClick={() => setIsFlipped(!isFlipped)}
-            className={`p-1.5 rounded-full transition-colors duration-150 ease-in-out absolute top-3 right-3 z-20 
-                        ${isFlipped ? 'text-slate-300 hover:text-sky-300' : 'text-slate-400 hover:text-sky-400'}
-                        focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800`}
-            title={isFlipped ? "Zurück zur Detailansicht" : "Interne Notizen/Optionen bearbeiten"}
-            whileHover={{ scale: 1.1, rotate: isFlipped ? 0 : 15 }}
-            whileTap={{ scale: 0.9 }}
-            aria-label={isFlipped ? "Zurück zur Detailansicht" : "Interne Notizen und Optionen bearbeiten"}
-        >
-            {isFlipped ? <ArrowLeftIcon size={18} /> : <Settings2Icon size={18} />}
-        </motion.button>
-    );
+    const formElementBaseClass = "w-full p-2.5 text-sm rounded-md transition-colors duration-150 shadow-sm";
+    const formInputTextClass = `${formElementBaseClass} bg-slate-900/60 border border-slate-700 text-slate-100 placeholder-slate-500 focus:bg-slate-900/80 focus:border-sky-500 focus:ring-1 focus:ring-sky-500`;
+    const formCheckboxRadioBaseClass = "h-4 w-4 rounded cursor-pointer transition-all duration-150 shadow";
+    const formCheckboxRadioFocusClass = "focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 focus:ring-offset-slate-800";
+    const formCheckboxClass = `${formCheckboxRadioBaseClass} bg-slate-700 border-slate-600 text-sky-500 ${formCheckboxRadioFocusClass}`;
+    const formRadioClass = `${formCheckboxRadioBaseClass} bg-slate-700 border-slate-600 text-sky-500 ${formCheckboxRadioFocusClass}`;
+
+    // Bestimmt, ob die Karte die Flip-Funktionalität haben soll
+    const canFlip = currentView === 'beschwerden';
 
     return (
         <motion.div
             key={cardKey} variants={cardContainerVariants} initial="hidden" animate="visible" exit="exit" layout
-            // MODIFIZIERT: Hover/Tap Effekte nur auf Vorderseite
-            whileHover={!isFlipped ? { y: -8, scale: 1.02, rotateY: 0, boxShadow: "0px 10px 25px rgba(0,0,0,0.25), 0px 6px 10px rgba(0,0,0,0.22)", transition: { type: "spring", stiffness: 200, damping: 15 } } : {}}
-            whileTap={!isFlipped ? { scale: 0.995, rotateY: 0, boxShadow: "0px 4px 12px rgba(0,0,0,0.18), 0px 2px 6px rgba(0,0,0,0.15)" } : {}}
-            className={`relative overflow-hidden rounded-xl ${backgroundClass} backdrop-blur-md shadow-lg shadow-slate-900/25 flex flex-col justify-between`}
-            style={{ perspective: '1000px' }} // NEU: Für 3D-Effekt des Inhalts-Flips
+            whileHover={!isFlipped || !canFlip ? { y: -8, scale: 1.02, rotateY: 0, boxShadow: "0px 10px 25px rgba(0,0,0,0.25), 0px 6px 10px rgba(0,0,0,0.22)", transition: { type: "spring", stiffness: 200, damping: 15 } } : {}}
+            whileTap={!isFlipped || !canFlip ? { scale: 0.995, rotateY: 0, boxShadow: "0px 4px 12px rgba(0,0,0,0.18), 0px 2px 6px rgba(0,0,0,0.15)" } : {}}
+            className={`relative overflow-hidden rounded-xl ${backgroundClass} backdrop-blur-md shadow-xl shadow-slate-900/30 flex flex-col justify-between`}
+            style={{ perspective: '1000px' }}
         >
-            {/* NEU: Flip-Button wird hier gerendert, wenn relevant */}
-            {isStatusRelevantView && flipCardButton}
-
             <AnimatePresence mode="wait">
-                {!isFlipped ? (
-                    // VORDERSEITE (Ihr bestehender Inhalt)
-                    <motion.div
-                        key={`${cardKey}-front`}
-                        variants={flipContentVariants} // Nutzt die neue Flip-Animation
-                        initial="initial"
-                        animate="animate"
-                        exit="exit"
-                        className="flex flex-col flex-grow" // Stellt sicher, dass der Inhalt den Raum füllt
-                    >
-                        <div className="p-4 md:p-5 flex flex-col flex-grow"> {/* cursor-pointer entfernt, da Interaktion über Buttons */}
+                {(!isFlipped || !canFlip) ? ( // MODIFIZIERT: Zeige Vorderseite, wenn nicht geflippt ODER wenn es keine Beschwerde-Karte ist
+                    // VORDERSEITE
+                    <motion.div key={`${cardKey}-front`} variants={flipContentVariants} initial="initial" animate="animate" exit="exit" className="flex flex-col flex-grow">
+                        <div className="p-4 md:p-5 flex flex-col flex-grow">
                             <motion.div variants={contentItemVariants} className="flex justify-between items-start mb-2.5">
-                                <h3 className="text-md font-semibold text-slate-100 hover:text-white transition-colors break-words pr-10"> {/* pr-10 für Platz für Flip-Button */}
+                                <h3 className="text-md font-semibold text-slate-100 hover:text-white transition-colors break-words pr-2">
                                     {item.betreff || "Unbekannter Betreff"}
                                 </h3>
                                 <span className="text-xs text-slate-400 whitespace-nowrap ml-2 pt-0.5">ID: {itemTypePrefix}{item.id}</span>
@@ -353,10 +335,9 @@ export default function DataItemCard({
                                 <DataField label="Email" value={item.email} onCopy={onCopyToClipboard} isCopied={copiedCellKey === `${cardKey}-email`} fieldKey={`${cardKey}-email`} />
                                 <DataField label="Tel." value={item.tel} onCopy={onCopyToClipboard} isCopied={copiedCellKey === `${cardKey}-tel`} fieldKey={`${cardKey}-tel`} />
                                 <DataField label="Erstellt am" value={formatDateTime(item.erstelltam)} onCopy={onCopyToClipboard} isCopied={copiedCellKey === `${cardKey}-erstelltam`} fieldKey={`${cardKey}-erstelltam`} copyValue={item.erstelltam} icon={ClockIcon} />
-
-                                {/* ANZEIGE BEARBEITER-ID */}
+                                
                                 {itemBearbeiterId !== null && itemBearbeiterId !== undefined && (
-                                    <DataField label="Bearbeiter" value={String(itemBearbeiterName || `ID: ${itemBearbeiterId}`)} fieldKey={`${cardKey}-bearbeiter`} icon={UserIcon} />
+                                     <DataField label="Bearbeiter" value={String(itemBearbeiterName || `ID: ${itemBearbeiterId}`)} fieldKey={`${cardKey}-bearbeiter`} icon={UserIcon} />
                                 )}
 
                                 {isStatusRelevantView && (
@@ -377,7 +358,7 @@ export default function DataItemCard({
                                         copyValue={itemAbgeschlossenAm || undefined}
                                     />
                                 )}
-
+                                
                                 {currentView === 'beschwerden' && 'beschwerdegrund' in item && (
                                     <>
                                         <DataField label="Beschwerdegrund" value={(item as BeschwerdeItem).beschwerdegrund} onCopy={onCopyToClipboard} isCopied={copiedCellKey === `${cardKey}-grund`} fieldKey={`${cardKey}-grund`} />
@@ -392,37 +373,29 @@ export default function DataItemCard({
                             <motion.div variants={contentItemVariants} className="mt-2 py-1 flex-grow flex flex-col">
                                 <span className="text-xs text-slate-400 block mb-0.5">Beschreibung</span>
                                 <div className="text-slate-200 text-xs whitespace-pre-wrap break-words max-h-24 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600/70 scrollbar-track-slate-700/30 pt-1 pb-1 min-h-[40px] flex-grow">
-                                    {item.beschreibung ? item.beschreibung :
-                                        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1, duration: 0.4 }} className="italic text-slate-500">
-                                            Keine Beschreibung vorhanden.
-                                        </motion.span>
-                                    }
+                                    {item.beschreibung || <motion.span initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.1, duration:0.4}} className="italic text-slate-500">Keine Beschreibung vorhanden.</motion.span>}
                                 </div>
                             </motion.div>
                         </div>
-
                         {isStatusRelevantView && actionButton && (
-                            <motion.div
-                                variants={contentItemVariants}
-                                className="px-4 md:px-5 pb-4 pt-2 border-t border-slate-700/50 mt-auto"
-                            >
-                                <div className="flex justify-end items-center mb-2">
-                                    <motion.button
-                                        onClick={handleToggleLock}
-                                        className={`p-1.5 rounded-full transition-colors duration-150 ease-in-out
-                                            ${isLocked ? 'text-slate-400 hover:text-sky-400' : 'text-emerald-400 hover:text-emerald-300'}
-                                            focus:outline-none focus-visible:ring-2 ${isLocked ? 'focus-visible:ring-sky-500' : 'focus-visible:ring-emerald-500'} focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800`}
-                                        title={isLocked ? "Bearbeitung entsperren" : "Bearbeitung sperren"}
-                                        animate={shakeLockAnim ? {
-                                            x: [0, -8, 8, -6, 6, -4, 4, 0],
-                                            scale: [1, 1.1, 1, 1.05, 1], // Korrigierte Skalierung
-                                            transition: { duration: 0.4, ease: "easeInOut" }
-                                        } : {
-                                            x: 0,
-                                            scale: 1
-                                        }}
-                                        whileHover={{ scale: 1.1 }}
-                                        whileTap={{ scale: 0.9 }}
+                            <motion.div variants={contentItemVariants} className="px-4 md:px-5 pb-4 pt-2 border-t border-slate-700/60 mt-auto">
+                                <div className={`flex ${canFlip ? 'justify-between' : 'justify-end'} items-center mb-2`}> {/* MODIFIZIERT: Layout für Buttons */}
+                                    {canFlip && ( // MODIFIZIERT: Settings-Button nur für Beschwerden
+                                        <motion.button 
+                                            onClick={() => { setIsFlipped(true); setValidationError(null); }} 
+                                            className="p-1.5 rounded-full text-slate-400 hover:text-sky-400 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800" 
+                                            title="Interne Details bearbeiten" 
+                                            whileHover={{ scale: 1.1, rotate: 15 }} whileTap={{ scale: 0.9 }}
+                                        >
+                                            <Settings2Icon size={20} />
+                                        </motion.button>
+                                    )}
+                                    <motion.button 
+                                        onClick={handleToggleLock} 
+                                        className={`p-1.5 rounded-full transition-colors duration-150 ease-in-out ${isLocked ? 'text-slate-400 hover:text-sky-400' : 'text-emerald-400 hover:text-emerald-300'} focus:outline-none focus-visible:ring-2 ${isLocked ? 'focus-visible:ring-sky-500' : 'focus-visible:ring-emerald-500'} focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800`} 
+                                        title={isLocked ? "Bearbeitung entsperren" : "Bearbeitung sperren"} 
+                                        animate={shakeLockAnim ? { x: [0, -8, 8, -6, 6, -4, 4, 0], scale: [1, 1.1, 1, 1.05, 1], transition: { duration: 0.4, ease: "easeInOut" }} : { x: 0, scale: 1 }} 
+                                        whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                                     >
                                         {isLocked ? <Lock size={20} /> : <Unlock size={20} />}
                                     </motion.button>
@@ -432,73 +405,83 @@ export default function DataItemCard({
                         )}
                     </motion.div>
                 ) : (
-                    // RÜCKSEITE DER KARTE (NEUER INHALT)
-                    <motion.div
-                        key={`${cardKey}-back`}
-                        variants={flipContentVariants} // Nutzt die neue Flip-Animation
-                        initial="initial"
-                        animate="animate"
-                        exit="exit"
-                        className="p-4 md:p-5 flex flex-col flex-grow justify-between" // Stellt sicher, dass der Inhalt den Raum füllt und Buttons unten sind
-                    >
-                        {/* Inhalt der Rückseite */}
-                        <div>
-                            <motion.h4 variants={contentItemVariants} className="text-md font-semibold text-slate-100 mb-3 pr-8"> {/* pr-8 für Platz für Flip-Button */}
-                                Interne Notizen & Optionen
-                            </motion.h4>
-
-                            <motion.div variants={contentItemVariants} className="mb-4">
-                                <label htmlFor={`${cardKey}-internal-notes`} className="block text-xs text-slate-400 mb-1">Interne Notizen:</label>
-                                <textarea
-                                    id={`${cardKey}-internal-notes`}
-                                    value={internalNotes}
-                                    onChange={handleInternalNotesChange}
-                                    rows={5} // Etwas mehr Platz
-                                    className="w-full p-2 text-sm bg-slate-700/60 text-slate-100 rounded-md border border-slate-600 focus:ring-1 focus:ring-sky-500 focus:border-sky-500 scrollbar-thin scrollbar-thumb-slate-500/70 scrollbar-track-slate-700/40"
-                                    placeholder="Vermerke, nächste Schritte, etc."
-                                />
+                    // RÜCKSEITE (wird nur gerendert, wenn isFlipped UND canFlip true sind)
+                    <motion.div key={`${cardKey}-back`} variants={flipContentVariants} initial="initial" animate="animate" exit="exit" className="p-4 md:p-5 flex flex-col flex-grow justify-between space-y-4">
+                        <div className="space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600/70 scrollbar-track-slate-700/30 pr-1 max-h-[calc(100%-4rem)]">
+                            <motion.div variants={contentItemVariants} className="flex justify-between items-center">
+                                <h4 className="text-lg font-semibold text-slate-100 flex items-center"><MessageSquareTextIcon size={20} className="mr-2 text-sky-400"/> Interne Bearbeitung</h4>
+                                <motion.button onClick={handleCancelInternalData} className="p-1.5 rounded-full text-slate-400 hover:text-sky-300 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800" title="Zurück zur Detailansicht" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                    <ArrowLeftIcon size={18} />
+                                </motion.button>
                             </motion.div>
 
-                            <motion.div variants={contentItemVariants} className="mb-4">
-                                <span className="block text-xs text-slate-400 mb-1.5">Optionen:</span>
-                                <div className="space-y-1.5">
-                                    {Object.keys(internalOptions).map(optionKey => (
-                                        <label key={optionKey} className="flex items-center text-sm text-slate-200 hover:text-sky-300 transition-colors cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={internalOptions[optionKey]}
-                                                onChange={() => handleInternalOptionChange(optionKey)}
-                                                className="mr-2.5 h-4 w-4 rounded bg-slate-600 border-slate-500 text-sky-500 focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800 cursor-pointer"
-                                            />
-                                            {/* Beispielhafte Labels - anpassen! */}
-                                            {optionKey === 'optionFollowUp' && 'Follow-Up benötigt'}
-                                            {optionKey === 'optionRequiresAttention' && 'Besondere Aufmerksamkeit'}
-                                            {optionKey === 'optionArchived' && 'Für Archiv markiert'}
-                                            {/* Fallback, falls Label nicht definiert */}
-                                            {!['optionFollowUp', 'optionRequiresAttention', 'optionArchived'].includes(optionKey) && optionKey.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                            <motion.div variants={contentItemVariants}>
+                                <label htmlFor={`${cardKey}-generalNotes`} className="block text-sm font-medium text-slate-300 mb-1.5">Allgemeine Notizen:</label>
+                                <textarea id={`${cardKey}-generalNotes`} value={internalDetails.generalNotes} onChange={e => handleInternalDetailChange('generalNotes', e.target.value)} rows={4} className={`${formInputTextClass} min-h-[80px]`} placeholder="Interne Vermerke, Beobachtungen..." />
+                            </motion.div>
+
+                            <motion.div variants={contentItemVariants}>
+                                <label className="block text-sm font-medium text-slate-300 mb-1.5">Klärungsart <span className="text-red-400">*</span>:</label>
+                                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                                    {([ {value: 'written', label: 'Schriftliche Klärung'}, {value: 'phone', label: 'Telefonische Klärung'} ]).map(type => (
+                                        <label key={type.value} className="flex items-center text-sm text-slate-200 hover:text-sky-300 transition-colors cursor-pointer p-2 rounded-md hover:bg-slate-700/50">
+                                            <input type="radio" name={`${cardKey}-clarification`} checked={internalDetails.clarificationType === type.value} onChange={() => handleInternalDetailChange('clarificationType', type.value as 'written' | 'phone')} className={`mr-2.5 ${formRadioClass}`} />
+                                            {type.label}
                                         </label>
                                     ))}
                                 </div>
                             </motion.div>
+
+                            <motion.div variants={contentItemVariants}>
+                                <label className="block text-sm font-medium text-slate-300 mb-1.5">Optionale Vermerke:</label>
+                                <div className="space-y-2">
+                                {[
+                                    { key: 'teamLeadInformed', label: 'Teamleiter informiert' },
+                                    { key: 'departmentHeadInformed', label: 'Geschäftsbereichsleiter informiert' },
+                                    { key: 'forwardedToSubcontractor', label: 'Weiterleitung an Nachauftraggeber' },
+                                    { key: 'forwardedToInsurance', label: 'Weiterleitung an Versicherungsabteilung' },
+                                ].map(opt => (
+                                    <label key={opt.key} className="flex items-center text-sm text-slate-200 hover:text-sky-300 transition-colors cursor-pointer p-2 rounded-md hover:bg-slate-700/50">
+                                        <input type="checkbox" checked={internalDetails[opt.key as keyof InternalCardData] as boolean} onChange={e => handleInternalDetailChange(opt.key as keyof InternalCardData, e.target.checked)} className={`mr-2.5 ${formCheckboxClass}`} />
+                                        {opt.label}
+                                    </label>
+                                ))}
+                                </div>
+                            </motion.div>
+                            
+                            <motion.div variants={contentItemVariants}>
+                                <label className="flex items-center text-sm text-slate-200 hover:text-sky-300 transition-colors cursor-pointer p-2 rounded-md hover:bg-slate-700/50">
+                                    <input type="checkbox" checked={internalDetails.moneyRefunded} onChange={e => handleInternalDetailChange('moneyRefunded', e.target.checked)} className={`mr-2.5 ${formCheckboxClass}`} />
+                                    Geld erstattet
+                                </label>
+                            </motion.div>
+                            
+                            <AnimatePresence>
+                                {internalDetails.moneyRefunded && (
+                                    <motion.div variants={contentItemVariants} initial={{ opacity: 0, height: 0, marginTop: 0 }} animate={{ opacity: 1, height: 'auto', marginTop: '0.25rem' }} exit={{ opacity: 0, height: 0, marginTop: 0 }} className="pl-4 sm:pl-7">
+                                        <label htmlFor={`${cardKey}-refundAmount`} className="block text-sm font-medium text-slate-300 mb-1.5">Erstatteter Betrag (€) <span className="text-red-400">*</span>:</label>
+                                        <input type="number" id={`${cardKey}-refundAmount`} value={internalDetails.refundAmount} onChange={e => handleInternalDetailChange('refundAmount', e.target.value)} placeholder="z.B. 10.50" className={formInputTextClass} min="0.01" step="0.01" />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
 
-                        {/* Aktionsbuttons für die Rückseite */}
-                        <motion.div variants={contentItemVariants} className="flex justify-end space-x-2 mt-auto pt-3 border-t border-slate-700/50">
-                            <motion.button
-                                onClick={handleCancelInternalData}
-                                className="px-4 py-2 text-xs font-semibold rounded-lg text-slate-300 bg-slate-600/70 hover:bg-slate-600/90 transition-colors flex items-center shadow hover:shadow-md"
-                                whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }}
-                            >
-                                <XCircleIcon size={16} className="mr-1.5" /> Abbrechen
-                            </motion.button>
-                            <motion.button
-                                onClick={handleSaveInternalData}
-                                className="px-4 py-2 text-xs font-semibold rounded-lg text-white bg-sky-600 hover:bg-sky-500 transition-colors flex items-center shadow hover:shadow-md"
-                                whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }}
-                            >
-                                <SaveIcon size={16} className="mr-1.5" /> Speichern
-                            </motion.button>
-                        </motion.div>
+                        <div className="mt-auto pt-4 border-t border-slate-700/60">
+                            {validationError && (
+                                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-3 p-2.5 text-xs text-red-200 bg-red-800/50 rounded-md flex items-center shadow">
+                                    <AlertCircleIcon size={16} className="mr-2 flex-shrink-0" />
+                                    {validationError}
+                                </motion.div>
+                            )}
+                            <motion.div variants={contentItemVariants} className="flex justify-end space-x-3">
+                                <motion.button onClick={handleCancelInternalData} className="px-4 py-2 text-xs font-semibold rounded-lg text-slate-200 bg-slate-600 hover:bg-slate-500 transition-colors flex items-center shadow-md hover:shadow-lg" whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }}>
+                                    <XCircleIcon size={16} className="mr-1.5" /> Abbrechen
+                                </motion.button>
+                                <motion.button onClick={handleSaveInternalData} className="px-4 py-2 text-xs font-semibold rounded-lg text-white bg-sky-600 hover:bg-sky-500 transition-colors flex items-center shadow-md hover:shadow-lg" whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }}>
+                                    <SaveIcon size={16} className="mr-1.5" /> Speichern
+                                </motion.button>
+                            </motion.div>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
