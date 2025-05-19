@@ -1,5 +1,5 @@
 // app/constants.ts
-import { ViewType, StatusFilterMode } from './types'; // ViewType wird immer noch für VIEW_TITLES benötigt
+import { ViewType, StatusFilterMode } from '../types'; // ViewType wird immer noch für VIEW_TITLES benötigt
 
 // Definiere ein Interface für alle API Endpunkte, um den TypeScript-Fehler zu beheben
 interface AllApiEndpoints {

@@ -38,7 +38,7 @@ CREATE TABLE beschwerde (
     beschreibung TEXT,      -- Allgemeine Beschreibung
     beschwerdegrund TEXT,   -- Spezifischer Grund der Beschwerde
     datum DATE,             -- Datum des Vorfalls
-    zeit TIME,              -- Uhrzeit des Vorfalls
+    uhrzeitzeit TIME,              -- Uhrzeit des Vorfalls
     haltestelle VARCHAR(255),
     linie VARCHAR(50),
     erstelltam TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
