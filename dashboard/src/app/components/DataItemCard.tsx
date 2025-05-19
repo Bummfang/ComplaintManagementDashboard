@@ -1,8 +1,12 @@
 "use client";
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { CopyIcon, CheckIcon, ClockIcon, Lock, Unlock, UserIcon, Settings2Icon, ArrowLeftIcon, SaveIcon, XCircleIcon, AlertCircleIcon, MessageSquareTextIcon } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import {
+    CopyIcon, CheckIcon, ClockIcon, Lock, Unlock, UserIcon, Settings2Icon,
+    ArrowLeftIcon, SaveIcon, XCircleIcon, AlertCircleIcon, MessageSquareTextIcon,
+    MailIcon, PhoneIcon, StickyNoteIcon, ListChecksIcon, CreditCardIcon // Hinzugefügte Icons für die Rückseite
+} from 'lucide-react';
+import { useState, useEffect, ReactNode } from 'react'; // ReactNode hinzugefügt
 import { DataItem, BeschwerdeItem, ViewType, AnyItemStatus } from '../types';
 import { formatDate, formatTime, formatDateTime } from '../utils';
 import { useAuth } from '../contexts/AuthContext';
@@ -78,6 +82,39 @@ const DataField = ({
     );
 };
 
+// Kleine Hilfskomponente für Formularsektionen auf der Rückseite
+const FormSection = ({
+    title,
+    icon: Icon,
+    children,
+    htmlFor,
+    required,
+    className
+}: {
+    title?: string;
+    icon?: React.ElementType;
+    children: ReactNode;
+    htmlFor?: string;
+    required?: boolean;
+    className?: string;
+}) => (
+    <motion.div variants={contentItemVariants} className={`mb-5 last-of-type:mb-0 ${className || ''}`}>
+        {title && (
+            <div className="flex items-center mb-2">
+                {Icon && <Icon size={18} className="mr-2 text-slate-400 flex-shrink-0" />}
+                <label htmlFor={htmlFor} className="block text-sm font-semibold text-slate-200">
+                    {title}
+                    {required && <span className="text-red-400 ml-1">*</span>}
+                </label>
+            </div>
+        )}
+        <div className={`${title ? 'pl-1' : ''}`}> {/* Nur einrücken, wenn ein Titel da ist */}
+            {children}
+        </div>
+    </motion.div>
+);
+
+
 const cardContainerVariants = {
     hidden: { opacity: 0, y: 60, scale: 0.9, rotateX: -20, transformPerspective: 1000 },
     visible: { opacity: 1, y: 0, scale: 1, rotateX: 0, transition: { type: "spring", stiffness: 120, damping: 20, staggerChildren: 0.08, delayChildren: 0.1 } },
@@ -150,7 +187,7 @@ export default function DataItemCard({
         setInternalDetails(newDetails);
 
         if (isFlipped) {
-            setValidationError(null);
+            setValidationError(null); // Reset validation error when flipping to back
         }
     }, [item.internal_details, item.id, isFlipped]);
 
@@ -210,7 +247,7 @@ export default function DataItemCard({
     };
 
     const handleProtectedStatusChange = (itemId: number, newStatus: AnyItemStatus, viewForApi: ViewType) => {
-        if (isLocked && !isFlipped) { // Nur sperren, wenn auf Vorderseite und nicht geflippt
+        if (isLocked && !isFlipped) {
             triggerShakeLock();
         } else {
             onStatusChange(itemId, newStatus, viewForApi);
@@ -224,11 +261,11 @@ export default function DataItemCard({
         setInternalDetails(prev => {
             const newState = { ...prev, [key]: value };
             if (key === 'moneyRefunded' && !value) {
-                newState.refundAmount = "";
+                newState.refundAmount = ""; // Reset refund amount if moneyRefunded is unchecked
             }
             return newState;
         });
-        setValidationError(null);
+        setValidationError(null); // Clear validation on any change
     };
     
     const handleSaveInternalData = () => {
@@ -237,18 +274,19 @@ export default function DataItemCard({
             return;
         }
         if (internalDetails.moneyRefunded && (!internalDetails.refundAmount || parseFloat(internalDetails.refundAmount) <= 0)) {
-            setValidationError("Wenn 'Geld erstattet' gewählt ist, muss ein gültiger Betrag eingetragen werden.");
+            setValidationError("Wenn 'Geld erstattet' gewählt ist, muss ein gültiger Betrag (größer als 0) eingetragen werden.");
             return;
         }
         setValidationError(null);
 
         onItemUpdate({ ...item, internal_details: { ...internalDetails } });
-        setIsFlipped(false);
+        setIsFlipped(false); // Flip back to front
     };
 
     const handleCancelInternalData = () => {
+        // Reset to original item details or default if none
         setInternalDetails(item.internal_details ? { ...defaultInternalDetails, ...item.internal_details } : { ...defaultInternalDetails });
-        setIsFlipped(false);
+        setIsFlipped(false); // Flip back to front
         setValidationError(null);
     };
 
@@ -305,9 +343,8 @@ export default function DataItemCard({
     const formCheckboxRadioBaseClass = "h-4 w-4 rounded cursor-pointer transition-all duration-150 shadow";
     const formCheckboxRadioFocusClass = "focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 focus:ring-offset-slate-800";
     const formCheckboxClass = `${formCheckboxRadioBaseClass} bg-slate-700 border-slate-600 text-sky-500 ${formCheckboxRadioFocusClass}`;
-    const formRadioClass = `${formCheckboxRadioBaseClass} bg-slate-700 border-slate-600 text-sky-500 ${formCheckboxRadioFocusClass}`;
+    // const formRadioClass = `${formCheckboxRadioBaseClass} bg-slate-700 border-slate-600 text-sky-500 ${formCheckboxRadioFocusClass}`; // Nicht mehr direkt verwendet für Pill-Style
 
-    // Bestimmt, ob die Karte die Flip-Funktionalität haben soll
     const canFlip = currentView === 'beschwerden';
 
     return (
@@ -319,7 +356,7 @@ export default function DataItemCard({
             style={{ perspective: '1000px' }}
         >
             <AnimatePresence mode="wait">
-                {(!isFlipped || !canFlip) ? ( // MODIFIZIERT: Zeige Vorderseite, wenn nicht geflippt ODER wenn es keine Beschwerde-Karte ist
+                {(!isFlipped || !canFlip) ? (
                     // VORDERSEITE
                     <motion.div key={`${cardKey}-front`} variants={flipContentVariants} initial="initial" animate="animate" exit="exit" className="flex flex-col flex-grow">
                         <div className="p-4 md:p-5 flex flex-col flex-grow">
@@ -379,8 +416,8 @@ export default function DataItemCard({
                         </div>
                         {isStatusRelevantView && actionButton && (
                             <motion.div variants={contentItemVariants} className="px-4 md:px-5 pb-4 pt-2 border-t border-slate-700/60 mt-auto">
-                                <div className={`flex ${canFlip ? 'justify-between' : 'justify-end'} items-center mb-2`}> {/* MODIFIZIERT: Layout für Buttons */}
-                                    {canFlip && ( // MODIFIZIERT: Settings-Button nur für Beschwerden
+                                <div className={`flex ${canFlip ? 'justify-between' : 'justify-end'} items-center mb-2`}>
+                                    {canFlip && (
                                         <motion.button 
                                             onClick={() => { setIsFlipped(true); setValidationError(null); }} 
                                             className="p-1.5 rounded-full text-slate-400 hover:text-sky-400 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800" 
@@ -405,67 +442,83 @@ export default function DataItemCard({
                         )}
                     </motion.div>
                 ) : (
-                    // RÜCKSEITE (wird nur gerendert, wenn isFlipped UND canFlip true sind)
-                    <motion.div key={`${cardKey}-back`} variants={flipContentVariants} initial="initial" animate="animate" exit="exit" className="p-4 md:p-5 flex flex-col flex-grow justify-between space-y-4">
-                        <div className="space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600/70 scrollbar-track-slate-700/30 pr-1 max-h-[calc(100%-4rem)]">
-                            <motion.div variants={contentItemVariants} className="flex justify-between items-center">
-                                <h4 className="text-lg font-semibold text-slate-100 flex items-center"><MessageSquareTextIcon size={20} className="mr-2 text-sky-400"/> Interne Bearbeitung</h4>
-                                <motion.button onClick={handleCancelInternalData} className="p-1.5 rounded-full text-slate-400 hover:text-sky-300 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800" title="Zurück zur Detailansicht" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                    // RÜCKSEITE
+                    <motion.div key={`${cardKey}-back`} variants={flipContentVariants} initial="initial" animate="animate" exit="exit" className="p-4 md:p-5 flex flex-col flex-grow justify-between">
+                        {/* Scrollbarer Bereich für Formularinhalte */}
+                        <div className="overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600/70 scrollbar-track-slate-700/30 pr-1 pb-4 max-h-[calc(100%-8rem)]"> 
+                            <motion.div variants={contentItemVariants} className="flex justify-between items-center pb-3 border-slate-700/80 mb-5 top-0 z-10 pt-3 -mt-1"> 
+                                <h4 className="text-lg font-semibold text-slate-100 flex items-center">
+                                    <MessageSquareTextIcon size={22} className="mr-2.5 text-sky-400 flex-shrink-0"/> Interne Bearbeitung
+                                </h4>
+                                <motion.button onClick={handleCancelInternalData} className="p-1.5 rounded-full text-slate-400 hover:text-sky-300 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800" title="Abbrechen & Zurück" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                                     <ArrowLeftIcon size={18} />
                                 </motion.button>
                             </motion.div>
 
-                            <motion.div variants={contentItemVariants}>
-                                <label htmlFor={`${cardKey}-generalNotes`} className="block text-sm font-medium text-slate-300 mb-1.5">Allgemeine Notizen:</label>
-                                <textarea id={`${cardKey}-generalNotes`} value={internalDetails.generalNotes} onChange={e => handleInternalDetailChange('generalNotes', e.target.value)} rows={4} className={`${formInputTextClass} min-h-[80px]`} placeholder="Interne Vermerke, Beobachtungen..." />
-                            </motion.div>
+                            <FormSection title="Allgemeine Notizen" icon={StickyNoteIcon} htmlFor={`${cardKey}-generalNotes`}>
+                                <textarea id={`${cardKey}-generalNotes`} value={internalDetails.generalNotes} onChange={e => handleInternalDetailChange('generalNotes', e.target.value)} rows={4} className={`${formInputTextClass} min-h-[80px]`} placeholder="Interne Vermerke, Beobachtungen, nächste Schritte..." />
+                            </FormSection>
 
-                            <motion.div variants={contentItemVariants}>
-                                <label className="block text-sm font-medium text-slate-300 mb-1.5">Klärungsart <span className="text-red-400">*</span>:</label>
-                                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                                    {([ {value: 'written', label: 'Schriftliche Klärung'}, {value: 'phone', label: 'Telefonische Klärung'} ]).map(type => (
-                                        <label key={type.value} className="flex items-center text-sm text-slate-200 hover:text-sky-300 transition-colors cursor-pointer p-2 rounded-md hover:bg-slate-700/50">
-                                            <input type="radio" name={`${cardKey}-clarification`} checked={internalDetails.clarificationType === type.value} onChange={() => handleInternalDetailChange('clarificationType', type.value as 'written' | 'phone')} className={`mr-2.5 ${formRadioClass}`} />
-                                            {type.label}
-                                        </label>
-                                    ))}
+                            <FormSection title="Klärungsart" required icon={AlertCircleIcon}> {/* AlertCircleIcon als Beispiel für Pflichtfeld-Indikator */}
+                                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+                                    {([
+                                        {value: 'written', label: 'Schriftlich', icon: MailIcon },
+                                        {value: 'phone', label: 'Telefonisch', icon: PhoneIcon }
+                                    ] as const).map(type => { // 'as const' für strengere Typisierung von type.value
+                                        const IconComponent = type.icon;
+                                        return (
+                                            <label key={type.value} className={`flex-1 flex items-center justify-center text-sm transition-all duration-150 cursor-pointer p-3 rounded-lg border-2 shadow-sm hover:shadow-md
+                                                ${internalDetails.clarificationType === type.value
+                                                    ? 'bg-sky-600/40 border-sky-500 text-sky-100 ring-1 ring-sky-500'
+                                                    : 'bg-slate-700/50 border-slate-600 hover:bg-slate-700/70 hover:border-slate-500 text-slate-300 hover:text-slate-100'
+                                                }`}
+                                            >
+                                                <input type="radio" name={`${cardKey}-clarificationType`} checked={internalDetails.clarificationType === type.value} onChange={() => handleInternalDetailChange('clarificationType', type.value)} className="sr-only" />
+                                                <IconComponent size={16} className={`mr-2 flex-shrink-0 ${internalDetails.clarificationType === type.value ? 'text-sky-300' : 'text-slate-400'}`} />
+                                                {type.label}
+                                            </label>
+                                        );
+                                    })}
                                 </div>
-                            </motion.div>
+                            </FormSection>
 
-                            <motion.div variants={contentItemVariants}>
-                                <label className="block text-sm font-medium text-slate-300 mb-1.5">Optionale Vermerke:</label>
-                                <div className="space-y-2">
+                            <FormSection title="Optionale interne Vermerke" icon={ListChecksIcon}>
+                                <div className="space-y-1.5">
                                 {[
                                     { key: 'teamLeadInformed', label: 'Teamleiter informiert' },
                                     { key: 'departmentHeadInformed', label: 'Geschäftsbereichsleiter informiert' },
                                     { key: 'forwardedToSubcontractor', label: 'Weiterleitung an Nachauftraggeber' },
                                     { key: 'forwardedToInsurance', label: 'Weiterleitung an Versicherungsabteilung' },
                                 ].map(opt => (
-                                    <label key={opt.key} className="flex items-center text-sm text-slate-200 hover:text-sky-300 transition-colors cursor-pointer p-2 rounded-md hover:bg-slate-700/50">
-                                        <input type="checkbox" checked={internalDetails[opt.key as keyof InternalCardData] as boolean} onChange={e => handleInternalDetailChange(opt.key as keyof InternalCardData, e.target.checked)} className={`mr-2.5 ${formCheckboxClass}`} />
+                                    <label key={opt.key} className="flex items-center text-sm text-slate-200 hover:text-sky-300 transition-colors cursor-pointer p-2.5 rounded-md hover:bg-slate-700/50 border border-transparent hover:border-slate-600">
+                                        <input type="checkbox" checked={!!internalDetails[opt.key as keyof InternalCardData]} onChange={e => handleInternalDetailChange(opt.key as keyof InternalCardData, e.target.checked)} className={`mr-2.5 ${formCheckboxClass}`} />
                                         {opt.label}
                                     </label>
                                 ))}
                                 </div>
-                            </motion.div>
+                            </FormSection>
                             
-                            <motion.div variants={contentItemVariants}>
-                                <label className="flex items-center text-sm text-slate-200 hover:text-sky-300 transition-colors cursor-pointer p-2 rounded-md hover:bg-slate-700/50">
+                            <FormSection icon={CreditCardIcon}> {/* Kein Titel, nur Icon als visueller Hinweis */}
+                                <label className="flex items-center text-sm text-slate-200 hover:text-sky-300 transition-colors cursor-pointer p-2.5 rounded-md hover:bg-slate-700/50 border border-transparent hover:border-slate-600">
                                     <input type="checkbox" checked={internalDetails.moneyRefunded} onChange={e => handleInternalDetailChange('moneyRefunded', e.target.checked)} className={`mr-2.5 ${formCheckboxClass}`} />
                                     Geld erstattet
                                 </label>
-                            </motion.div>
-                            
-                            <AnimatePresence>
-                                {internalDetails.moneyRefunded && (
-                                    <motion.div variants={contentItemVariants} initial={{ opacity: 0, height: 0, marginTop: 0 }} animate={{ opacity: 1, height: 'auto', marginTop: '0.25rem' }} exit={{ opacity: 0, height: 0, marginTop: 0 }} className="pl-4 sm:pl-7">
-                                        <label htmlFor={`${cardKey}-refundAmount`} className="block text-sm font-medium text-slate-300 mb-1.5">Erstatteter Betrag (€) <span className="text-red-400">*</span>:</label>
-                                        <input type="number" id={`${cardKey}-refundAmount`} value={internalDetails.refundAmount} onChange={e => handleInternalDetailChange('refundAmount', e.target.value)} placeholder="z.B. 10.50" className={formInputTextClass} min="0.01" step="0.01" />
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                                <AnimatePresence>
+                                    {internalDetails.moneyRefunded && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                                            animate={{ opacity: 1, height: 'auto', marginTop: '0.75rem' }} // mt-3
+                                            exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom:0 }}
+                                            className="pl-7"> {/* Einzug für den Betrag */}
+                                            <label htmlFor={`${cardKey}-refundAmount`} className="block text-xs font-medium text-slate-300 mb-1.5">Erstatteter Betrag (€) <span className="text-red-400">*</span>:</label>
+                                            <input type="number" id={`${cardKey}-refundAmount`} value={internalDetails.refundAmount} onChange={e => handleInternalDetailChange('refundAmount', e.target.value)} placeholder="z.B. 10.50" className={`${formInputTextClass} text-sm`} min="0.01" step="0.01" />
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </FormSection>
                         </div>
 
+                        {/* Buttons und Validierungsfehler am unteren Rand */}
                         <div className="mt-auto pt-4 border-t border-slate-700/60">
                             {validationError && (
                                 <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-3 p-2.5 text-xs text-red-200 bg-red-800/50 rounded-md flex items-center shadow">
@@ -473,11 +526,11 @@ export default function DataItemCard({
                                     {validationError}
                                 </motion.div>
                             )}
-                            <motion.div variants={contentItemVariants} className="flex justify-end space-x-3">
-                                <motion.button onClick={handleCancelInternalData} className="px-4 py-2 text-xs font-semibold rounded-lg text-slate-200 bg-slate-600 hover:bg-slate-500 transition-colors flex items-center shadow-md hover:shadow-lg" whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }}>
+                            <motion.div variants={contentItemVariants} className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
+                                <motion.button onClick={handleCancelInternalData} className="px-4 py-2 text-xs font-semibold rounded-lg text-slate-200 bg-slate-600 hover:bg-slate-500 transition-colors flex items-center justify-center shadow-md hover:shadow-lg" whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }}>
                                     <XCircleIcon size={16} className="mr-1.5" /> Abbrechen
                                 </motion.button>
-                                <motion.button onClick={handleSaveInternalData} className="px-4 py-2 text-xs font-semibold rounded-lg text-white bg-sky-600 hover:bg-sky-500 transition-colors flex items-center shadow-md hover:shadow-lg" whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }}>
+                                <motion.button onClick={handleSaveInternalData} className="px-4 py-2 text-xs font-semibold rounded-lg text-white bg-sky-600 hover:bg-sky-500 transition-colors flex items-center justify-center shadow-md hover:shadow-lg" whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }}>
                                     <SaveIcon size={16} className="mr-1.5" /> Speichern
                                 </motion.button>
                             </motion.div>

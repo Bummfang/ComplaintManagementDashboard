@@ -11,7 +11,7 @@ import {
     DataItem, ViewType, StatusFilterMode, BeschwerdeItem, // BeschwerdeItem für Typ-Casts
     AnyItemStatus
 } from '../types';
-import { API_ENDPOINTS, VIEW_TITLES} from '../constants';
+import { API_ENDPOINTS, VIEW_TITLES } from '../constants';
 import StatusBar from './StatusBar';
 import ViewTabs from './ViewTabs';
 import FilterControls from './FilterControls';
@@ -166,16 +166,23 @@ export default function ContaintTable() {
         if (idSearchTerm.trim() !== "") {
             const trimmedIdSearchTerm = idSearchTerm.trim();
             const searchId = parseInt(trimmedIdSearchTerm, 10);
-        
+
             if (!isNaN(searchId)) {
+                console.log(`ID-Filter: Wende Filter an für searchId: ${searchId}.`);
+                console.log(`ID-Filter: tempData VOR Filterung (nur IDs):`, JSON.parse(JSON.stringify(tempData.map(item => item.id))));
                 // Die Eingabe ist eine gültige Zahl, also nach exakter ID filtern
                 tempData = tempData.filter(item => item.id === searchId);
+                console.log(`ID-Filter: tempData NACH Filterung für searchId: ${searchId} (nur IDs):`, JSON.parse(JSON.stringify(tempData.map(item => item.id))));
             } else {
                 // Die Eingabe ist nicht leer, ABER keine gültige Zahl (z.B. "abc" oder "12x").
                 // Da IDs Zahlen sind, kann kein Eintrag einer solchen Eingabe entsprechen.
                 // Also: Zeige keine Ergebnisse an.
-                tempData = []; 
+                console.log(`ID-Filter: idSearchTerm "${trimmedIdSearchTerm}" ist keine gültige Zahl. Leere tempData.`);
+                tempData = [];
             }
+
+        } else {
+            console.log("ID-Filter: idSearchTerm ist leer, ID-Filter wird übersprungen.");
         }
 
         if (currentView === "beschwerden") {
@@ -212,9 +219,9 @@ export default function ContaintTable() {
                     if (sDate && itemDate < sDate) match = false;
                     if (eDate && itemDate > eDate) match = false;
                     return match;
-                } catch (e) { 
+                } catch (e) {
                     console.log(e);
-                    return false; 
+                    return false;
                 }
             });
         }
@@ -338,6 +345,8 @@ export default function ContaintTable() {
                                     gefunden.
                                 </div>
                             ) : !isLoadingData && filteredData.length > 0 && !error ? (
+                                <>
+                                 {console.log("%cRENDERING filteredData (IDs):", "color:lime; font-weight:bold;", JSON.parse(JSON.stringify(filteredData.map(item => item.id))))}
                                 <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
                                     {filteredData.map((item) => (
                                         <DataItemCard
@@ -350,6 +359,7 @@ export default function ContaintTable() {
                                         />
                                     ))}
                                 </motion.div>
+                                </>
                             ) : null}
             </motion.div>
         </div>
