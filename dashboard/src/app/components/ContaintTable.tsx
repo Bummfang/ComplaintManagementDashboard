@@ -16,7 +16,7 @@ import { API_ENDPOINTS, VIEW_TITLES } from '../constants';
 import StatusBar from './StatusBar';
 import ViewTabs from './ViewTabs';
 import FilterControls from './FilterControls';
-import DataItemCard from './DataItemCard';
+import DataItemCard from './DataItemCard/DataItemCard';
 import StatisticsView from './StatisticsView';
 import AdminSection from './AdminSection';
 

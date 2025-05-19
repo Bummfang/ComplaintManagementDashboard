@@ -7,10 +7,10 @@ import {
     MailIcon, PhoneIcon, StickyNoteIcon, ListChecksIcon, CreditCardIcon // Hinzugefügte Icons für die Rückseite
 } from 'lucide-react';
 import { useState, useEffect, ReactNode } from 'react'; // ReactNode hinzugefügt
-import { DataItem, BeschwerdeItem, ViewType, AnyItemStatus } from '../types';
-import { formatDate, formatTime, formatDateTime } from '../utils';
-import { useAuth } from '../contexts/AuthContext';
-import { API_ENDPOINTS } from '../constants';
+import { DataItem, BeschwerdeItem, ViewType, AnyItemStatus } from '../../types';
+import { formatDate, formatTime, formatDateTime } from '../../utils';
+import { useAuth } from '../../contexts/AuthContext';
+import { API_ENDPOINTS } from '../../constants';
 
 export interface InternalCardData {
     generalNotes: string;
