@@ -37,26 +37,26 @@ const CardBack: React.FC<CardBackProps> = ({
 }) => {
     const formElementBaseClass = "w-full text-sm rounded-lg transition-all duration-200 ease-in-out shadow-sm disabled:opacity-60 disabled:cursor-not-allowed";
     const formInputTextClass = `${formElementBaseClass} bg-slate-700/60 border border-slate-600/80 text-slate-100 placeholder-slate-400/90 focus:bg-slate-700/80 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 py-2.5 px-3.5`;
-    
+
     const CustomCheckbox = ({ id, checked, onChange, label, disabled }: { id: string, checked: boolean, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, label: string, disabled?: boolean }) => (
-        <label 
-            htmlFor={id} 
+        <label
+            htmlFor={id}
             className={`group flex items-center text-sm text-slate-200 hover:text-sky-200 transition-colors cursor-pointer p-3 rounded-lg hover:bg-slate-700/50 border border-transparent hover:border-slate-600/70 
                         ${disabled ? 'opacity-60 cursor-not-allowed hover:bg-transparent hover:border-transparent' : ''}`}
         >
             <div className="relative flex items-center justify-center w-5 h-5">
                 <input
                     id={id} type="checkbox" checked={checked} onChange={onChange}
-                    disabled={disabled} className="sr-only peer" 
+                    disabled={disabled} className="sr-only peer"
                 />
-                <Square 
-                    size={20} 
-                    className={`absolute text-slate-500 group-hover:text-sky-500 transition-all duration-150 ${checked ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`} 
+                <Square
+                    size={20}
+                    className={`absolute text-slate-500 group-hover:text-sky-500 transition-all duration-150 ${checked ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`}
                     strokeWidth={2.5}
                 />
-                <CheckSquare 
-                    size={20} 
-                    className={`absolute text-sky-400 transition-all duration-150 ${checked ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} 
+                <CheckSquare
+                    size={20}
+                    className={`absolute text-sky-400 transition-all duration-150 ${checked ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}
                     strokeWidth={2.5}
                 />
             </div>
@@ -65,8 +65,8 @@ const CardBack: React.FC<CardBackProps> = ({
     );
 
     const clarificationTypes = [
-        { value: 'written', label: 'Schriftlich', icon: MailIcon },
-        { value: 'phone', label: 'Telefonisch', icon: PhoneIcon }
+        { value: 'schriftlich', label: 'Schriftlich', icon: MailIcon },
+        { value: 'telefonisch', label: 'Telefonisch', icon: PhoneIcon }
     ] as const;
 
     const optionalInternalNotes = [
@@ -83,15 +83,15 @@ const CardBack: React.FC<CardBackProps> = ({
 
 
     return (
-        <motion.div 
+        <motion.div
             key={`${cardKey}-back-content`}
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1, transition: {delay: 0.1, duration: 0.3} }}
-            exit={{ opacity: 0, transition: {duration: 0.2} }}
-            className="p-4 md:p-5 flex flex-col flex-grow justify-between h-full overflow-x-hidden" 
+            animate={{ opacity: 1, transition: { delay: 0.1, duration: 0.3 } }}
+            exit={{ opacity: 0, transition: { duration: 0.2 } }}
+            className="p-4 md:p-5 flex flex-col flex-grow justify-between h-full overflow-x-hidden"
         >
-            <motion.div 
-                variants={contentItemVariants} 
+            <motion.div
+                variants={contentItemVariants}
                 className="flex justify-between items-center pb-4 border-b border-slate-600/70 sticky top-0 bg-slate-800/80 backdrop-blur-md z-20 pt-3 -mx-4 md:-mx-5 px-4 md:px-5 shadow-lg shadow-slate-900/30"
             >
                 <h4 className="text-lg font-semibold text-sky-400 flex items-center">
@@ -111,9 +111,11 @@ const CardBack: React.FC<CardBackProps> = ({
             <div className="overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-slate-500/70 scrollbar-track-slate-700/40 pr-1.5 -mr-1.5 pb-6 flex-grow pt-6">
                 <FormSection title="Allgemeine Notizen" icon={StickyNoteIcon} htmlFor={`${cardKey}-generalNotes`} className="mb-6">
                     <textarea
-                        id={`${cardKey}-generalNotes`} value={internalDetails.generalNotes}
+                        id={`${cardKey}-generalNotes`}
+                        value={internalDetails.generalNotes || ""} 
                         onChange={e => onDetailChange('generalNotes', e.target.value)}
-                        rows={4} className={`${formInputTextClass} min-h-[100px]`}
+                        rows={4}
+                        className={`${formInputTextClass} min-h-[100px]`}
                         placeholder="Interne Vermerke, Beobachtungen, nächste Schritte..."
                         disabled={isSubmitting}
                     />
@@ -160,9 +162,9 @@ const CardBack: React.FC<CardBackProps> = ({
                         ))}
                     </div>
                 </FormSection>
-                
+
                 <FormSection icon={CreditCardIcon} className="mb-4">
-                     <CustomCheckbox
+                    <CustomCheckbox
                         id={`${cardKey}-moneyRefunded`}
                         checked={internalDetails.moneyRefunded}
                         onChange={e => onDetailChange('moneyRefunded', e.target.checked)}
@@ -173,15 +175,16 @@ const CardBack: React.FC<CardBackProps> = ({
                             <motion.div
                                 initial={{ opacity: 0, height: 0, marginTop: 0 }}
                                 animate={{ opacity: 1, height: 'auto', marginTop: '0.75rem' }}
-                                exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom:0 }}
+                                exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }}
                                 className="pl-9"
                             >
                                 <label htmlFor={`${cardKey}-refundAmount`} className="block text-xs font-medium text-slate-300 mb-1.5">
                                     Erstatteter Betrag (€) <span className="text-red-400">*</span>:
                                 </label>
                                 <input
-                                    type="number" id={`${cardKey}-refundAmount`}
-                                    value={internalDetails.refundAmount}
+                                    type="number" 
+                                    id={`${cardKey}-refundAmount`}
+                                    value={internalDetails.refundAmount || ""}
                                     onChange={e => onDetailChange('refundAmount', e.target.value)}
                                     placeholder="z.B. 10.50"
                                     className={`${formInputTextClass} text-sm py-2 px-3`}
@@ -210,7 +213,7 @@ const CardBack: React.FC<CardBackProps> = ({
                     <motion.button
                         onClick={onCancel} disabled={isSubmitting}
                         className={secondaryButtonClass} // NEUE Klasse
-                        whileHover={{ scale: isSubmitting ? 1 : 1.05, y: isSubmitting ? 0 : -3, boxShadow: "0px 8px 20px -3px rgba(100, 116, 139, 0.35)"}} // Angepasster Hover
+                        whileHover={{ scale: isSubmitting ? 1 : 1.05, y: isSubmitting ? 0 : -3, boxShadow: "0px 8px 20px -3px rgba(100, 116, 139, 0.35)" }} // Angepasster Hover
                         whileTap={{ scale: isSubmitting ? 1 : 0.98, y: 0 }}
                     >
                         <XCircleIcon size={18} className="mr-2 opacity-90" /> Abbrechen
@@ -218,11 +221,11 @@ const CardBack: React.FC<CardBackProps> = ({
                     <motion.button
                         onClick={onSave} disabled={isSubmitting}
                         className={primaryButtonClass} // NEUE Klasse
-                        whileHover={{ scale: isSubmitting ? 1 : 1.05, y: isSubmitting ? 0 : -3, boxShadow: "0px 8px 20px -3px rgba(14, 165, 233, 0.4)"}} // Angepasster Hover
+                        whileHover={{ scale: isSubmitting ? 1 : 1.05, y: isSubmitting ? 0 : -3, boxShadow: "0px 8px 20px -3px rgba(14, 165, 233, 0.4)" }} // Angepasster Hover
                         whileTap={{ scale: isSubmitting ? 1 : 0.98, y: 0 }}
                     >
                         {isSubmitting ? (
-                             <>
+                            <>
                                 <motion.svg className="animate-spin -ml-1 mr-2.5 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>

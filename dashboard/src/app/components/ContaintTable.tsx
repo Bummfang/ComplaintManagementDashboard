@@ -1,18 +1,14 @@
+// src/app/components/ContaintTable.tsx (oder dein Pfad)
 "use client";
 
-// motion bleibt für andere Animationen erhalten,
-// MotionProps und MotionTransition könnten entfernt werden, wenn sie nur für BackgroundBlob benötigt wurden.
-// Ich lasse sie vorerst drin, falls andere motion-Komponenten sie implizit nutzen könnten,
-// aber wenn BackgroundBlob der einzige Nutzer war, können sie weg.
 import { motion } from "framer-motion";
-import { useEffect, useState, useCallback, useMemo } from "react";
-import { useAuth } from '../contexts/AuthContext';
+import { useEffect, useState, useCallback } from "react";
+import { useAuth } from '../contexts/AuthContext'; // Pfad anpassen
 
 import {
-    DataItem, ViewType, StatusFilterMode, BeschwerdeItem,
-    AnyItemStatus
-} from '../types';
-import { API_ENDPOINTS, VIEW_TITLES } from '../constants';
+    DataItem, ViewType, AnyItemStatus, CardSpecificDataItem // CardSpecificDataItem importiert
+} from '../types'; // Pfad anpassen
+import { API_ENDPOINTS, VIEW_TITLES } from '../constants'; // Pfad anpassen
 import StatusBar from './StatusBar';
 import ViewTabs from './ViewTabs';
 import FilterControls from './FilterControls';
@@ -20,7 +16,8 @@ import DataItemCard from './DataItemCard/DataItemCard';
 import StatisticsView from './StatisticsView';
 import AdminSection from './AdminSection';
 
-// Die Definition von BackgroundBlob, BackgroundBlobProps und AnimatableXYProperties wurde entfernt.
+import { useAppFilters } from '../hooks/useAppFilters';
+import { useDataFetching } from '../hooks/useDataFetching';
 
 export type DateFilterTarget = 'erstelltam' | 'datum';
 
@@ -28,259 +25,185 @@ export default function ContaintTable() {
     const { isAuthenticated, user, token, isLoadingAuth, logout } = useAuth();
 
     const [currentView, setCurrentView] = useState<ViewType>("beschwerden");
-    const [data, setData] = useState<(DataItem & { action_required?: "relock_ui" })[]>([]);
-    const [isLoadingData, setIsLoadingData] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [copiedCellKey, setCopiedCellKey] = useState<string | null>(null);
-    const [activeStatusFilter, setActiveStatusFilter] = useState<StatusFilterMode>("alle");
-    const [searchTerm, setSearchTerm] = useState<string>("");
-    const [emailSearchTerm, setEmailSearchTerm] = useState<string>("");
-    const [idSearchTerm, setIdSearchTerm] = useState<string>("");
-    const [haltestelleSearchTerm, setHaltestelleSearchTerm] = useState<string>("");
-    const [linieSearchTerm, setLinieSearchTerm] = useState<string>("");
     const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
-    const [startDateInput, setStartDateInput] = useState<string>("");
-    const [endDateInput, setEndDateInput] = useState<string>("");
-    const [appliedStartDate, setAppliedStartDate] = useState<string | null>(null);
-    const [appliedEndDate, setAppliedEndDate] = useState<string | null>(null);
-    const [isDbConnected, setIsDbConnected] = useState<boolean>(true);
-    const [lastDataUpdateTimestamp, setLastDataUpdateTimestamp] = useState<Date | null>(null);
     const [cardAccentsEnabled, setCardAccentsEnabled] = useState<boolean>(true);
-    const [dateFilterTarget, setDateFilterTarget] = useState<DateFilterTarget>('erstelltam');
 
-    const fetchData = useCallback(async (view: ViewType, isBackgroundUpdate = false) => {
-        if (view === "statistik" || view === "admin") {
-            setIsLoadingData(false); setData([]); setError(null); return;
+    const {
+        data,
+        isLoadingData,
+        error: dataFetchingError,
+        isDbConnected,
+        lastDataUpdateTimestamp,
+        refetchData
+    } = useDataFetching({ currentView, token, isAuthenticated, logout });
+
+    const {
+        filteredData,
+        activeStatusFilter, setActiveStatusFilter,
+        searchTerm, setSearchTerm,
+        emailSearchTerm, setEmailSearchTerm,
+        idSearchTerm, setIdSearchTerm,
+        haltestelleSearchTerm, setHaltestelleSearchTerm,
+        linieSearchTerm, setLinieSearchTerm,
+        startDateInput, setStartDateInput,
+        endDateInput, setEndDateInput,
+        dateFilterTarget, setDateFilterTarget,
+        handleApplyDateFilter,
+        handleClearDateFilter,
+        isDateFilterApplied,
+    } = useAppFilters({ initialData: data, currentView });
+
+    const [uiError, setUiError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (currentView !== "statistik" && currentView !== "admin") {
+            setShowAdvancedFilters(false);
         }
+        setUiError(null);
+    }, [currentView]);
+
+    // --- ANGEPASSTE handleItemUpdate ---
+    const handleItemUpdate = useCallback(async (updatedItemFromCard: CardSpecificDataItem) => {
         if (!token) {
-            if (!isBackgroundUpdate) setIsLoadingData(false);
-            console.warn("ContaintTable: fetchData called without a token."); return;
-        }
-        const apiEndpoint = API_ENDPOINTS[view];
-        if (!apiEndpoint) {
-            setIsLoadingData(false); const errorMessage = `Kein API Endpunkt definiert für die Ansicht: ${view}`;
-            setError(errorMessage); console.error(errorMessage); return;
-        }
-        if (!isBackgroundUpdate) { setIsLoadingData(true); setError(null); }
-        try {
-            const response = await fetch(apiEndpoint, { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } });
-            if (!response.ok) {
-                setIsDbConnected(false);
-                const errorData = await response.json().catch(() => ({ error: `HTTP-Fehler ${response.status}`, details: response.statusText }));
-                if (response.status === 401) { setError("Ihre Sitzung ist abgelaufen oder ungültig. Bitte melden Sie sich erneut an."); logout(); return; }
-                throw new Error(errorData.error || `Fehler beim Laden der Daten für '${VIEW_TITLES[view] || view}': Status ${response.status}`);
-            }
-            const fetchedDataFromApi: (DataItem & { action_required?: "relock_ui" })[] = await response.json();
-            setData(fetchedDataFromApi);
-            setIsDbConnected(true);
-            setLastDataUpdateTimestamp(new Date());
-            if (!isBackgroundUpdate) setError(null);
-        } catch (err) {
-            setIsDbConnected(false);
-            setError(err instanceof Error ? err.message : "Ein unbekannter Fehler ist beim Laden der Daten aufgetreten.");
-        } finally {
-            if (!isBackgroundUpdate) setIsLoadingData(false);
-        }
-    // KORREKTUR HIER: `currentView` aus dem Dependency Array entfernt
-    }, [token, logout, setIsLoadingData, setData, setError, setIsDbConnected, setLastDataUpdateTimestamp]);
-
-    useEffect(() => {
-        if (isAuthenticated && token) {
-            fetchData(currentView);
-            if (currentView !== "statistik" && currentView !== "admin") {
-                setActiveStatusFilter("alle");
-                setSearchTerm(""); setEmailSearchTerm(""); setIdSearchTerm("");
-                setStartDateInput(""); setEndDateInput("");
-                setAppliedStartDate(null); setAppliedEndDate(null);
-                setShowAdvancedFilters(false);
-                if (currentView !== "beschwerden") {
-                    setHaltestelleSearchTerm(""); setLinieSearchTerm("");
-                }
-                setDateFilterTarget(currentView === "beschwerden" ? 'datum' : 'erstelltam');
-            }
-        } else if (!isLoadingAuth && !isAuthenticated) {
-            setData([]);
-        }
-    }, [currentView, isAuthenticated, token, isLoadingAuth, fetchData]);
-
-    useEffect(() => {
-        let intervalId: NodeJS.Timeout;
-        if (isAuthenticated && token && currentView !== "statistik" && currentView !== "admin") {
-            intervalId = setInterval(() => { fetchData(currentView, true); }, 30000);
-        }
-        return () => clearInterval(intervalId);
-    }, [currentView, isAuthenticated, token, fetchData]);
-
-    const handleItemUpdate = useCallback((updatedItem: DataItem & { action_required?: "relock_ui" }) => {
-        setData(prevData =>
-            prevData.map(item =>
-                (item.id === updatedItem.id && item.erstelltam === updatedItem.erstelltam)
-                    ? { ...item, ...updatedItem }
-                    : item
-            )
-        );
-        setLastDataUpdateTimestamp(new Date());
-        console.log(`ContaintTable: Item ${updatedItem.id} lokal durch onItemUpdate aktualisiert.`, updatedItem);
-    }, [setData, setLastDataUpdateTimestamp]);
-
-    const filteredData = useMemo(() => {
-        let tempData = [...data];
-        // Die console.logs für ID-Filterung können hier bleiben oder entfernt/angepasst werden.
-        // Ich lasse sie vorerst drin, falls du sie noch brauchst.
-        console.log("-----------------------------------------");
-        console.log("ID-Filter: Start der Filterberechnung");
-        console.log("ID-Filter: idSearchTerm (aus Input):", idSearchTerm);
-        console.log("ID-Filter: Ursprüngliche tempData Länge:", tempData.length);
-        if (currentView === "statistik" || currentView === "admin" || !data || data.length === 0) return [];
-
-        if (activeStatusFilter !== "alle" && (currentView === "beschwerden" || currentView === "lob" || currentView === "anregungen")) {
-            tempData = tempData.filter(item => 'status' in item && item.status === activeStatusFilter);
+            setUiError("Nicht autorisiert für Update.");
+            logout();
+            return;
         }
 
-        if (searchTerm.trim() !== "") {
-            const lowerSearchTerm = searchTerm.trim().toLowerCase();
-            tempData = tempData.filter(item => item.name?.toLowerCase().includes(lowerSearchTerm));
-        }
-        if (emailSearchTerm.trim() !== "") {
-            const lowerEmailSearchTerm = emailSearchTerm.trim().toLowerCase();
-            tempData = tempData.filter(item => item.email?.toLowerCase().includes(lowerEmailSearchTerm));
-        }
-        if (idSearchTerm.trim() !== "") {
-            const trimmedIdSearchTerm = idSearchTerm.trim();
-            const searchId = parseInt(trimmedIdSearchTerm, 10);
-            if (!isNaN(searchId)) {
-                console.log(`ID-Filter: Wende Filter an für searchId: ${searchId}.`);
-                console.log(`ID-Filter: tempData VOR Filterung (nur IDs):`, JSON.parse(JSON.stringify(tempData.map(item => item.id))));
-                tempData = tempData.filter(item => item.id === searchId);
-                console.log(`ID-Filter: tempData NACH Filterung für searchId: ${searchId} (nur IDs):`, JSON.parse(JSON.stringify(tempData.map(item => item.id))));
-            } else {
-                console.log(`ID-Filter: idSearchTerm "${trimmedIdSearchTerm}" ist keine gültige Zahl. Leere tempData.`);
-                tempData = [];
-            }
-        } else {
-            console.log("ID-Filter: idSearchTerm ist leer, ID-Filter wird übersprungen.");
-        }
+        let apiEndpoint: string | undefined;
+        // Der Payload enthält immer die ID.
+        // Für den spezifischen Fall "Beschwerden" fügen wir internal_details hinzu.
+        // Die API erwartet für internal_details die camelCase-Schreibweise, wie sie vom Frontend kommt.
+        // Die API-Route (/api/containt/route.ts) kümmert sich dann um die Konvertierung zu snake_case für die DB.
+        const payload: { id: number; internal_details?: typeof updatedItemFromCard.internal_details } = {
+             id: updatedItemFromCard.id
+        };
 
         if (currentView === "beschwerden") {
-            if (haltestelleSearchTerm.trim() !== "") {
-                const lower = haltestelleSearchTerm.trim().toLowerCase();
-                tempData = tempData.filter(item => 'haltestelle' in item && (item as BeschwerdeItem).haltestelle?.toLowerCase().includes(lower));
-            }
-            if (linieSearchTerm.trim() !== "") {
-                const lower = linieSearchTerm.trim().toLowerCase();
-                tempData = tempData.filter(item => 'linie' in item && (item as BeschwerdeItem).linie?.toLowerCase().includes(lower));
+            apiEndpoint = API_ENDPOINTS.beschwerden;
+            if (updatedItemFromCard.internal_details) {
+                payload.internal_details = updatedItemFromCard.internal_details;
             }
         }
+        console.log("Spezialmission Debug: Payload an API:", JSON.stringify(payload, null, 2));
+        // Wichtig: Diese Funktion ist aktuell nur für das Speichern von internal_details
+        // bei Beschwerden gedacht, wie durch `CardBack` -> `handleSaveInternal` ausgelöst.
+        // Statusänderungen von der Kartenvorderseite laufen über `performStatusChangeAsync`.
 
-        if (appliedStartDate || appliedEndDate) {
-            const sDate = appliedStartDate ? new Date(appliedStartDate) : null;
-            const eDate = appliedEndDate ? new Date(appliedEndDate) : null;
-            if (sDate) sDate.setHours(0, 0, 0, 0);
-            if (eDate) eDate.setHours(23, 59, 59, 999);
-            tempData = tempData.filter(item => {
-                let dateStringToFilter: string | null = item.erstelltam;
-                if (dateFilterTarget === 'datum' && currentView === 'beschwerden' && 'datum' in item) {
-                    dateStringToFilter = (item as BeschwerdeItem).datum;
-                }
-                if (!dateStringToFilter) return false;
-                try {
-                    const itemDate = new Date(dateStringToFilter);
-                    if (dateFilterTarget === 'datum' && currentView === 'beschwerden' && dateStringToFilter.length === 10) {
-                        const [year, month, day] = dateStringToFilter.split('-').map(Number);
-                        itemDate.setFullYear(year, month - 1, day); itemDate.setHours(0, 0, 0, 0);
-                    }
-                    if (isNaN(itemDate.getTime())) return false;
-                    let match = true;
-                    if (sDate && itemDate < sDate) match = false;
-                    if (eDate && itemDate > eDate) match = false;
-                    return match;
-                } catch (e) {
-                    console.log(e);
-                    return false;
-                }
-            });
+        if (!apiEndpoint || (currentView === "beschwerden" && !payload.internal_details)) {
+            // Kein API-Endpunkt definiert ODER es ist eine Beschwerde, aber es gibt keine internen Details zum Speichern
+            // (sollte nicht passieren, da onSave von CardBack nur bei Änderungen ausgelöst wird, aber als Sicherheitscheck).
+            // console.warn("handleItemUpdate: Kein API-Endpunkt oder keine internen Details zum Speichern für Beschwerde.", payload);
+            if (currentView === "beschwerden" && !payload.internal_details) {
+                // Falls handleItemUpdate für eine Beschwerde ohne internal_details aufgerufen wird (unerwartet),
+                // hier keine Aktion ausführen oder nur refetch, wenn Statusänderung auch möglich wäre.
+                // Da CardBack keine Statusänderung auslöst, ist hier nichts zu tun.
+                // Ggf. refetchData(currentView, true); // Wenn eine allgemeine Aktualisierung gewünscht ist
+            }
+            return;
         }
-        return tempData;
-    }, [data, currentView, activeStatusFilter, appliedStartDate, appliedEndDate, dateFilterTarget, searchTerm, emailSearchTerm, idSearchTerm, haltestelleSearchTerm, linieSearchTerm]);
+        
+        setUiError(null); // Fehler vor dem API-Call zurücksetzen
+        try {
+            // console.log(`[ContaintTable] PATCH an ${apiEndpoint} mit Payload:`, JSON.stringify(payload, null, 2));
+            const response = await fetch(apiEndpoint, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                if (response.status === 401) {
+                    setUiError("Sitzung abgelaufen.");
+                    logout();
+                    return;
+                }
+                throw new Error(errorData.details || errorData.error || `Fehler beim Speichern der Details (${response.status})`);
+            }
+            
+            // Daten nach erfolgreichem Speichern neu laden, um die Änderungen zu sehen
+            refetchData(currentView, false); // false für Ladeindikator
+            // console.log(`ContaintTable: Item ${updatedItemFromCard.id} interne Details gespeichert und Daten neu geladen.`);
+
+        } catch (err) {
+            setUiError(err instanceof Error ? err.message : "Fehler beim Speichern der Details.");
+        }
+    }, [token, logout, currentView, refetchData, setUiError]); // setUiError als Abhängigkeit hinzugefügt
+
 
     const handleCopyToClipboard = useCallback(async (textToCopy: string, cellKey: string) => {
         if (!textToCopy) {
-            console.warn("handleCopyToClipboard: Kein Text zum Kopieren übergeben."); return;
+            return;
         }
         if (!navigator.clipboard) {
-            console.error("handleCopyToClipboard: Clipboard API nicht verfügbar.");
-            setError("Kopieren nicht möglich: Clipboard API nicht unterstützt oder nicht sicher (HTTPS benötigt).");
-            setTimeout(() => setError(null), 3000); return;
+            setUiError("Kopieren nicht möglich: Clipboard API nicht unterstützt oder nicht sicher (HTTPS benötigt).");
+            setTimeout(() => setUiError(null), 3000);
+            return;
         }
         try {
             await navigator.clipboard.writeText(textToCopy);
-            console.log(`ContaintTable: Text erfolgreich in Zwischenablage kopiert für Key ${cellKey}: "${textToCopy}"`);
             setCopiedCellKey(cellKey);
             setTimeout(() => setCopiedCellKey(null), 1500);
         } catch (err) {
-            console.error("handleCopyToClipboard: Fehler beim Kopieren in die Zwischenablage:", err);
-            setError("Kopieren in die Zwischenablage fehlgeschlagen.");
-            setTimeout(() => setError(null), 3000);
+            setUiError("Kopieren in die Zwischenablage fehlgeschlagen.");
+            setTimeout(() => setUiError(null), 3000);
             setCopiedCellKey(null);
         }
-    }, [setCopiedCellKey, setError]);
+    }, [setUiError, setCopiedCellKey]); // uiError State direkt hier, setUiError ist stabil
 
     const performStatusChangeAsync = useCallback(async (itemId: number, newStatus: AnyItemStatus, viewForApi: ViewType) => {
-        if (!token) { setError("Nicht autorisiert für Statusänderung."); logout(); return; }
-        setError(null);
-        const apiEndpoint = API_ENDPOINTS[viewForApi];
+        if (!token) {
+            setUiError("Nicht autorisiert für Statusänderung.");
+            logout();
+            return;
+        }
+        setUiError(null);
+        const apiEndpointKey = viewForApi as keyof typeof API_ENDPOINTS;
+        const apiEndpoint = API_ENDPOINTS[apiEndpointKey];
+
         if (!apiEndpoint) {
-            setError(`API Endpunkt für ${VIEW_TITLES[viewForApi]} nicht definiert.`); return;
+            setUiError(`API Endpunkt für ${VIEW_TITLES[viewForApi]} nicht definiert.`);
+            return;
         }
         try {
             const response = await fetch(apiEndpoint, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ id: itemId, status: newStatus }),
+                body: JSON.stringify({ id: itemId, status: newStatus }), // Sendet nur ID und Status
             });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                if (response.status === 401) { setError("Sitzung abgelaufen."); logout(); return; }
+                if (response.status === 401) {
+                    setUiError("Sitzung abgelaufen.");
+                    logout();
+                    return;
+                }
                 throw new Error(errorData.details || errorData.error || `Statusupdate fehlgeschlagen (${response.status})`);
             }
-            fetchData(currentView, true); // fetchData benötigt currentView
-            console.log(`ContaintTable: Status für Item ${itemId} geändert, Daten werden neu geladen.`);
+            refetchData(currentView, true);
         } catch (err) {
-            setError(err instanceof Error ? err.message : `Statusupdate für ${VIEW_TITLES[viewForApi]} fehlgeschlagen.`);
+            setUiError(err instanceof Error ? err.message : `Statusupdate für ${VIEW_TITLES[viewForApi]} fehlgeschlagen.`);
         }
-    }, [token, currentView, fetchData, logout, setError]);
+    }, [token, logout, refetchData, currentView, setUiError]); // uiError State direkt hier, setUiError ist stabil
 
     const handleStatusChangeForCard = (itemId: number, newStatus: AnyItemStatus, itemTypeView: ViewType): void => {
         if (itemTypeView === "beschwerden" || itemTypeView === "lob" || itemTypeView === "anregungen") {
             performStatusChangeAsync(itemId, newStatus, itemTypeView).catch(err => console.error(`ContaintTable: Fehler bei performStatusChangeAsync für ${itemTypeView}:`, err));
         } else {
-            setError("Statusänderung in dieser Ansicht nicht möglich."); setTimeout(() => setError(null), 3000);
+            setUiError("Statusänderung in dieser Ansicht nicht möglich.");
+            setTimeout(() => setUiError(null), 3000);
         }
     };
 
-    const handleApplyDateFilter = useCallback(() => {
-        setAppliedStartDate(startDateInput || null);
-        setAppliedEndDate(endDateInput || null);
-        console.log(`Datumsfilter angewendet: Start=${startDateInput || 'N/A'}, Ende=${endDateInput || 'N/A'}`);
-    }, [startDateInput, endDateInput, setAppliedStartDate, setAppliedEndDate]);
+    if (isLoadingAuth) { return <div className="text-center py-10">Authentifizierung wird geladen...</div>; }
+    if (!isAuthenticated && !isLoadingAuth) { return <div className="text-center py-10">Bitte einloggen.</div>; }
 
-    const handleClearDateFilter = useCallback(() => {
-        setStartDateInput("");
-        setEndDateInput("");
-        setAppliedStartDate(null);
-        setAppliedEndDate(null);
-        console.log("Datumsfilter zurückgesetzt.");
-    }, [setStartDateInput, setEndDateInput, setAppliedStartDate, setAppliedEndDate]);
-
-    const isDateFilterApplied = useMemo(() => !!(appliedStartDate || appliedEndDate), [appliedStartDate, appliedEndDate]);
-
-    if (isLoadingAuth) { return <div className="text-center py-10">Authentifizierung wird geladen...</div> }
-    if (!isAuthenticated) { return <div className="text-center py-10">Bitte einloggen.</div>; }
+    const displayError = dataFetchingError || uiError;
 
     return (
         <div className="min-h-screen w-full bg-gradient-to-br from-[#0D0D12] via-[#111318] to-[#0a0a0f] text-white font-sans relative pt-16 pb-16 overflow-hidden">
-            {/* BackgroundBlob-Aufrufe wurden hier entfernt */}
-
             <StatusBar isDbConnected={isDbConnected} lastDataUpdateTimestamp={lastDataUpdateTimestamp} />
 
             <motion.div className="w-full max-w-none p-4 md:p-8 mx-auto relative z-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
@@ -291,35 +214,47 @@ export default function ContaintTable() {
 
                 {currentView !== "statistik" && currentView !== "admin" && (
                     <FilterControls
-                        currentView={currentView} activeStatusFilter={activeStatusFilter} setActiveStatusFilter={setActiveStatusFilter}
-                        searchTerm={searchTerm} setSearchTerm={setSearchTerm} emailSearchTerm={emailSearchTerm} setEmailSearchTerm={setEmailSearchTerm}
-                        idSearchTerm={idSearchTerm} setIdSearchTerm={setIdSearchTerm} haltestelleSearchTerm={haltestelleSearchTerm} setHaltestelleSearchTerm={setHaltestelleSearchTerm}
-                        linieSearchTerm={linieSearchTerm} setLinieSearchTerm={setLinieSearchTerm} showAdvancedFilters={showAdvancedFilters} setShowAdvancedFilters={setShowAdvancedFilters}
-                        startDateInput={startDateInput} setStartDateInput={setStartDateInput} endDateInput={endDateInput} setEndDateInput={setEndDateInput}
-                        handleApplyDateFilter={handleApplyDateFilter} handleClearDateFilter={handleClearDateFilter} isDateFilterApplied={isDateFilterApplied}
-                        cardAccentsEnabled={cardAccentsEnabled} setCardAccentsEnabled={setCardAccentsEnabled} dateFilterTarget={dateFilterTarget} setDateFilterTarget={setDateFilterTarget}
+                        currentView={currentView}
+                        activeStatusFilter={activeStatusFilter} setActiveStatusFilter={setActiveStatusFilter}
+                        searchTerm={searchTerm} setSearchTerm={setSearchTerm}
+                        emailSearchTerm={emailSearchTerm} setEmailSearchTerm={setEmailSearchTerm}
+                        idSearchTerm={idSearchTerm} setIdSearchTerm={setIdSearchTerm}
+                        haltestelleSearchTerm={haltestelleSearchTerm} setHaltestelleSearchTerm={setHaltestelleSearchTerm}
+                        linieSearchTerm={linieSearchTerm} setLinieSearchTerm={setLinieSearchTerm}
+                        showAdvancedFilters={showAdvancedFilters} setShowAdvancedFilters={setShowAdvancedFilters}
+                        startDateInput={startDateInput} setStartDateInput={setStartDateInput}
+                        endDateInput={endDateInput} setEndDateInput={setEndDateInput}
+                        handleApplyDateFilter={handleApplyDateFilter}
+                        handleClearDateFilter={handleClearDateFilter}
+                        isDateFilterApplied={isDateFilterApplied}
+                        cardAccentsEnabled={cardAccentsEnabled} setCardAccentsEnabled={setCardAccentsEnabled}
+                        dateFilterTarget={dateFilterTarget} setDateFilterTarget={setDateFilterTarget}
                     />
                 )}
 
-                {error && currentView !== "statistik" && currentView !== "admin" && (<div className="my-4 p-3 bg-red-700/80 text-red-100 border border-red-600 rounded-md shadow-lg" role="alert"> <p><strong>Fehler:</strong> {error}</p> </div>)}
+                {displayError && currentView !== "statistik" && currentView !== "admin" && (
+                    <div className="my-4 p-3 bg-red-700/80 text-red-100 border border-red-600 rounded-md shadow-lg" role="alert">
+                        <p><strong>Fehler:</strong> {displayError}</p>
+                    </div>
+                )}
 
                 {currentView === "admin" ? (<AdminSection />) :
                     currentView === "statistik" ? (<StatisticsView />) :
-                        isLoadingData && !error ? (<div className="text-center py-10 text-neutral-400">Lade Daten...</div>) :
-                            !isLoadingData && filteredData.length === 0 && !error ? (
+                        isLoadingData && !dataFetchingError ? (<div className="text-center py-10 text-neutral-400">Lade Daten...</div>) :
+                            !isLoadingData && filteredData.length === 0 && !dataFetchingError ? (
                                 <div className="text-center py-10 text-neutral-500">
-                                    Keine Einträge für
-                                    {searchTerm.trim() && ` Person "${searchTerm}"`}
+                                    Keine Einträge für die aktuellen Filter
+                                    {searchTerm.trim() && ` (Suche: "${searchTerm}")`}
                                     gefunden.
                                 </div>
-                            ) : !isLoadingData && filteredData.length > 0 && !error ? (
+                            ) : !isLoadingData && filteredData.length > 0 && !dataFetchingError ? (
                                 <>
-                                    {console.log("%cRENDERING filteredData (IDs):", "color:lime; font-weight:bold;", JSON.parse(JSON.stringify(filteredData.map(item => item.id))))}
                                     <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
                                         {filteredData.map((item) => (
                                             <DataItemCard
-                                                key={`${currentView}-${item.id}`}
-                                                item={item} currentView={currentView}
+                                                key={`${currentView}-${item.id}-${item.erstelltam}`}
+                                                item={item as CardSpecificDataItem} // Explizite Typumwandlung, stelle sicher, dass der Typ passt
+                                                currentView={currentView}
                                                 copiedCellKey={copiedCellKey} onCopyToClipboard={handleCopyToClipboard}
                                                 onStatusChange={(itemId, newStatus) => handleStatusChangeForCard(itemId, newStatus as AnyItemStatus, currentView)}
                                                 cardAccentsEnabled={cardAccentsEnabled}
@@ -328,7 +263,8 @@ export default function ContaintTable() {
                                         ))}
                                     </motion.div>
                                 </>
-                            ) : null}
+                            ) : null
+                }
             </motion.div>
         </div>
     );

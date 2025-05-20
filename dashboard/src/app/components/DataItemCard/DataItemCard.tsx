@@ -3,11 +3,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-    CardSpecificDataItem,
-    ViewType,
-    AnyItemStatus as StrictStatus
-} from '@/app/types'; 
+import {CardSpecificDataItem,ViewType,AnyItemStatus as StrictStatus} from '@/app/types'; 
 import { useAuth } from '@/app/contexts/AuthContext'; 
 
 import CardFront from './CardFront';
