@@ -1,10 +1,9 @@
-// app/components/DataItemCard/CardActions.tsx
 "use client";
 
 import { motion } from 'framer-motion';
 import { Settings2Icon, Lock, Unlock } from 'lucide-react';
 import React, { useState } from 'react';
-import { AnyItemStatus as StrictStatus } from '@/app/types'; // Pfad anpassen
+import { AnyItemStatus as StrictStatus, ViewType } from '@/app/types';
 
 const contentItemVariants = {
     hidden: { opacity: 0, y: 10 },
@@ -23,6 +22,7 @@ interface CardActionsProps {
     shakeLockAnim: boolean;
     isAssigning: boolean;
     isClarificationMissingInSavedDetails: boolean;
+    currentView: ViewType;
 }
 
 const CardActions: React.FC<CardActionsProps> = ({
@@ -35,23 +35,20 @@ const CardActions: React.FC<CardActionsProps> = ({
     shakeLockAnim,
     isAssigning,
     isClarificationMissingInSavedDetails,
+    currentView,
 }) => {
     const [animateSettingsIcon, setAnimateSettingsIcon] = useState(false);
     const [isSettingsIconHovered, setIsSettingsIconHovered] = useState(false);
-    // NEU: State für die Animation des Schloss-Icons, wenn Aktionen wegen Sperre blockiert sind
     const [animateLockIconWhenActionDisabled, setAnimateLockIconWhenActionDisabled] = useState(false);
-    const [isLockIconHovered, setIsLockIconHovered] = useState(false); // Für reguläres Hover auf dem Schloss
+    const [isLockIconHovered, setIsLockIconHovered] = useState(false);
 
     const disableResolveButtons = isLocked || (isClarificationMissingInSavedDetails && status === "In Bearbeitung");
-   // const isAnyActionButtonDisabledByLock = isLocked && status !== undefined; // Prü ft, ob irgendein Haupt-Aktionsbutton wegen Lock deaktiviert wäre
 
     const handleMainActionButtonHover = (isHovering: boolean) => {
-        // Animation für Settings-Icon, wenn Klärung fehlt
         if (isClarificationMissingInSavedDetails && status === "In Bearbeitung") {
             setAnimateSettingsIcon(isHovering);
         }
-        // NEU: Animation für Schloss-Icon, wenn Karte gesperrt ist und der Button deshalb deaktiviert ist
-        if (isLocked && status !== undefined) { // status !== undefined, um sicherzustellen, dass es einen Aktionsbutton gibt
+        if (isLocked && status !== undefined) {
             setAnimateLockIconWhenActionDisabled(isHovering);
         }
     };
@@ -77,53 +74,72 @@ const CardActions: React.FC<CardActionsProps> = ({
             break;
         case "In Bearbeitung":
             actionButton = (
-                <div className="flex space-x-2">
+                <div className={`flex ${currentView === 'lob' ? 'justify-center' : 'space-x-2'}`}>
                     <motion.button
                         onClick={() => onStatusChange("Gelöst")}
-                        className="flex-1 text-green-300 hover:text-green-200 bg-green-600/30 hover:bg-green-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                        title={isLocked ? "Karte ist gesperrt (Schloss-Icon)" : (isClarificationMissingInSavedDetails ? "Interne Details ausfüllen (Zahnrad-Icon)" : "Als gelöst markieren")}
+                        className={`text-green-300 hover:text-green-200 bg-green-600/30 hover:bg-green-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed ${currentView === 'lob' ? 'w-full' : 'flex-1'}`}
+                        title={isLocked ? "Karte ist gesperrt (Schloss-Icon)" : (isClarificationMissingInSavedDetails ? "Interne Details ausfüllen (Zahnrad-Icon)" : (currentView === 'lob' ? "Als erledigt markieren" : (currentView === 'anregungen' ? "Anregung annehmen" : "Als gelöst markieren")))}
                         whileHover={{ scale: disableResolveButtons ? 1 : 1.03, y: disableResolveButtons ? 0 : -2, transition: buttonHoverSpring }}
                         whileTap={{ scale: disableResolveButtons ? 1 : 0.97 }}
                         disabled={disableResolveButtons}
                         onHoverStart={() => handleMainActionButtonHover(true)}
                         onHoverEnd={() => handleMainActionButtonHover(false)}
                     >
-                        Gelöst
+                        {currentView === 'lob' ? "Erledigt" : (currentView === 'anregungen' ? "Annehmen" : "Gelöst")}
                     </motion.button>
-                    <motion.button
-                        onClick={() => onStatusChange("Abgelehnt")}
-                        className="flex-1 text-red-300 hover:text-red-200 bg-red-600/30 hover:bg-red-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                        title={isLocked ? "Karte ist gesperrt (Schloss-Icon)" : (isClarificationMissingInSavedDetails ? "Interne Details ausfüllen (Zahnrad-Icon)" : "Ablehnen")}
-                        whileHover={{ scale: disableResolveButtons ? 1 : 1.03, y: disableResolveButtons ? 0 : -2, transition: buttonHoverSpring }}
-                        whileTap={{ scale: disableResolveButtons ? 1 : 0.97 }}
-                        disabled={disableResolveButtons}
-                        onHoverStart={() => handleMainActionButtonHover(true)}
-                        onHoverEnd={() => handleMainActionButtonHover(false)}
-                    >
-                        Ablehnen
-                    </motion.button>
+                    {currentView !== 'lob' && ( // "Ablehnen"-Button nicht für "Lob"
+                        <motion.button
+                            onClick={() => onStatusChange("Abgelehnt")}
+                            className="flex-1 text-red-300 hover:text-red-200 bg-red-600/30 hover:bg-red-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                            title={isLocked ? "Karte ist gesperrt (Schloss-Icon)" : (isClarificationMissingInSavedDetails ? "Interne Details ausfüllen (Zahnrad-Icon)" : (currentView === 'anregungen' ? "Anregung verwerfen" : "Ablehnen"))}
+                            whileHover={{ scale: disableResolveButtons ? 1 : 1.03, y: disableResolveButtons ? 0 : -2, transition: buttonHoverSpring }}
+                            whileTap={{ scale: disableResolveButtons ? 1 : 0.97 }}
+                            disabled={disableResolveButtons}
+                            onHoverStart={() => handleMainActionButtonHover(true)}
+                            onHoverEnd={() => handleMainActionButtonHover(false)}
+                        >
+                             {currentView === 'anregungen' ? "Verwerfen" : "Ablehnen"}
+                        </motion.button>
+                    )}
                 </div>
             );
             break;
         case "Gelöst":
         case "Abgelehnt":
-            actionButton = (
-                <motion.button
-                    onClick={() => onStatusChange("Offen")}
-                    className="w-full text-sky-300 hover:text-sky-200 bg-sky-600/30 hover:bg-sky-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                    title={isLocked ? "Karte ist gesperrt (Schloss-Icon)" : "Wieder öffnen"}
-                    whileHover={{ scale: isLocked ? 1 : 1.03, y: isLocked ? 0 : -2, transition: buttonHoverSpring }}
-                    whileTap={{ scale: isLocked ? 1 : 0.97 }}
-                    disabled={isLocked}
-                    onHoverStart={() => handleMainActionButtonHover(true)}
-                    onHoverEnd={() => handleMainActionButtonHover(false)}
-                >
-                    Wieder öffnen
-                </motion.button>
-            );
+            if (currentView === 'lob' && status === 'Gelöst') {
+                 actionButton = (
+                    <div className="text-center text-xs text-green-400 py-1.5">
+                        Lob wurde als erledigt markiert.
+                    </div>
+                );
+            } else if (currentView === 'anregungen' && (status === 'Gelöst' || status === 'Abgelehnt')) { // NEUE BEDINGUNG HIER
+                const messageText = status === 'Gelöst' ? "Anregung wurde angenommen." : "Anregung wurde verworfen.";
+                const textColor = status === 'Gelöst' ? 'text-green-400' : 'text-red-400';
+                actionButton = (
+                    <div className={`text-center text-xs py-1.5 ${textColor}`}>
+                        {messageText}
+                        <span className="block text-slate-400 text-xxs">(Nicht mehr zu bearbeiten)</span>
+                    </div>
+                );
+            } else {
+                actionButton = (
+                    <motion.button
+                        onClick={() => onStatusChange("Offen")}
+                        className="w-full text-sky-300 hover:text-sky-200 bg-sky-600/30 hover:bg-sky-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                        title={isLocked ? "Karte ist gesperrt (Schloss-Icon)" : "Wieder öffnen"}
+                        whileHover={{ scale: isLocked ? 1 : 1.03, y: isLocked ? 0 : -2, transition: buttonHoverSpring }}
+                        whileTap={{ scale: isLocked ? 1 : 0.97 }}
+                        disabled={isLocked}
+                        onHoverStart={() => handleMainActionButtonHover(true)}
+                        onHoverEnd={() => handleMainActionButtonHover(false)}
+                    >
+                        Wieder öffnen
+                    </motion.button>
+                );
+            }
             break;
         default:
-            actionButton = null; 
+            actionButton = null;
             break;
     }
 
@@ -143,17 +159,17 @@ const CardActions: React.FC<CardActionsProps> = ({
                         onHoverStart={() => setIsSettingsIconHovered(true)}
                         onHoverEnd={() => setIsSettingsIconHovered(false)}
                         animate={
-                            animateSettingsIcon ? 
+                            animateSettingsIcon ?
                             {
-                                scale: [1, 1.5, 1.2, 1.5, 1], 
-                                rotate: [0, 15, -12, 10, -8, 0], 
-                                transition: { duration: 0.7, ease: "easeInOut", repeat: 0 } 
+                                scale: [1, 1.5, 1.2, 1.5, 1],
+                                rotate: [0, 15, -12, 10, -8, 0],
+                                transition: { duration: 0.7, ease: "easeInOut", repeat: 0 }
                             } :
-                            (isLocked || isAssigning) ? 
+                            (isLocked || isAssigning) ?
                             { scale: 1, rotate: 0 } :
-                            isSettingsIconHovered ? 
+                            isSettingsIconHovered ?
                             { scale: 1.15, rotate: 15, transition: { type: "spring", stiffness: 350, damping: 10 } } :
-                            { scale: 1, rotate: 0 } 
+                            { scale: 1, rotate: 0 }
                         }
                         whileTap={{ scale: (isLocked || isAssigning) ? 1 : 0.9 }}
                     >
@@ -162,30 +178,30 @@ const CardActions: React.FC<CardActionsProps> = ({
                 )}
                 <motion.button
                     onClick={onToggleLock}
-                    disabled={isAssigning} 
-                    className={`p-1.5 rounded-full transition-colors duration-150 ease-in-out 
-                                ${isLocked ? 'text-slate-400 hover:text-sky-400' : 'text-emerald-400 hover:text-emerald-300'} 
-                                focus:outline-none focus-visible:ring-2 
-                                ${isLocked ? 'focus-visible:ring-sky-500' : 'focus-visible:ring-emerald-500'} 
+                    disabled={isAssigning}
+                    className={`p-1.5 rounded-full transition-colors duration-150 ease-in-out
+                                ${isLocked ? 'text-slate-400 hover:text-sky-400' : 'text-emerald-400 hover:text-emerald-300'}
+                                focus:outline-none focus-visible:ring-2
+                                ${isLocked ? 'focus-visible:ring-sky-500' : 'focus-visible:ring-emerald-500'}
                                 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800
                                 disabled:opacity-50 disabled:cursor-wait`}
                     title={isLocked ? (isAssigning ? "Wird zugewiesen..." : "Bearbeitung entsperren") : "Bearbeitung sperren"}
                     onHoverStart={() => setIsLockIconHovered(true)}
                     onHoverEnd={() => setIsLockIconHovered(false)}
                     animate={
-                        shakeLockAnim ? // Priorität für die Shake-Animation nach fehlgeschlagenem Entsperrversuch
+                        shakeLockAnim ?
                         { x: [0, -8, 8, -6, 6, -4, 4, 0], scale: [1, 1.1, 1, 1.05, 1], transition: { duration: 0.4, ease: "easeInOut" } } :
-                        animateLockIconWhenActionDisabled ? // Wenn Hover auf Haupt-Aktionsbutton und Karte gesperrt
+                        animateLockIconWhenActionDisabled ?
                         {
-                            scale: [1, 1.4, 1.1, 1.4, 1], // Stärkerer Puls
+                            scale: [1, 1.4, 1.1, 1.4, 1],
                             filter: ["drop-shadow(0 0 0px rgba(56,189,248,0))", "drop-shadow(0 0 8px rgba(56,189,248,0.7))", "drop-shadow(0 0 2px rgba(56,189,248,0.4))", "drop-shadow(0 0 8px rgba(56,189,248,0.7))", "drop-shadow(0 0 0px rgba(56,189,248,0))"],
                             transition: { duration: 0.8, ease: "easeInOut", repeat: 0 }
                         } :
-                        isAssigning ? // Wenn gerade zugewiesen wird (Spinner aktiv)
-                        { scale: 1 } : // Keine zusätzliche Animation
-                        isLockIconHovered ? // Reguläres Hover auf dem Schloss-Icon
+                        isAssigning ?
+                        { scale: 1 } :
+                        isLockIconHovered ?
                         { scale: 1.15, transition: { type: "spring", stiffness: 350, damping: 10 } } :
-                        { scale: 1, filter: "drop-shadow(0 0 0px rgba(56,189,248,0))" } // Standardzustand
+                        { scale: 1, filter: "drop-shadow(0 0 0px rgba(56,189,248,0))" }
                     }
                     whileTap={{ scale: isAssigning ? 1 : 0.9 }}
                 >

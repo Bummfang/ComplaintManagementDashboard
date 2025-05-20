@@ -1,10 +1,10 @@
-// src/app/hooks/useAppFilters.ts
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
     DataItem,
     ViewType,
     StatusFilterMode,
     BeschwerdeItem,
+    AnyItemStatus // Sicherstellen, dass AnyItemStatus korrekt importiert ist oder hier definiert wird
 } from '../types'; // Passe den Pfad ggf. an (z.B. '@/app/types')
 import { DateFilterTarget } from '../components/ContaintTable'; // Passe den Pfad ggf. an (z.B. '@/app/components/ContaintTable')
 
@@ -20,6 +20,7 @@ export function useAppFilters({ initialData, currentView }: UseAppFiltersProps) 
     const [idSearchTerm, setIdSearchTerm] = useState<string>("");
     const [haltestelleSearchTerm, setHaltestelleSearchTerm] = useState<string>("");
     const [linieSearchTerm, setLinieSearchTerm] = useState<string>("");
+    const [assigneeSearchTerm, setAssigneeSearchTerm] = useState<string>("");
 
     const [startDateInput, setStartDateInput] = useState<string>("");
     const [endDateInput, setEndDateInput] = useState<string>("");
@@ -37,7 +38,6 @@ export function useAppFilters({ initialData, currentView }: UseAppFiltersProps) 
     const handleApplyDateFilter = useCallback(() => {
         setAppliedStartDate(startDateInput || null);
         setAppliedEndDate(endDateInput || null);
-        // console.log(`Datumsfilter angewendet via Hook: Start=${startDateInput || 'N/A'}, Ende=${endDateInput || 'N/A'}`);
     }, [startDateInput, endDateInput]);
 
     const handleClearDateFilter = useCallback(() => {
@@ -45,24 +45,41 @@ export function useAppFilters({ initialData, currentView }: UseAppFiltersProps) 
         setEndDateInput("");
         setAppliedStartDate(null);
         setAppliedEndDate(null);
-        // console.log("Datumsfilter zurückgesetzt via Hook.");
     }, []);
 
     const isDateFilterApplied = useMemo(() => !!(appliedStartDate || appliedEndDate), [appliedStartDate, appliedEndDate]);
 
     const filteredData = useMemo(() => {
         let tempData = [...initialData];
-        // console.log("-----------------------------------------");
-        // console.log("ID-Filter (Hook): Start der Filterberechnung");
-        // console.log("ID-Filter (Hook): idSearchTerm (aus Input):", idSearchTerm);
-        // console.log("ID-Filter (Hook): Ursprüngliche tempData Länge:", tempData.length);
 
         if (currentView === "statistik" || currentView === "admin" || !initialData || initialData.length === 0) {
             return [];
         }
 
+        // ANGEPASSTE STATUSFILTER-LOGIK
         if (activeStatusFilter !== "alle" && (currentView === "beschwerden" || currentView === "lob" || currentView === "anregungen")) {
-            tempData = tempData.filter(item => 'status' in item && item.status === activeStatusFilter);
+            tempData = tempData.filter(item => {
+                const itemStatusValue = item.status; // Kann null, undefined, "offen", "Offen", "In Bearbeitung" etc. sein
+                let normalizedItemStatus: string; // Wird "Offen", "In Bearbeitung", etc. halten
+
+                if (itemStatusValue === null || typeof itemStatusValue === 'undefined') {
+                    normalizedItemStatus = "Offen"; // Standard für nicht gesetzte Status
+                } else if (typeof itemStatusValue === 'string' && itemStatusValue.toLowerCase() === "offen") {
+                    // Wenn item.status ein String ist und kleingeschrieben "offen" lautet,
+                    // normalisiere es zu "Offen" (mit großem O) für den Vergleich.
+                    normalizedItemStatus = "Offen";
+                } else if (typeof itemStatusValue === 'string') {
+                    // Für alle anderen String-Status (z.B. "In Bearbeitung", "Gelöst", "Abgelehnt", "Offen" (bereits korrekt))
+                    // wird der Wert direkt übernommen. AnyItemStatus sollte diese abdecken.
+                    normalizedItemStatus = itemStatusValue;
+                } else {
+                    // Dieser Fall sollte bei korrekter Typisierung von item.status (AnyItemStatus | null | undefined)
+                    // nicht eintreten. Wenn doch, passt das Item zu keinem gültigen Status.
+                    return false; 
+                }
+                
+                return normalizedItemStatus === activeStatusFilter;
+            });
         }
 
         if (searchTerm.trim() !== "") {
@@ -78,16 +95,18 @@ export function useAppFilters({ initialData, currentView }: UseAppFiltersProps) 
             const trimmedIdSearchTerm = idSearchTerm.trim();
             const searchId = parseInt(trimmedIdSearchTerm, 10);
             if (!isNaN(searchId)) {
-                // console.log(`ID-Filter (Hook): Wende Filter an für searchId: ${searchId}.`);
-                // console.log(`ID-Filter (Hook): tempData VOR Filterung (nur IDs):`, JSON.parse(JSON.stringify(tempData.map(item => item.id))));
                 tempData = tempData.filter(item => item.id === searchId);
-                // console.log(`ID-Filter (Hook): tempData NACH Filterung für searchId: ${searchId} (nur IDs):`, JSON.parse(JSON.stringify(tempData.map(item => item.id))));
             } else {
-                // console.log(`ID-Filter (Hook): idSearchTerm "${trimmedIdSearchTerm}" ist keine gültige Zahl. Leere tempData.`);
-                tempData = [];
+                tempData = []; 
             }
-        } else {
-            // console.log("ID-Filter (Hook): idSearchTerm ist leer, ID-Filter wird übersprungen.");
+        }
+        
+        if (assigneeSearchTerm.trim() !== "") {
+            const lowerAssigneeSearchTerm = assigneeSearchTerm.trim().toLowerCase();
+            tempData = tempData.filter(item =>
+                item.bearbeiter_name && 
+                item.bearbeiter_name.toLowerCase().includes(lowerAssigneeSearchTerm)
+            );
         }
 
         if (currentView === "beschwerden") {
@@ -137,26 +156,25 @@ export function useAppFilters({ initialData, currentView }: UseAppFiltersProps) 
         return tempData;
     }, [
         initialData, currentView, activeStatusFilter, searchTerm, emailSearchTerm, idSearchTerm,
+        assigneeSearchTerm, 
         haltestelleSearchTerm, linieSearchTerm, appliedStartDate, appliedEndDate, dateFilterTarget
     ]);
 
     useEffect(() => {
-        // Beim Wechsel der Ansicht (currentView) werden die Filter zurückgesetzt.
         setActiveStatusFilter("alle");
         setSearchTerm("");
         setEmailSearchTerm("");
         setIdSearchTerm("");
+        setAssigneeSearchTerm(""); 
         setStartDateInput("");
         setEndDateInput("");
         setAppliedStartDate(null);
         setAppliedEndDate(null);
-        // setDateFilterTarget wird bereits durch den anderen useEffect auf currentView oben gehandhabt.
 
         if (currentView !== "beschwerden") {
             setHaltestelleSearchTerm("");
             setLinieSearchTerm("");
         }
-        // Die `showAdvancedFilters` Logik verbleibt in ContaintTable, da sie reiner UI-State ist.
     }, [currentView]);
 
     return {
@@ -165,12 +183,11 @@ export function useAppFilters({ initialData, currentView }: UseAppFiltersProps) 
         searchTerm, setSearchTerm,
         emailSearchTerm, setEmailSearchTerm,
         idSearchTerm, setIdSearchTerm,
+        assigneeSearchTerm, setAssigneeSearchTerm, 
         haltestelleSearchTerm, setHaltestelleSearchTerm,
         linieSearchTerm, setLinieSearchTerm,
         startDateInput, setStartDateInput,
         endDateInput, setEndDateInput,
-        // appliedStartDate, // Nicht direkt benötigt, isDateFilterApplied reicht
-        // appliedEndDate,   // Nicht direkt benötigt
         dateFilterTarget, setDateFilterTarget,
         handleApplyDateFilter,
         handleClearDateFilter,

@@ -2,8 +2,8 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { CardSpecificDataItem, ViewType, AnyItemStatus as StrictStatus } from '@/app/types'; // Pfade anpassen
-import { useAuth } from '@/app/contexts/AuthContext'; // Pfade anpassen
+import { CardSpecificDataItem, ViewType, AnyItemStatus as StrictStatus } from '@/app/types'; // Pfad anpassen
+import { useAuth } from '@/app/contexts/AuthContext'; // Pfad anpassen
 
 import CardFront from './CardFront';
 import CardBack from './CardBack';
@@ -80,7 +80,6 @@ export default function DataItemCard({
         return false;
     }, [item.internal_details, canFlip]);
 
-    // NEU: Ableiten, ob der Fall finalisiert ist
     const isFinalized = useMemo(() => {
         return effectiveStatus === "Gelöst" || effectiveStatus === "Abgelehnt";
     }, [effectiveStatus]);
@@ -107,7 +106,6 @@ export default function DataItemCard({
 
 
     const handleSaveInternal = useCallback(() => {
-        // Verhindere Speichern, wenn finalisiert
         if (isFinalized) return;
 
         const validData = validateAndPrepareSaveData();
@@ -119,11 +117,9 @@ export default function DataItemCard({
             onItemUpdate(updatedItemWithInternalDetails);
             setIsFlipped(false);
         }
-    }, [item, onItemUpdate, validateAndPrepareSaveData, isFinalized]); // isFinalized hinzugefügt
+    }, [item, onItemUpdate, validateAndPrepareSaveData, isFinalized]);
 
     const handleCancelInternal = useCallback(() => {
-        // Zurücksetzen der Details ist auch im finalisierten Zustand okay,
-        // da es nur den lokalen Formularzustand auf die gespeicherten Werte zurücksetzt.
         resetInternalDetails(item.internal_details);
         setIsFlipped(false);
     }, [item.internal_details, resetInternalDetails]);
@@ -220,6 +216,7 @@ export default function DataItemCard({
                                     shakeLockAnim={shakeLockAnim}
                                     isAssigning={isAssigning}
                                     isClarificationMissingInSavedDetails={isClarificationMissingInSavedDetails}
+                                    currentView={currentView} // <--- currentView HIER HINZUGEFÜGT
                                 />
                             </div>
                         )}
@@ -237,11 +234,11 @@ export default function DataItemCard({
                             internalDetails={internalDetails}
                             onDetailChange={handleInternalDetailChange}
                             onSave={handleSaveInternal}
-                            onCancel={handleCancelInternal} // Dies ist der Form-Cancel, der resetInternalDetails + setIsFlipped aufruft
+                            onCancel={handleCancelInternal}
                             validationError={validationError}
                             cardKey={cardKey}
                             isSubmitting={isAssigning}
-                            isFinalized={isFinalized}   // <--- NEUE PROP HIER ÜBERGEBEN
+                            isFinalized={isFinalized}
                         />
                     </motion.div>
                 )}

@@ -1,14 +1,13 @@
-// src/app/components/ContaintTable.tsx (oder dein Pfad)
 "use client";
 
 import { motion } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
-import { useAuth } from '../contexts/AuthContext'; // Pfad anpassen
+import { useAuth } from '../contexts/AuthContext';
 
 import {
-    ViewType, AnyItemStatus, CardSpecificDataItem // CardSpecificDataItem importiert
-} from '../types'; // Pfad anpassen
-import { API_ENDPOINTS, VIEW_TITLES } from '../constants'; // Pfad anpassen
+    ViewType, AnyItemStatus, CardSpecificDataItem, DataItem
+} from '../types';
+import { API_ENDPOINTS, VIEW_TITLES } from '../constants';
 import StatusBar from './StatusBar';
 import ViewTabs from './ViewTabs';
 import FilterControls from './FilterControls';
@@ -35,15 +34,18 @@ export default function ContaintTable() {
         error: dataFetchingError,
         isDbConnected,
         lastDataUpdateTimestamp,
-        refetchData
+        refetchData,
+        updateSingleItemInCache,
     } = useDataFetching({ currentView, token, isAuthenticated, logout });
 
+    // assigneeSearchTerm und setAssigneeSearchTerm werden jetzt vom useAppFilters Hook bereitgestellt
     const {
         filteredData,
         activeStatusFilter, setActiveStatusFilter,
         searchTerm, setSearchTerm,
         emailSearchTerm, setEmailSearchTerm,
         idSearchTerm, setIdSearchTerm,
+        assigneeSearchTerm, setAssigneeSearchTerm, // <--- HIER DESTRUKTURIEREN
         haltestelleSearchTerm, setHaltestelleSearchTerm,
         linieSearchTerm, setLinieSearchTerm,
         startDateInput, setStartDateInput,
@@ -52,9 +54,10 @@ export default function ContaintTable() {
         handleApplyDateFilter,
         handleClearDateFilter,
         isDateFilterApplied,
-    } = useAppFilters({ initialData: data, currentView });
+    } = useAppFilters({ initialData: data, currentView }); // <--- assigneeSearchTerm HIER ENTFERNT
 
     const [uiError, setUiError] = useState<string | null>(null);
+    // const [assigneeSearchTerm, setAssigneeSearchTerm] = useState<string>(""); // <--- DIESE ZEILE ENTFERNEN
 
     useEffect(() => {
         if (currentView !== "statistik" && currentView !== "admin") {
@@ -63,7 +66,6 @@ export default function ContaintTable() {
         setUiError(null);
     }, [currentView]);
 
-    // --- ANGEPASSTE handleItemUpdate ---
     const handleItemUpdate = useCallback(async (updatedItemFromCard: CardSpecificDataItem) => {
         if (!token) {
             setUiError("Nicht autorisiert für Update.");
@@ -72,12 +74,8 @@ export default function ContaintTable() {
         }
 
         let apiEndpoint: string | undefined;
-        // Der Payload enthält immer die ID.
-        // Für den spezifischen Fall "Beschwerden" fügen wir internal_details hinzu.
-        // Die API erwartet für internal_details die camelCase-Schreibweise, wie sie vom Frontend kommt.
-        // Die API-Route (/api/containt/route.ts) kümmert sich dann um die Konvertierung zu snake_case für die DB.
         const payload: { id: number; internal_details?: typeof updatedItemFromCard.internal_details } = {
-             id: updatedItemFromCard.id
+            id: updatedItemFromCard.id
         };
 
         if (currentView === "beschwerden") {
@@ -86,27 +84,13 @@ export default function ContaintTable() {
                 payload.internal_details = updatedItemFromCard.internal_details;
             }
         }
-        console.log("Debug: Payload an API:", JSON.stringify(payload, null, 2));
-        // Wichtig: Diese Funktion ist aktuell nur für das Speichern von internal_details
-        // bei Beschwerden gedacht, wie durch `CardBack` -> `handleSaveInternal` ausgelöst.
-        // Statusänderungen von der Kartenvorderseite laufen über `performStatusChangeAsync`.
 
         if (!apiEndpoint || (currentView === "beschwerden" && !payload.internal_details)) {
-            // Kein API-Endpunkt definiert ODER es ist eine Beschwerde, aber es gibt keine internen Details zum Speichern
-            // (sollte nicht passieren, da onSave von CardBack nur bei Änderungen ausgelöst wird, aber als Sicherheitscheck).
-            // console.warn("handleItemUpdate: Kein API-Endpunkt oder keine internen Details zum Speichern für Beschwerde.", payload);
-            if (currentView === "beschwerden" && !payload.internal_details) {
-                // Falls handleItemUpdate für eine Beschwerde ohne internal_details aufgerufen wird (unerwartet),
-                // hier keine Aktion ausführen oder nur refetch, wenn Statusänderung auch möglich wäre.
-                // Da CardBack keine Statusänderung auslöst, ist hier nichts zu tun.
-                // Ggf. refetchData(currentView, true); // Wenn eine allgemeine Aktualisierung gewünscht ist
-            }
             return;
         }
-        
-        setUiError(null); // Fehler vor dem API-Call zurücksetzen
+
+        setUiError(null);
         try {
-            // console.log(`[ContaintTable] PATCH an ${apiEndpoint} mit Payload:`, JSON.stringify(payload, null, 2));
             const response = await fetch(apiEndpoint, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -115,26 +99,22 @@ export default function ContaintTable() {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                if (response.status === 401) {
-                    setUiError("Sitzung abgelaufen.");
-                    logout();
-                    return;
-                }
+                if (response.status === 401) { logout(); setUiError("Sitzung abgelaufen."); return; }
                 throw new Error(errorData.details || errorData.error || `Fehler beim Speichern der Details (${response.status})`);
             }
-            
-            // Daten nach erfolgreichem Speichern neu laden, um die Änderungen zu sehen
-            refetchData(currentView, false); // false für Ladeindikator
-            // console.log(`ContaintTable: Item ${updatedItemFromCard.id} interne Details gespeichert und Daten neu geladen.`);
+
+            const updatedItemFromServer: CardSpecificDataItem = await response.json();
+            updateSingleItemInCache(updatedItemFromServer);
 
         } catch (err) {
             setUiError(err instanceof Error ? err.message : "Fehler beim Speichern der Details.");
+            refetchData(currentView, true);
         }
-    }, [token, logout, currentView, refetchData, setUiError]); // setUiError als Abhängigkeit hinzugefügt
-
+    }, [token, logout, currentView, refetchData, updateSingleItemInCache, setUiError]);
 
     const handleCopyToClipboard = useCallback(async (textToCopy: string, cellKey: string) => {
         if (!textToCopy) {
+            console.log("Kein Text zum Kopieren vorhanden für Key:", cellKey);
             return;
         }
         if (!navigator.clipboard) {
@@ -147,50 +127,78 @@ export default function ContaintTable() {
             setCopiedCellKey(cellKey);
             setTimeout(() => setCopiedCellKey(null), 1500);
         } catch (err) {
+            console.error("Fehler beim Kopieren in die Zwischenablage:", err);
             setUiError("Kopieren in die Zwischenablage fehlgeschlagen.");
             setTimeout(() => setUiError(null), 3000);
             setCopiedCellKey(null);
         }
-    }, [setUiError, setCopiedCellKey]); // uiError State direkt hier, setUiError ist stabil
+    }, [setUiError, setCopiedCellKey]);
 
     const performStatusChangeAsync = useCallback(async (itemId: number, newStatus: AnyItemStatus, viewForApi: ViewType) => {
-        if (!token) {
+        if (!token || !user) {
             setUiError("Nicht autorisiert für Statusänderung.");
-            logout();
+            if (!token) logout();
             return;
         }
+
+        const originalItem = data.find(item => item.id === itemId);
+        if (!originalItem) {
+            console.error("Item für optimistisches Update nicht im Cache gefunden:", itemId);
+            refetchData(currentView, true);
+            return;
+        }
+
+        const optimisticItemUpdate: Partial<CardSpecificDataItem> = { status: newStatus };
+        if (newStatus === "In Bearbeitung") {
+            optimisticItemUpdate.bearbeiter_id = user.userId;
+            optimisticItemUpdate.bearbeiter_name = user.username;
+            optimisticItemUpdate.action_required = undefined;
+        } else if (newStatus === "Offen") {
+            optimisticItemUpdate.bearbeiter_id = null;
+            optimisticItemUpdate.bearbeiter_name = null;
+            optimisticItemUpdate.abgeschlossenam = null;
+            optimisticItemUpdate.action_required = "relock_ui";
+        }
+
+        const optimisticItem = { ...originalItem, ...optimisticItemUpdate } as CardSpecificDataItem;
+
+        updateSingleItemInCache(optimisticItem);
         setUiError(null);
+
         const apiEndpointKey = viewForApi as keyof typeof API_ENDPOINTS;
         const apiEndpoint = API_ENDPOINTS[apiEndpointKey];
 
         if (!apiEndpoint) {
             setUiError(`API Endpunkt für ${VIEW_TITLES[viewForApi]} nicht definiert.`);
+            updateSingleItemInCache(originalItem as CardSpecificDataItem);
             return;
         }
         try {
             const response = await fetch(apiEndpoint, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ id: itemId, status: newStatus }), // Sendet nur ID und Status
+                body: JSON.stringify({ id: itemId, status: newStatus }),
             });
+
             if (!response.ok) {
+                updateSingleItemInCache(originalItem as CardSpecificDataItem);
                 const errorData = await response.json().catch(() => ({}));
-                if (response.status === 401) {
-                    setUiError("Sitzung abgelaufen.");
-                    logout();
-                    return;
-                }
+                if (response.status === 401) { logout(); setUiError("Sitzung abgelaufen."); return; }
                 throw new Error(errorData.details || errorData.error || `Statusupdate fehlgeschlagen (${response.status})`);
             }
-            refetchData(currentView, true);
+
+            const updatedItemFromServer: CardSpecificDataItem = await response.json();
+            updateSingleItemInCache(updatedItemFromServer);
+
         } catch (err) {
+            updateSingleItemInCache(originalItem as CardSpecificDataItem);
             setUiError(err instanceof Error ? err.message : `Statusupdate für ${VIEW_TITLES[viewForApi]} fehlgeschlagen.`);
         }
-    }, [token, logout, refetchData, currentView, setUiError]); // uiError State direkt hier, setUiError ist stabil
+    }, [token, user, logout, data, currentView, refetchData, updateSingleItemInCache, setUiError]);
 
     const handleStatusChangeForCard = (itemId: number, newStatus: AnyItemStatus, itemTypeView: ViewType): void => {
         if (itemTypeView === "beschwerden" || itemTypeView === "lob" || itemTypeView === "anregungen") {
-            performStatusChangeAsync(itemId, newStatus, itemTypeView).catch(err => console.error(`ContaintTable: Fehler bei performStatusChangeAsync für ${itemTypeView}:`, err));
+            performStatusChangeAsync(itemId, newStatus as AnyItemStatus, itemTypeView).catch(err => console.error(`ContaintTable: Fehler bei performStatusChangeAsync für ${itemTypeView}:`, err));
         } else {
             setUiError("Statusänderung in dieser Ansicht nicht möglich.");
             setTimeout(() => setUiError(null), 3000);
@@ -219,6 +227,8 @@ export default function ContaintTable() {
                         searchTerm={searchTerm} setSearchTerm={setSearchTerm}
                         emailSearchTerm={emailSearchTerm} setEmailSearchTerm={setEmailSearchTerm}
                         idSearchTerm={idSearchTerm} setIdSearchTerm={setIdSearchTerm}
+                        assigneeSearchTerm={assigneeSearchTerm}
+                        setAssigneeSearchTerm={setAssigneeSearchTerm}
                         haltestelleSearchTerm={haltestelleSearchTerm} setHaltestelleSearchTerm={setHaltestelleSearchTerm}
                         linieSearchTerm={linieSearchTerm} setLinieSearchTerm={setLinieSearchTerm}
                         showAdvancedFilters={showAdvancedFilters} setShowAdvancedFilters={setShowAdvancedFilters}
@@ -232,6 +242,7 @@ export default function ContaintTable() {
                     />
                 )}
 
+                {/* Rest der JSX-Struktur bleibt gleich */}
                 {displayError && currentView !== "statistik" && currentView !== "admin" && (
                     <div className="my-4 p-3 bg-red-700/80 text-red-100 border border-red-600 rounded-md shadow-lg" role="alert">
                         <p><strong>Fehler:</strong> {displayError}</p>
@@ -245,6 +256,7 @@ export default function ContaintTable() {
                                 <div className="text-center py-10 text-neutral-500">
                                     Keine Einträge für die aktuellen Filter
                                     {searchTerm.trim() && ` (Suche: "${searchTerm}")`}
+                                    {assigneeSearchTerm.trim() && ` (Bearbeiter: "${assigneeSearchTerm}")`} {/* Optional: Anzeige des aktiven Bearbeiter-Filters */}
                                     gefunden.
                                 </div>
                             ) : !isLoadingData && filteredData.length > 0 && !dataFetchingError ? (
@@ -253,7 +265,7 @@ export default function ContaintTable() {
                                         {filteredData.map((item) => (
                                             <DataItemCard
                                                 key={`${currentView}-${item.id}-${item.erstelltam}`}
-                                                item={item as CardSpecificDataItem} // Explizite Typumwandlung, stelle sicher, dass der Typ passt
+                                                item={item as CardSpecificDataItem}
                                                 currentView={currentView}
                                                 copiedCellKey={copiedCellKey} onCopyToClipboard={handleCopyToClipboard}
                                                 onStatusChange={(itemId, newStatus) => handleStatusChangeForCard(itemId, newStatus as AnyItemStatus, currentView)}
