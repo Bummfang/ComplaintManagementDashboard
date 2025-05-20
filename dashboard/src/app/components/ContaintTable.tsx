@@ -3,10 +3,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from '../contexts/AuthContext';
-
-import {
-    ViewType, AnyItemStatus, CardSpecificDataItem, DataItem
-} from '../types';
+import {ViewType, AnyItemStatus, CardSpecificDataItem} from '../types';
 import { API_ENDPOINTS, VIEW_TITLES } from '../constants';
 import StatusBar from './StatusBar';
 import ViewTabs from './ViewTabs';
@@ -14,9 +11,14 @@ import FilterControls from './FilterControls';
 import DataItemCard from './DataItemCard/DataItemCard';
 import StatisticsView from './StatisticsView';
 import AdminSection from './AdminSection';
-
 import { useAppFilters } from '../hooks/useAppFilters';
 import { useDataFetching } from '../hooks/useDataFetching';
+
+
+
+
+
+
 
 export type DateFilterTarget = 'erstelltam' | 'datum';
 
