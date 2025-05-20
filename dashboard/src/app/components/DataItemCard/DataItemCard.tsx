@@ -1,14 +1,13 @@
-// app/components/DataItemCard/DataItemCard.tsx
 "use client";
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import {CardSpecificDataItem,ViewType,AnyItemStatus as StrictStatus} from '@/app/types'; 
-import { useAuth } from '@/app/contexts/AuthContext'; 
+import { CardSpecificDataItem, ViewType, AnyItemStatus as StrictStatus } from '@/app/types'; // Pfade anpassen
+import { useAuth } from '@/app/contexts/AuthContext'; // Pfade anpassen
 
 import CardFront from './CardFront';
 import CardBack from './CardBack';
-import CardActions from './CardActions'; // Wird zu CardActions_v2 (oder wie auch immer du die neue Datei nennst)
+import CardActions from './CardActions';
 import { useInternalDetails } from './hooks/useInternalDetails';
 import { useItemLocking } from './hooks/useItemLocking';
 import { useStatusLogic, getCardBackgroundAccentClasses } from './hooks/useStatusLogic';
@@ -50,10 +49,10 @@ export default function DataItemCard({
     } = useStatusLogic({ item, currentView });
 
     const {
-        internalDetails, 
+        internalDetails,
         validationError,
         handleInternalDetailChange,
-        validateAndPrepareSaveData, 
+        validateAndPrepareSaveData,
         resetInternalDetails,
         clearValidationError
     } = useInternalDetails(item.internal_details);
@@ -74,28 +73,32 @@ export default function DataItemCard({
 
     const canFlip = useMemo(() => currentView === 'beschwerden', [currentView]);
 
-    // NEU: Prüfen, ob die Klärungsart in den *gespeicherten* Details fehlt
     const isClarificationMissingInSavedDetails = useMemo(() => {
-        if (canFlip) { // Nur relevant, wenn die Karte interne Details haben kann
+        if (canFlip) {
             return !item.internal_details?.clarificationType;
         }
-        return false; // Für Karten ohne interne Details ist nichts "fehlend"
+        return false;
     }, [item.internal_details, canFlip]);
+
+    // NEU: Ableiten, ob der Fall finalisiert ist
+    const isFinalized = useMemo(() => {
+        return effectiveStatus === "Gelöst" || effectiveStatus === "Abgelehnt";
+    }, [effectiveStatus]);
 
 
     useEffect(() => {
         if (isFlipped) {
-             clearValidationError();
+            clearValidationError();
         }
     }, [item.id, item.internal_details, isFlipped, clearValidationError]);
 
     useEffect(() => {
         if (
             isStatusRelevantView &&
-            (item.status === "Offen" || item.status === undefined) && 
+            (item.status === "Offen" || item.status === undefined) &&
             item.bearbeiter_id === null &&
             item.action_required === "relock_ui" &&
-            isLocked === false 
+            isLocked === false
         ) {
             console.log(`DataItemCard ID ${item.id}: action_required relock_ui received. Locking card.`);
             setIsLocked(true);
@@ -104,6 +107,9 @@ export default function DataItemCard({
 
 
     const handleSaveInternal = useCallback(() => {
+        // Verhindere Speichern, wenn finalisiert
+        if (isFinalized) return;
+
         const validData = validateAndPrepareSaveData();
         if (validData) {
             const updatedItemWithInternalDetails: CardSpecificDataItem = {
@@ -113,9 +119,11 @@ export default function DataItemCard({
             onItemUpdate(updatedItemWithInternalDetails);
             setIsFlipped(false);
         }
-    }, [item, onItemUpdate, validateAndPrepareSaveData]);
+    }, [item, onItemUpdate, validateAndPrepareSaveData, isFinalized]); // isFinalized hinzugefügt
 
     const handleCancelInternal = useCallback(() => {
+        // Zurücksetzen der Details ist auch im finalisierten Zustand okay,
+        // da es nur den lokalen Formularzustand auf die gespeicherten Werte zurücksetzt.
         resetInternalDetails(item.internal_details);
         setIsFlipped(false);
     }, [item.internal_details, resetInternalDetails]);
@@ -123,19 +131,15 @@ export default function DataItemCard({
     const handleProtectedStatusChange = useCallback((newStatus: StrictStatus) => {
         if (isLocked && !isFlipped) {
             triggerShakeLock();
-            return; 
+            return;
         }
 
-        // Die primäre Prüfung, ob die Klärungsart *gespeichert* ist, erfolgt jetzt über
-        // die `disabled`-Logik in CardActions.
-        // Diese Validierung hier prüft die *aktuellen Formulardaten* auf der Rückseite.
-        // Das ist immer noch sinnvoll, falls der User die Seite editiert hat, aber noch nicht gespeichert.
         if (canFlip && (newStatus === "Gelöst" || newStatus === "Abgelehnt")) {
             const validatedInternalDataFromHook = validateAndPrepareSaveData();
-            if (!validatedInternalDataFromHook) { 
-                setIsFlipped(true); 
+            if (!validatedInternalDataFromHook) {
+                setIsFlipped(true);
                 console.warn(`DataItemCard ID ${item.id}: Status change to ${newStatus} prevented. Current internal details form is invalid.`);
-                return; 
+                return;
             }
         }
 
@@ -148,8 +152,8 @@ export default function DataItemCard({
         onStatusChange,
         item.id,
         currentView,
-        canFlip, 
-        validateAndPrepareSaveData, 
+        canFlip,
+        validateAndPrepareSaveData,
         setIsFlipped,
     ]);
 
@@ -202,7 +206,7 @@ export default function DataItemCard({
                             statusToDisplay={statusToDisplayForFront}
                         />
                         {isStatusRelevantView && effectiveStatus && (
-                             <div className="px-4 md:px-5 pb-4 pt-1 border-t border-slate-700/60 mt-auto">
+                            <div className="px-4 md:px-5 pb-4 pt-1 border-t border-slate-700/60 mt-auto">
                                 <CardActions
                                     status={effectiveStatus}
                                     isLocked={isLocked}
@@ -210,12 +214,12 @@ export default function DataItemCard({
                                     onStatusChange={handleProtectedStatusChange}
                                     onToggleLock={handleToggleLock}
                                     onFlip={() => {
-                                        clearValidationError(); 
+                                        clearValidationError();
                                         setIsFlipped(true);
                                     }}
                                     shakeLockAnim={shakeLockAnim}
                                     isAssigning={isAssigning}
-                                    isClarificationMissingInSavedDetails={isClarificationMissingInSavedDetails} // Prop übergeben
+                                    isClarificationMissingInSavedDetails={isClarificationMissingInSavedDetails}
                                 />
                             </div>
                         )}
@@ -230,13 +234,14 @@ export default function DataItemCard({
                         className="flex flex-col flex-grow h-full"
                     >
                         <CardBack
-                            internalDetails={internalDetails} // Die aktuellen Formulardaten
+                            internalDetails={internalDetails}
                             onDetailChange={handleInternalDetailChange}
                             onSave={handleSaveInternal}
-                            onCancel={handleCancelInternal}
+                            onCancel={handleCancelInternal} // Dies ist der Form-Cancel, der resetInternalDetails + setIsFlipped aufruft
                             validationError={validationError}
                             cardKey={cardKey}
-                            isSubmitting={isAssigning} 
+                            isSubmitting={isAssigning}
+                            isFinalized={isFinalized}   // <--- NEUE PROP HIER ÜBERGEBEN
                         />
                     </motion.div>
                 )}

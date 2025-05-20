@@ -6,7 +6,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useAuth } from '../contexts/AuthContext'; // Pfad anpassen
 
 import {
-    DataItem, ViewType, AnyItemStatus, CardSpecificDataItem // CardSpecificDataItem importiert
+    ViewType, AnyItemStatus, CardSpecificDataItem // CardSpecificDataItem importiert
 } from '../types'; // Pfad anpassen
 import { API_ENDPOINTS, VIEW_TITLES } from '../constants'; // Pfad anpassen
 import StatusBar from './StatusBar';
@@ -86,7 +86,7 @@ export default function ContaintTable() {
                 payload.internal_details = updatedItemFromCard.internal_details;
             }
         }
-        console.log("Spezialmission Debug: Payload an API:", JSON.stringify(payload, null, 2));
+        console.log("Debug: Payload an API:", JSON.stringify(payload, null, 2));
         // Wichtig: Diese Funktion ist aktuell nur für das Speichern von internal_details
         // bei Beschwerden gedacht, wie durch `CardBack` -> `handleSaveInternal` ausgelöst.
         // Statusänderungen von der Kartenvorderseite laufen über `performStatusChangeAsync`.
