@@ -1,11 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import {
-    DataItem,
-    ViewType,
-    StatusFilterMode,
-    BeschwerdeItem,
-    AnyItemStatus // Sicherstellen, dass AnyItemStatus korrekt importiert ist oder hier definiert wird
-} from '../types'; // Passe den Pfad ggf. an (z.B. '@/app/types')
+import {DataItem,ViewType,StatusFilterMode,BeschwerdeItem} from '../types'; // Passe den Pfad ggf. an (z.B. '@/app/types')
 import { DateFilterTarget } from '../components/ContaintTable'; // Passe den Pfad ggf. an (z.B. '@/app/components/ContaintTable')
 
 interface UseAppFiltersProps {
