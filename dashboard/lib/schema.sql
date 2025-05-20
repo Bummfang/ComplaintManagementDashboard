@@ -1,78 +1,94 @@
--- Kompletter SQL-Schema-Dump für das Beschwerdemanagement-System
--- Datenbank: PostgreSQL
-
--- Zuerst die Tabelle 'users' erstellen, da andere Tabellen davon abhängen.
+-- =======================================================================
+-- Erstellung der Tabelle: users
+-- Enthält Benutzerinformationen und den berechneten Usernamen.
+-- =======================================================================
 CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL,
-    nachname VARCHAR(50) NOT NULL,
-    username VARCHAR(101) GENERATED ALWAYS AS (LOWER(name || '.' || nachname)) STORED UNIQUE,
-    password VARCHAR(72) NOT NULL, -- Passwörter sollten immer sicher gehasht gespeichert werden!
-    erstelltam TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    letzter_login TIMESTAMPTZ,
-    ist_admin BOOLEAN DEFAULT FALSE
-);
+    id INT IDENTITY(1,1) NOT NULL,
+    name NVARCHAR(50) NOT NULL,
+    nachname NVARCHAR(50) NOT NULL,
+    username AS (name + N'.' + nachname), -- Berechnete Spalte
+    password NVARCHAR(255) NOT NULL,      -- Länge ggf. anpassen, 72 war im PG Schema, aber bcrypt Hashes können länger sein
+    erstelltam DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET() NOT NULL,
+    letzter_login DATETIMEOFFSET NULL,
+    ist_admin BIT NOT NULL DEFAULT 0,
 
--- Tabelle für Anregungen
+    CONSTRAINT PK_users PRIMARY KEY (id),
+    CONSTRAINT UQ_users_username UNIQUE (username) -- Sicherstellen, dass Usernamen einzigartig sind (wenn persistiert oder für Abfragen)
+);
+GO
+
+-- =======================================================================
+-- Erstellung der Tabelle: anregung
+-- Speichert Anregungen.
+-- =======================================================================
 CREATE TABLE anregung (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255), -- Name der Person, die die Anregung einreicht
-    email VARCHAR(255),
-    tel VARCHAR(50),
-    betreff VARCHAR(255),
-    beschreibung TEXT,
-    erstelltam TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    status VARCHAR(50), -- z.B. 'offen', 'in Bearbeitung', 'abgeschlossen'. Ein DEFAULT Wert könnte hier sinnvoll sein, z.B. DEFAULT 'offen'.
-    abgeschlossenam TIMESTAMPTZ,
-    bearbeiter_id INTEGER,
-    FOREIGN KEY (bearbeiter_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE
-);
+    id INT IDENTITY(1,1) NOT NULL,
+    name NVARCHAR(255) NOT NULL,
+    email NVARCHAR(255) NOT NULL,
+    tel NVARCHAR(50) NULL,
+    betreff NVARCHAR(255) NOT NULL,
+    beschreibung NVARCHAR(MAX) NOT NULL,
+    erstelltam DATETIME2 DEFAULT GETDATE() NOT NULL, -- timestamp ohne TZ in PG
+    status NVARCHAR(50) NULL,
+    abgeschlossenam DATETIMEOFFSET NULL,          -- timestamptz in PG
+    bearbeiter_id INT NULL,
 
--- Tabelle für Beschwerden
+    CONSTRAINT PK_anregung PRIMARY KEY (id),
+    CONSTRAINT FK_anregung_users FOREIGN KEY (bearbeiter_id) REFERENCES users(id)
+);
+GO
+
+-- =======================================================================
+-- Erstellung der Tabelle: beschwerde
+-- Speichert Beschwerden, inklusive der speziellen Logik für interne_klaerungsart.
+-- =======================================================================
 CREATE TABLE beschwerde (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255), -- Name der Person, die die Beschwerde einreicht
-    email VARCHAR(255),
-    tel VARCHAR(50),
-    betreff VARCHAR(255),
-    beschreibung TEXT,      -- Allgemeine Beschreibung
-    beschwerdegrund TEXT,   -- Spezifischer Grund der Beschwerde
-    datum DATE,             -- Datum des Vorfalls
-    uhrzeitzeit TIME,              -- Uhrzeit des Vorfalls
-    haltestelle VARCHAR(255),
-    linie VARCHAR(50),
-    erstelltam TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    status VARCHAR(50), -- z.B. 'offen', 'in Bearbeitung', 'abgeschlossen'. Ein DEFAULT Wert könnte hier sinnvoll sein, z.B. DEFAULT 'offen'.
-    abgeschlossenam TIMESTAMPTZ,
-    bearbeiter_id INTEGER,
-    FOREIGN KEY (bearbeiter_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE
-);
+    id INT IDENTITY(1,1) NOT NULL,
+    name NVARCHAR(255) NOT NULL,
+    email NVARCHAR(255) NOT NULL,
+    tel NVARCHAR(50) NULL,
+    beschreibung NVARCHAR(MAX) NOT NULL,
+    beschwerdegrund NVARCHAR(MAX) NOT NULL, -- 'text NOT NULL' im PG Schema
+    uhrzeit TIME NOT NULL,
+    haltestelle NVARCHAR(255) NULL,
+    linie NVARCHAR(50) NULL,
+    erstelltam DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET() NOT NULL, -- timestamptz in PG
+    status NVARCHAR(50) NULL,
+    abgeschlossenam DATETIMEOFFSET NULL,          -- timestamptz in PG
+    bearbeiter_id INT NULL,
+    interne_notizen NVARCHAR(MAX) NULL,
+    interne_klaerungsart NVARCHAR(20) NULL,
+    interne_bereichsleiter_informiert BIT NOT NULL DEFAULT 0,
+    interne_an_subunternehmer_weitergeleitet BIT NOT NULL DEFAULT 0,
+    interne_kein_entschaedigung_weitergeleitet BIT NOT NULL DEFAULT 0,
+    intern_geld_erstattet BIT NOT NULL DEFAULT 0,
+    interne_erstattungsbetrag DECIMAL(10,2) NULL,
 
--- Tabelle für Lob
+    CONSTRAINT PK_beschwerde PRIMARY KEY (id),
+    CONSTRAINT FK_beschwerde_users FOREIGN KEY (bearbeiter_id) REFERENCES users(id),
+    CONSTRAINT beschwerde_interne_klaerungsart_check -- Name wie von dir gewünscht
+        CHECK (interne_klaerungsart IS NULL OR interne_klaerungsart IN (N'schriftlich', N'telefonisch'))
+);
+GO
+
+-- =======================================================================
+-- Erstellung der Tabelle: lob
+-- Speichert Lob / positive Rückmeldungen.
+-- =======================================================================
 CREATE TABLE lob (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255), -- Name der Person, die das Lob ausspricht
-    email VARCHAR(255),
-    tel VARCHAR(50),
-    betreff VARCHAR(255),
-    beschreibung TEXT,
-    erstelltam TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    status VARCHAR(50), -- z.B. 'neu', 'gesichtet', 'danke gesagt'. Ein DEFAULT Wert könnte hier sinnvoll sein, z.B. DEFAULT 'neu'.
-    abgeschlossenam TIMESTAMPTZ, -- Ggf. nicht relevant für Lob oder anders interpretieren
-    bearbeiter_id INTEGER, -- Ggf. wer das Lob entgegengenommen/bearbeitet hat
-    FOREIGN KEY (bearbeiter_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE
+    id INT IDENTITY(1,1) NOT NULL,
+    name NVARCHAR(255) NOT NULL,
+    email NVARCHAR(255) NOT NULL,
+    tel NVARCHAR(50) NULL,
+    betreff NVARCHAR(255) NOT NULL,
+    beschreibung NVARCHAR(MAX) NOT NULL,
+    erstelltam DATETIME2 DEFAULT GETDATE() NOT NULL, -- timestamp ohne TZ in PG
+    status NVARCHAR(50) NULL,
+    abgeschlossenam DATETIMEOFFSET NULL,          -- timestamptz in PG
+    bearbeiter_id INT NULL,
+
+    CONSTRAINT PK_lob PRIMARY KEY (id),
+    CONSTRAINT FK_lob_users FOREIGN KEY (bearbeiter_id) REFERENCES users(id)
 );
+GO
 
--- Mögliche weitere Ergänzungen (als Kommentar, da nicht aus den Screenshots ersichtlich):
--- Indizes für häufig abgefragte Spalten zur Performanceverbesserung:
--- CREATE INDEX idx_anregung_status ON anregung(status);
--- CREATE INDEX idx_anregung_email ON anregung(email);
--- CREATE INDEX idx_beschwerde_status ON beschwerde(status);
--- CREATE INDEX idx_beschwerde_email ON beschwerde(email);
--- CREATE INDEX idx_beschwerde_haltestelle ON beschwerde(haltestelle);
--- CREATE INDEX idx_beschwerde_linie ON beschwerde(linie);
--- CREATE INDEX idx_lob_email ON lob(email);
-
--- Check Constraints für Spalten wie 'status', um nur erlaubte Werte zuzulassen:
--- ALTER TABLE anregung ADD CONSTRAINT chk_anregung_status CHECK (status IN ('offen', 'in Bearbeitung', 'abgeschlossen', 'abgelehnt'));
--- (Beispielwerte, an deine Bedürfnisse anpassen)
