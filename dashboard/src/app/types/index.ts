@@ -18,6 +18,7 @@ export interface BeschwerdeItem {
     abgeschlossenam?: string | null;
     bearbeiter_id?: number | null; // << Sicherstellen, dass vorhanden
     bearbeiter_name?: string | null; // << NEU HINZUGEFÜGT
+    internal_details?: InternalCardData;
 }
 
 export type AllowedLobStatus = "Offen" | "In Bearbeitung" | "Gelöst" | "Abgelehnt";
@@ -62,7 +63,7 @@ export type AnyItemStatus = AllowedBeschwerdeStatus | AllowedLobStatus | Allowed
 // --- NEUE DEFINITIONEN / ERGÄNZUNGEN für DataItemCard ---
 export interface InternalCardData {
     generalNotes: string;
-    clarificationType: 'written' | 'phone' | null;
+    clarificationType: 'schriftlich' | 'telefonisch' | null;
     teamLeadInformed: boolean;
     departmentHeadInformed: boolean;
     forwardedToSubcontractor: boolean;

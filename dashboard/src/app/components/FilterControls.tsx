@@ -3,12 +3,12 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Search, X, Mail, Filter, Hash, AlertTriangle, CheckCircle, Trash2, Palette, CalendarDays, PencilLine,
-    MapPin, Waypoints // Fehlende Icons hier hinzugefügt
+    MapPin, Waypoints, UserIcon // UserIcon HIER HINZUGEFÜGT
 } from "lucide-react";
 import type { Dispatch, SetStateAction } from 'react';
 import { ViewType, StatusFilterMode } from '../types';
 import { FILTER_LABELS } from '../constants';
-import { DateFilterTarget } from './ContaintTable';
+import { DateFilterTarget } from './ContaintTable'; // Annahme: ContaintTable ist im selben Verzeichnis oder Pfad muss angepasst werden
 
 type SearchSetter = Dispatch<SetStateAction<string>> | ((value: string) => void);
 
@@ -26,6 +26,8 @@ interface FilterControlsProps {
     setHaltestelleSearchTerm: Dispatch<SetStateAction<string>>;
     linieSearchTerm: string;
     setLinieSearchTerm: Dispatch<SetStateAction<string>>;
+    assigneeSearchTerm: string; // <--- NEUE PROP
+    setAssigneeSearchTerm: Dispatch<SetStateAction<string>>; // <--- NEUE PROP
     showAdvancedFilters: boolean;
     setShowAdvancedFilters: Dispatch<SetStateAction<boolean>>;
     startDateInput: string;
@@ -41,19 +43,9 @@ interface FilterControlsProps {
     setDateFilterTarget: Dispatch<SetStateAction<DateFilterTarget>>;
 }
 
-const containerVariants = {
-    hidden: { opacity: 0, y: -20 },
-    visible: {
-        opacity: 1, y: 0,
-        transition: { duration: 0.5, ease: [0.25, 1, 0.5, 1], staggerChildren: 0.1 }
-    }
-};
-
-const itemVariants = {
-    hidden: { opacity: 0, x: -15 },
-    visible: { opacity: 1, x: 0, transition: { duration: 0.4, ease: "easeOut" } }
-};
-
+// ... (containerVariants, itemVariants, neonButton Klassen wie bisher) ...
+const containerVariants = { /* ... wie bisher ... */ };
+const itemVariants = { /* ... wie bisher ... */ };
 const neonButtonBaseClasses = "px-4 py-2 text-xs sm:text-sm font-semibold rounded-full transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900/80 shadow-md whitespace-nowrap flex items-center justify-center gap-2";
 const neonButtonSkyClasses = `bg-sky-600/80 hover:bg-sky-500/90 text-sky-50 hover:text-white focus-visible:ring-sky-400 shadow-[0_0_10px_1px_rgba(56,189,248,0.3),0_0_20px_2px_rgba(56,189,248,0.2)] hover:shadow-[0_0_15px_2px_rgba(56,189,248,0.4),0_0_30px_4px_rgba(56,189,248,0.3)]`;
 const neonButtonSlateClasses = `bg-slate-600/80 hover:bg-slate-500/90 text-slate-100 hover:text-white focus-visible:ring-slate-400 shadow-[0_0_10px_1px_rgba(100,116,139,0.3),0_0_20px_2px_rgba(100,116,139,0.2)] hover:shadow-[0_0_15px_2px_rgba(100,116,139,0.4),0_0_30px_4px_rgba(100,116,139,0.3)]`;
@@ -64,7 +56,9 @@ export default function FilterControls({
     currentView, activeStatusFilter, setActiveStatusFilter,
     searchTerm, setSearchTerm, emailSearchTerm, setEmailSearchTerm,
     idSearchTerm, setIdSearchTerm, haltestelleSearchTerm, setHaltestelleSearchTerm,
-    linieSearchTerm, setLinieSearchTerm, showAdvancedFilters, setShowAdvancedFilters,
+    linieSearchTerm, setLinieSearchTerm,
+    assigneeSearchTerm, setAssigneeSearchTerm, // <--- NEUE PROPS DESTRUKTURIEREN
+    showAdvancedFilters, setShowAdvancedFilters,
     startDateInput, setStartDateInput, endDateInput, setEndDateInput,
     handleApplyDateFilter, handleClearDateFilter, isDateFilterApplied,
     cardAccentsEnabled, setCardAccentsEnabled, dateFilterTarget, setDateFilterTarget,
@@ -78,6 +72,7 @@ export default function FilterControls({
         { Icon: Search, placeholder: "Personensuche", value: searchTerm, setter: setSearchTerm, title: "Suche zurücksetzen", views: ["beschwerden", "lob", "anregungen"] },
         { Icon: Mail, placeholder: "E-Mail Suche", value: emailSearchTerm, setter: setEmailSearchTerm, title: "E-Mail-Suche zurücksetzen", views: ["beschwerden", "lob", "anregungen"] },
         { Icon: Hash, placeholder: "ID (Nr.)...", value: idSearchTerm, setter: setIdSearchTerm, title: "ID-Suche zurücksetzen", views: ["beschwerden", "lob", "anregungen"] },
+        { Icon: UserIcon, placeholder: "Bearbeiter...", value: assigneeSearchTerm, setter: setAssigneeSearchTerm, title: "Bearbeitersuche zurücksetzen", views: ["beschwerden", "lob", "anregungen"] }, // <--- NEUER FILTER HINZUGEFÜGT
     ];
     const beschwerdeSearchInputs: Array<{ Icon: React.ElementType; placeholder: string; value: string; setter: SearchSetter; title: string; views: ViewType[]; }> = [
         { Icon: MapPin, placeholder: "Haltestelle...", value: haltestelleSearchTerm, setter: setHaltestelleSearchTerm, title: "Haltestellensuche zurücksetzen", views: ["beschwerden"] },
@@ -199,7 +194,7 @@ export default function FilterControls({
                                                 whileTap={{ scale: (target === 'datum' && currentView !== 'beschwerden') ? 1 : 0.95 }}
                                             >
                                                 <span className="relative z-10 flex items-center gap-1">
-                                                    {target === 'erstelltam' ? <PencilLine size={13}/> : <CalendarDays size={13} />}
+                                                    {target === 'erstelltam' ? <PencilLine size={13} /> : <CalendarDays size={13} />}
                                                     {target === 'erstelltam' ? 'Erstellt' : 'Vorfall'}
                                                 </span>
                                                 {(dateFilterTarget === target && !(target === 'datum' && currentView !== 'beschwerden')) && (
@@ -236,7 +231,7 @@ export default function FilterControls({
                                 <motion.button onClick={handleClearDateFilter}
                                     className={`${neonButtonBaseClasses} ${neonButtonSlateClasses} h-[40px]`}
                                     whileHover={{ scale: 1.05, y: -1, transition: { type: "spring", stiffness: 350, damping: 15 } }} whileTap={{ scale: 0.95 }}
-                                > <Trash2 size={14}/> Löschen </motion.button>
+                                > <Trash2 size={14} /> Löschen </motion.button>
                             </motion.div>
                             {isDateFilterApplied && (
                                 <motion.div variants={itemVariants} className="w-full mt-3 md:mt-0 md:ml-auto md:flex-grow md:text-right self-end">
