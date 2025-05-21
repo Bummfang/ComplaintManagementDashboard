@@ -1,4 +1,15 @@
-// app/utils.ts
+
+
+
+
+
+
+
+
+
+
+
+
 export const formatDate = (dateString?: string | null, options?: Intl.DateTimeFormatOptions): string => {
     if (!dateString) return "N/A";
     try {
@@ -67,3 +78,8 @@ export const formatLastUpdateTime = (timestamp: Date | null): string => {
     // Das Suffix " Uhr" wurde hier ebenfalls entfernt für Konsistenz, falls gewünscht
     return timestamp.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 };
+
+
+
+
+
