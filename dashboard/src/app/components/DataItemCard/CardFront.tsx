@@ -146,7 +146,7 @@ const CardFront: React.FC<CardFrontProps> = ({
                 try {
                     const errorData = await response.json();
                     errorMsg = errorData.message || errorData.details || errorData.error || errorMsg;
-                } catch (e) { /* ignore if response is not json */ }
+                } catch (e) { console.log(e); }
                 throw new Error(errorMsg);
             }
             const blob = await response.blob();
