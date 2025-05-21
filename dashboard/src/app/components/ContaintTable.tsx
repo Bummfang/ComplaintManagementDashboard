@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react"; // useRef hinzugefügt
 import { useAuth } from '../contexts/AuthContext';
 import {
     ViewType,
@@ -39,6 +39,9 @@ export default function ContaintTable() {
     const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
     const [cardAccentsEnabled, setCardAccentsEnabled] = useState<boolean>(true);
 
+    // Ref, um die vorherige Anzahl der Daten für den Benachrichtigungston zu speichern
+    const previousDataCountRef = useRef<number>(0); // Speziell für die "beschwerden"-Ansicht
+
     const {
         data,
         isLoadingData,
@@ -67,6 +70,31 @@ export default function ContaintTable() {
     } = useAppFilters({ initialData: data, currentView });
 
     const [uiError, setUiError] = useState<string | null>(null);
+
+    // Effekt, um einen Ton abzuspielen, wenn eine neue "Beschwerde" eingeht
+    useEffect(() => {
+        // Nur ausführen, wenn Daten vorhanden und nicht am Laden sind
+        if (!isLoadingData && data) {
+            if (currentView === "beschwerden") {
+                // Ton abspielen, wenn neue Elemente hinzugefügt wurden (nicht beim ersten Laden)
+                if (data.length > previousDataCountRef.current && previousDataCountRef.current > 0) {
+                    const audio = new Audio('/newTicket.mp3'); // Stelle sicher, dass diese Datei im /public Ordner liegt
+                    audio.play().catch(error => console.error("Fehler beim Abspielen des Tons:", error));
+                }
+                // Aktualisiere die vorherige Datenanzahl für die "beschwerden"-Ansicht
+                previousDataCountRef.current = data.length;
+            } else {
+                // Wenn die Ansicht nicht "beschwerden" ist, setze den Zähler zurück,
+                // damit bei einem Wechsel zurück zu "beschwerden" neue Einträge korrekt erkannt werden.
+                // Dies verhindert, dass der Ton spielt, wenn man von einer anderen Ansicht mit z.B. 5 Elementen
+                // zu "beschwerden" mit 10 Elementen wechselt, es sei denn, diese 10 sind *neu* seit dem letzten Besuch.
+                // Um das genauer zu steuern, könnte man separate Refs pro View-Typ führen oder die Logik komplexer gestalten.
+                // Fürs Erste wird es beim Verlassen von "beschwerden" zurückgesetzt.
+                previousDataCountRef.current = 0;
+            }
+        }
+    }, [data, isLoadingData, currentView]);
+
 
     useEffect(() => {
         if (currentView !== "statistik" && currentView !== "admin") {
@@ -125,7 +153,6 @@ export default function ContaintTable() {
             }
 
             const sourceForItemPatch = serverConfirmedItem;
-            // KORREKTUR 1: Spezifischen Typ für payloadForPatch verwenden
             const payloadForPatch: PatchPayload = { id: sourceForItemPatch.id };
             let needsPatchCall = false;
 
@@ -137,14 +164,6 @@ export default function ContaintTable() {
                 payloadForPatch.internal_details = sourceForItemPatch.internal_details;
                 needsPatchCall = true;
             }
-
-            // KORREKTUR 2: Dieser Block wird entfernt, da 'assign_me_as_bearbeiter'
-            // nicht Teil von 'itemWithDesiredChanges' (Server-Antwort) ist.
-            // Die Zuweisung erfolgt direkt im useItemLocking Hook.
-            // if ((itemWithDesiredChanges as any).assign_me_as_bearbeiter === true) {
-            //     payloadForPatch.assign_me_as_bearbeiter = true;
-            //     needsPatchCall = true;
-            // }
 
             if (currentView === 'beschwerden') {
                 if ('attachment_filename' in itemWithDesiredChanges &&
