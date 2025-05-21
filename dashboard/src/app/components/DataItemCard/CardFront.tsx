@@ -6,8 +6,7 @@ import { ClockIcon, UserIcon, PaperclipIcon, XCircleIcon, DownloadIcon, ReplaceI
 import { 
     CardSpecificDataItem, 
     ViewType, 
-    BeschwerdeItem,
-    InternalCardData // Sicherstellen, dass dieser Typ (falls von isBeschwerdeType genutzt) importiert ist
+    BeschwerdeItem
 } from '@/app/types';
 import { API_ENDPOINTS } from '@/app/constants';
 import { formatDateTime, formatDate, formatTime } from '@/app/utils';

@@ -1,26 +1,27 @@
-// app/api/containt/route.ts
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { type PoolClient } from 'pg'; 
 import { getDbPool } from '@/lib/db'; 
 import jwt, { JwtPayload } from 'jsonwebtoken'; 
 
-
-import { 
-    BeschwerdeDbRow, 
-    BeschwerdeApiResponse, 
-    mapDbRowToApiResponse,
-    allowedStatusesList 
+// Importe aus der Shared-Datei im selben Verzeichnis
+import { BeschwerdeDbRow, mapDbRowToApiResponse,allowedStatusesList // Stellt sicher, dass dies aus _sharedApi exportiert wird
 } from './_sharedApi'; 
 
-import { InternalCardData as FrontendInternalCardData, AllowedBeschwerdeStatus } from '@/app/types'; 
+// Globale Typen für Frontend-Datenstrukturen
+import { 
+    InternalCardData as FrontendInternalCardData, 
+    AllowedBeschwerdeStatus 
+} from '@/app/types'; 
 
+// Typ für den dekodierten JWT-Payload
 interface DecodedToken extends JwtPayload {
     userId: number;
     username: string;
     isAdmin: boolean;
 }
 
+// Typ für den erwarteten Body der PATCH-Anfrage
 interface PatchRequestBody {
     id: string | number; 
     status?: AllowedBeschwerdeStatus; 
@@ -30,6 +31,7 @@ interface PatchRequestBody {
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+// Handler für GET-Anfragen zum Abrufen aller Beschwerden
 export async function GET(request: NextRequest) {
     const requestTimestamp = new Date().toISOString();
     if (!JWT_SECRET) { 
@@ -47,7 +49,7 @@ export async function GET(request: NextRequest) {
         jwt.verify(token, JWT_SECRET); 
     } catch (error) { 
         const errorMessage = error instanceof Error ? error.message : 'Unbekannter Token Fehler';
-        console.error(`[${requestTimestamp}] Token Verifizierungsfehler:`, errorMessage);
+        console.error(`[${requestTimestamp}] Token Verifizierungsfehler (GET /api/containt):`, errorMessage);
         return NextResponse.json({ error: 'Ungültiges oder abgelaufenes Token.' }, { status: 401 }); 
     }
 
@@ -55,6 +57,7 @@ export async function GET(request: NextRequest) {
     let client: PoolClient | undefined;
     try {
         client = await poolToUse.connect();
+        // Der Query selektiert jetzt auch attachment_filename und attachment_mimetype
         const query = `
             SELECT
                 b.id, b.name, b.email, b.tel, b.betreff, b.beschreibung,
@@ -80,19 +83,25 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(responseData, { status: 200 });
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unbekannter Datenbankfehler';
-        console.error(`[${requestTimestamp}] Fehler beim Abrufen von Beschwerden (/api/containt):`, errorMessage, error);
+        console.error(`[${requestTimestamp}] Fehler beim Abrufen von Beschwerden (/api/containt GET):`, errorMessage, error);
         return NextResponse.json({ error: 'Fehler beim Abrufen von Beschwerden.', details: errorMessage }, { status: 500 });
     } finally {
         if (client) client.release();
     }
 }
 
+// Handler für PATCH-Anfragen zum Aktualisieren von Beschwerden
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
     const requestTimestamp = new Date().toISOString();
-    if (!JWT_SECRET) { return NextResponse.json({ error: 'Serverkonfigurationsfehler.' }, { status: 500 }); }
+    if (!JWT_SECRET) { 
+        console.error(`[${requestTimestamp}] JWT_SECRET nicht konfiguriert für PATCH /api/containt.`);
+        return NextResponse.json({ error: 'Serverkonfigurationsfehler.' }, { status: 500 }); 
+    }
 
     const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) { return NextResponse.json({ error: 'Authentifizierungstoken fehlt oder ist ungültig.' }, { status: 401 }); }
+    if (!authHeader || !authHeader.startsWith('Bearer ')) { 
+        return NextResponse.json({ error: 'Authentifizierungstoken fehlt oder ist ungültig.' }, { status: 401 }); 
+    }
     const token = authHeader.split(' ')[1];
     
     let decodedTokenInfo: DecodedToken;
@@ -107,7 +116,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         decodedTokenInfo = decoded as DecodedToken;
     } catch (error) { 
         const errorMessage = error instanceof Error ? error.message : 'Unbekannter Token Fehler';
-        console.error(`[${requestTimestamp}] Token Verifizierungsfehler (PATCH):`, errorMessage);
+        console.error(`[${requestTimestamp}] Token Verifizierungsfehler (PATCH /api/containt):`, errorMessage);
         return NextResponse.json({ error: 'Ungültiges oder abgelaufenes Token.' }, { status: 401 }); 
     }
 
@@ -164,7 +173,9 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
                     updateQueryParams.push(newStatus);
                  }
                 if (newStatus === 'Gelöst' || newStatus === 'Abgelehnt') {
-                    setClauses.push(`abgeschlossenam = CURRENT_TIMESTAMP`);
+                    if (!setClauses.some(c => c.startsWith('abgeschlossenam'))) { // Nur setzen, wenn nicht schon gesetzt
+                        setClauses.push(`abgeschlossenam = CURRENT_TIMESTAMP`);
+                    }
                 } else if (newStatus === 'Offen') {
                     setClauses.push(`abgeschlossenam = NULL`);
                     if (currentItem.status === 'Gelöst' || currentItem.status === 'Abgelehnt') {
@@ -178,13 +189,15 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
             if (internalDetailsFromClient) {
                 if (internalDetailsFromClient.generalNotes !== undefined) { setClauses.push(`interne_notizen = $${paramIndex++}`); updateQueryParams.push(internalDetailsFromClient.generalNotes); }
+                
+                // KORREKTE Behandlung von interne_klaerungsart basierend auf Frontend-Typ
                 if (internalDetailsFromClient.clarificationType !== undefined) { 
-                    let dbClarificationType: 'written' | 'phone' | null = null;
-                    if (internalDetailsFromClient.clarificationType === 'schriftlich') dbClarificationType = 'written';
-                    else if (internalDetailsFromClient.clarificationType === 'telefonisch') dbClarificationType = 'phone';
+                    // Frontend sendet 'schriftlich', 'telefonisch', oder null.
+                    // Die DB erwartet diese Werte (oder was auch immer dein Check-Constraint definiert).
                     setClauses.push(`interne_klaerungsart = $${paramIndex++}`); 
-                    updateQueryParams.push(dbClarificationType); 
+                    updateQueryParams.push(internalDetailsFromClient.clarificationType); 
                 }
+
                 if (internalDetailsFromClient.teamLeadInformed !== undefined) { setClauses.push(`interne_teamleiter_informiert = $${paramIndex++}`); updateQueryParams.push(internalDetailsFromClient.teamLeadInformed); }
                 if (internalDetailsFromClient.departmentHeadInformed !== undefined) { setClauses.push(`interne_bereichsleiter_informiert = $${paramIndex++}`); updateQueryParams.push(internalDetailsFromClient.departmentHeadInformed); }
                 if (internalDetailsFromClient.forwardedToSubcontractor !== undefined) { setClauses.push(`interne_an_subunternehmer_weitergeleitet = $${paramIndex++}`); updateQueryParams.push(internalDetailsFromClient.forwardedToSubcontractor); }
@@ -201,7 +214,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
                         setClauses.push(`interne_erstattungsbetrag = $${paramIndex++}`);
                         updateQueryParams.push(null);
                     }
-                } else if (internalDetailsFromClient.moneyRefunded === false) {
+                } else if (internalDetailsFromClient.moneyRefunded === false) { // Wenn moneyRefunded explizit false ist und refundAmount nicht gesendet wurde
                      setClauses.push(`interne_erstattungsbetrag = $${paramIndex++}`);
                      updateQueryParams.push(null);
                 }
@@ -211,17 +224,25 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
                 updateQueryParams.push(itemId);
                 const updateQueryText = `UPDATE beschwerde SET ${setClauses.join(', ')} WHERE id = $${paramIndex} RETURNING id;`;
                 const updateResult = await client.query<{ id: number }>(updateQueryText, updateQueryParams);
-                if (updateResult.rowCount === 0) { await client.query('ROLLBACK'); return NextResponse.json({ error: 'Beschwerde konnte nicht aktualisiert werden.' }, { status: 404 });  }
+                if (updateResult.rowCount === 0) { 
+                    await client.query('ROLLBACK'); 
+                    return NextResponse.json({ error: 'Beschwerde konnte nicht aktualisiert werden.' }, { status: 404 });  
+                }
             }
 
             const finalSelectQuery = `
-                SELECT b.*, u.name || ' ' || u.nachname AS bearbeiter_name
+                SELECT b.*, 
+                       u.name || ' ' || u.nachname AS bearbeiter_name
+                       -- attachment_filename und attachment_mimetype sind in b.* enthalten
                 FROM beschwerde b
                 LEFT JOIN users u ON b.bearbeiter_id = u.id
                 WHERE b.id = $1;
             `;
             const finalItemResult = await client.query<BeschwerdeDbRow>(finalSelectQuery, [itemId]);
-            if (finalItemResult.rows.length === 0) { await client.query('ROLLBACK'); return NextResponse.json({ error: 'Beschwerde nach Update nicht gefunden.' }, { status: 404 }); }
+            if (finalItemResult.rows.length === 0) { 
+                await client.query('ROLLBACK'); 
+                return NextResponse.json({ error: 'Beschwerde nach Update nicht gefunden.' }, { status: 404 }); 
+            }
 
             const responseRow = mapDbRowToApiResponse(finalItemResult.rows[0]);
             const itemToSend = { ...responseRow, ...actionResponsePayload };
@@ -230,7 +251,10 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             return NextResponse.json(itemToSend, { status: 200 });
 
         } catch (error) {
-            if (client) { try { await client.query('ROLLBACK'); } catch (rbError) { console.error(`[${requestTimestamp}] Fehler beim Rollback (Beschwerde PATCH für ID ${itemId}):`, rbError); } }
+            if (client) { 
+                try { await client.query('ROLLBACK'); } 
+                catch (rbError) { console.error(`[${requestTimestamp}] Fehler beim Rollback (Beschwerde PATCH für ID ${itemId}):`, rbError); } 
+            }
             const errorMsg = error instanceof Error ? error.message : 'Interner Serverfehler.';
             console.error(`[${requestTimestamp}] PATCH /api/containt (Beschwerde) Fehler für ID ${itemId}:`, errorMsg, error);
             return NextResponse.json({ error: "Fehler beim Verarbeiten der Anfrage.", details: errorMsg }, { status: 500 });
@@ -239,7 +263,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         }
     } catch (e) {
         const errorMsg = e instanceof Error ? e.message : 'Unbekannter Fehler beim Parsen des JSON-Body.';
-        console.error(`[${requestTimestamp}] Fehler beim Parsen des JSON-Body (PATCH):`, errorMsg, e);
+        console.error(`[${requestTimestamp}] Fehler beim Parsen des JSON-Body (PATCH /api/containt):`, errorMsg, e);
         return NextResponse.json({ error: 'Ungültiger JSON-Body.', details: errorMsg }, { status: 400 });
     }
 }

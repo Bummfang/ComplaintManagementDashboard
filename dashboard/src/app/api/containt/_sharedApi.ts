@@ -1,63 +1,56 @@
-// app/api/containt/_sharedApi.ts
+// WICHTIG: Diese Datei muss unter src/app/api/containt/_sharedApi.ts liegen
+
 import { type QueryResultRow } from 'pg';
 // Globale Typen, die Frontend und Backend nutzen
-import { 
-    InternalCardData as FrontendInternalCardData, // Umbenannt zur Unterscheidung von DB-Feldern
-    AllowedBeschwerdeStatus // Direkter Import des spezifischen Statustyps
-} from '@/app/types'; 
+import { InternalCardData as FrontendInternalCardData, AllowedBeschwerdeStatus } from '@/app/types';
 
 // Dieses Interface spiegelt die Spaltennamen wider, wie sie in deiner DB-Tabelle 'beschwerde' sind
 export interface BeschwerdeDbRow extends QueryResultRow {
     id: number;
     name: string;
     email: string;
-    tel?: string | null; // In DB oft als NULLable
+    tel?: string | null;
     betreff: string;
     beschreibung: string;
     beschwerdegrund: string;
-    datum: string; // In DB oft als DATE
-    uhrzeit: string; // In DB oft als TIME
+    datum: string;
+    uhrzeit: string;
     haltestelle?: string | null;
     linie?: string | null;
-    erstelltam: string; // In DB oft als TIMESTAMPTZ
-    status?: AllowedBeschwerdeStatus | null; // Status kann auch null sein aus der DB
+    erstelltam: string;
+    status?: AllowedBeschwerdeStatus | null;
     abgeschlossenam?: string | null;
     bearbeiter_id?: number | null;
     bearbeiter_name?: string | null;
 
     interne_notizen?: string | null;
-    interne_klaerungsart?: 'written' | 'phone' | null; // DB-spezifische Enum-Werte
+    interne_klaerungsart?: 'schriftlich' | 'telefonisch' | null;
     interne_teamleiter_informiert?: boolean | null;
     interne_bereichsleiter_informiert?: boolean | null;
     interne_an_subunternehmer_weitergeleitet?: boolean | null;
     interne_an_versicherung_weitergeleitet?: boolean | null;
     interne_geld_erstattet?: boolean | null;
-    interne_erstattungsbetrag?: string | null; // NUMERIC wird oft als String gelesen
+    interne_erstattungsbetrag?: string | null;
 
-    // Attachment-Felder aus deiner DB
     attachment_filename?: string | null;
     attachment_mimetype?: string | null;
-    attachment_data?: Buffer | null; // Buffer für bytea
+    attachment_data?: Buffer | null;
 }
 
 // Das finale Objekt, das an das Frontend gesendet wird
 export interface BeschwerdeApiResponse extends Omit<BeschwerdeDbRow,
-    // Felder, die in internal_details zusammengefasst werden oder nicht gesendet werden
-    'interne_notizen' | 
-    'interne_klaerungsart' | 
+    'interne_notizen' |
+    'interne_klaerungsart' |
     'interne_teamleiter_informiert' |
-    'interne_bereichsleiter_informiert' | 
+    'interne_bereichsleiter_informiert' |
     'interne_an_subunternehmer_weitergeleitet' |
-    'interne_an_versicherung_weitergeleitet' | 
-    'interne_geld_erstattet' | 
+    'interne_an_versicherung_weitergeleitet' |
+    'interne_geld_erstattet' |
     'interne_erstattungsbetrag' |
-    'attachment_data' // Rohdaten nicht ans Frontend
+    'attachment_data' // attachment_data wird hier bewusst ausgelassen
 > {
-    internal_details?: FrontendInternalCardData; // Verwendung des Frontend-Typs
+    internal_details?: FrontendInternalCardData;
     action_required?: "relock_ui";
-    // attachment_filename und attachment_mimetype werden von BeschwerdeDbRow übernommen
-    // und sind nach Omit nicht mehr da, falls sie nicht explizit in BeschwerdeDbRow wären.
-    // Da sie aber in BeschwerdeDbRow sind und nicht in der Omit-Liste, bleiben sie erhalten.
 }
 
 
@@ -71,23 +64,17 @@ export function mapDbRowToApiResponse(row: BeschwerdeDbRow): BeschwerdeApiRespon
         interne_an_versicherung_weitergeleitet,
         interne_geld_erstattet,
         interne_erstattungsbetrag,
-        attachment_data, // Wird nicht direkt weitergegeben
-        ...restOfRow // Enthält attachment_filename und attachment_mimetype, wenn sie in row sind
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        attachment_data, // Unterstrich wieder entfernt, da die Direktive die Zeile direkt anspricht
+        ...restOfRow
     } = row;
 
-    let frontendClarificationType: FrontendInternalCardData['clarificationType'] = null;
-    if (interne_klaerungsart === 'written') {
-        frontendClarificationType = 'schriftlich';
-    } else if (interne_klaerungsart === 'phone') {
-        frontendClarificationType = 'telefonisch';
-    }
+    const frontendClarificationType: FrontendInternalCardData['clarificationType'] = interne_klaerungsart || null;
 
-    const apiResponse: BeschwerdeApiResponse = { 
-        ...restOfRow, 
-        // attachment_filename und attachment_mimetype sind in restOfRow, wenn in BeschwerdeDbRow vorhanden
+    const apiResponse: BeschwerdeApiResponse = {
+        ...restOfRow,
     };
-    
-    // internal_details nur erstellen, wenn mindestens ein relevantes Feld vorhanden ist
+
     const hasInternalDetailsData = [
         interne_notizen, interne_klaerungsart, interne_teamleiter_informiert,
         interne_bereichsleiter_informiert, interne_an_subunternehmer_weitergeleitet,
@@ -96,20 +83,17 @@ export function mapDbRowToApiResponse(row: BeschwerdeDbRow): BeschwerdeApiRespon
 
     if (hasInternalDetailsData) {
         apiResponse.internal_details = {
-            generalNotes: interne_notizen || "", // Fallback auf leeren String
+            generalNotes: interne_notizen || "",
             clarificationType: frontendClarificationType,
-            teamLeadInformed: !!interne_teamleiter_informiert, // In Boolean konvertieren
+            teamLeadInformed: !!interne_teamleiter_informiert,
             departmentHeadInformed: !!interne_bereichsleiter_informiert,
             forwardedToSubcontractor: !!interne_an_subunternehmer_weitergeleitet,
             forwardedToInsurance: !!interne_an_versicherung_weitergeleitet,
             moneyRefunded: !!interne_geld_erstattet,
-            refundAmount: interne_erstattungsbetrag || "", // Fallback auf leeren String
+            refundAmount: interne_erstattungsbetrag || "",
         };
     }
     return apiResponse;
 }
 
-// AllowedStatus wird jetzt direkt aus @/app/types als AllowedBeschwerdeStatus importiert
-// und in BeschwerdeDbRow verwendet.
-// Wenn du eine separate Liste für Validierungszwecke brauchst:
 export const allowedStatusesList: AllowedBeschwerdeStatus[] = ["Offen", "In Bearbeitung", "Gelöst", "Abgelehnt"];

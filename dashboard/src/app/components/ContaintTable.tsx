@@ -3,7 +3,13 @@
 import { motion } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from '../contexts/AuthContext';
-import {ViewType, AnyItemStatus, CardSpecificDataItem, BeschwerdeItem } from '../types'; // BeschwerdeItem ist wichtig
+import {
+    ViewType,
+    AnyItemStatus,
+    CardSpecificDataItem,
+    BeschwerdeItem,
+    InternalCardData // Sicherstellen, dass dieser Typ importiert ist für PatchPayload
+} from '../types';
 import { API_ENDPOINTS, VIEW_TITLES } from '../constants';
 import StatusBar from './StatusBar';
 import ViewTabs from './ViewTabs';
@@ -15,6 +21,15 @@ import { useAppFilters } from '../hooks/useAppFilters';
 import { useDataFetching } from '../hooks/useDataFetching';
 
 export type DateFilterTarget = 'erstelltam' | 'datum';
+
+// Interface für das PATCH-Payload-Objekt
+interface PatchPayload {
+    id: number | string;
+    status?: AnyItemStatus;
+    internal_details?: InternalCardData; // Typ aus '../types' verwenden
+    attachment_filename?: null;
+    // assign_me_as_bearbeiter wird hier nicht benötigt, da es direkt vom useItemLocking Hook gehandhabt wird.
+}
 
 export default function ContaintTable() {
     const { isAuthenticated, user, token, isLoadingAuth, logout } = useAuth();
@@ -61,90 +76,117 @@ export default function ContaintTable() {
     }, [currentView]);
 
     const handleItemUpdate = useCallback(async (
-        itemToUpdate: CardSpecificDataItem, 
-        file?: File | null 
+        itemWithDesiredChanges: CardSpecificDataItem,
+        file?: File | null
     ): Promise<void> => {
         if (!token) {
             setUiError("Nicht autorisiert.");
             logout();
             throw new Error("Nicht autorisiert.");
         }
-
-        setUiError(null); 
+        setUiError(null);
 
         const viewSpecificApiBase = API_ENDPOINTS[currentView as keyof typeof API_ENDPOINTS];
-        if (!viewSpecificApiBase) {
+        if (!viewSpecificApiBase && currentView !== 'admin' && currentView !== 'statistik') {
             const errorMsg = `Kein API Endpunkt für View '${currentView}' definiert.`;
             setUiError(errorMsg);
             throw new Error(errorMsg);
         }
 
+        let serverConfirmedItem: CardSpecificDataItem = { ...itemWithDesiredChanges };
+
         try {
-            let response: Response;
-            let updatedItemFromServer: CardSpecificDataItem;
-
-            if (file && currentView === 'beschwerden') {
+            if (file && currentView === 'beschwerden' && viewSpecificApiBase) {
+                console.log(`ContaintTable: Starting file upload for Item ${itemWithDesiredChanges.id} to ${viewSpecificApiBase}/${itemWithDesiredChanges.id}/attachment`);
                 const formData = new FormData();
-                formData.append('attachment', file, file.name); 
-                
-                const uploadUrl = `${viewSpecificApiBase}/${itemToUpdate.id}/attachment`;
-                console.log(`ContaintTable: Starte Datei-Upload für Item ${itemToUpdate.id} zu ${uploadUrl}`);
+                formData.append('attachment', file, file.name);
+                const uploadUrl = `${viewSpecificApiBase}/${itemWithDesiredChanges.id}/attachment`;
 
-                response = await fetch(uploadUrl, {
-                    method: 'POST', 
+                const fileResponse = await fetch(uploadUrl, {
+                    method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` },
                     body: formData,
                 });
 
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    if (response.status === 401) { logout(); setUiError("Sitzung abgelaufen."); throw new Error("Sitzung abgelaufen."); }
-                    throw new Error(errorData.message || errorData.details || errorData.error || `Fehler beim Hochladen der Datei (${response.status})`);
+                if (!fileResponse.ok) {
+                    const errorData = await fileResponse.json().catch(() => ({}));
+                    if (fileResponse.status === 401) { logout(); setUiError("Sitzung abgelaufen."); throw new Error("Sitzung abgelaufen."); }
+                    throw new Error(errorData.message || errorData.details || errorData.error || `Fehler beim Hochladen der Datei (${fileResponse.status})`);
                 }
-                updatedItemFromServer = await response.json();
-                console.log("ContaintTable: Datei erfolgreich hochgeladen, Server-Antwort:", updatedItemFromServer);
+                const itemAfterUpload: BeschwerdeItem = await fileResponse.json();
+                console.log("ContaintTable: File successfully uploaded, server response:", itemAfterUpload);
 
-            } else if (itemToUpdate.internal_details && currentView === 'beschwerden' && !file) {
-                const payload = {
-                    id: itemToUpdate.id,
-                    internal_details: itemToUpdate.internal_details
+                serverConfirmedItem = {
+                    ...itemWithDesiredChanges,
+                    attachment_filename: itemAfterUpload.attachment_filename,
+                    attachment_mimetype: itemAfterUpload.attachment_mimetype,
                 };
-                console.log(`ContaintTable: Aktualisiere internal_details für Item ${itemToUpdate.id}`);
-                response = await fetch(viewSpecificApiBase, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify(payload),
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    if (response.status === 401) { logout(); setUiError("Sitzung abgelaufen."); throw new Error("Sitzung abgelaufen."); }
-                    throw new Error(errorData.details || errorData.error || `Fehler beim Speichern der Details (${response.status})`);
-                }
-                updatedItemFromServer = await response.json();
-                console.log("ContaintTable: Internal details erfolgreich gespeichert, Server-Antwort:", updatedItemFromServer);
-
-            // KORRIGIERTE ZEILE HIER:
-            } else if (!file && (itemToUpdate as BeschwerdeItem).attachment_filename === null && currentView === 'beschwerden') {
-                console.log(`ContaintTable: Anhang für Item ${itemToUpdate.id} wurde entfernt, aktualisiere Cache.`);
-                updatedItemFromServer = itemToUpdate; 
-            
-            } else {
-                console.warn("ContaintTable: handleItemUpdate aufgerufen ohne Datei oder internal_details für Beschwerden, oder für eine andere View. Aktion wird nicht ausgeführt.", itemToUpdate);
-                return; 
+                console.log("ContaintTable: Merged item state after file upload:", serverConfirmedItem);
             }
 
-            if (updatedItemFromServer) {
-                updateSingleItemInCache(updatedItemFromServer);
+            const sourceForItemPatch = serverConfirmedItem;
+            // KORREKTUR 1: Spezifischen Typ für payloadForPatch verwenden
+            const payloadForPatch: PatchPayload = { id: sourceForItemPatch.id };
+            let needsPatchCall = false;
+
+            if (sourceForItemPatch.status !== undefined) {
+                payloadForPatch.status = sourceForItemPatch.status;
+                needsPatchCall = true;
+            }
+            if (sourceForItemPatch.internal_details) {
+                payloadForPatch.internal_details = sourceForItemPatch.internal_details;
+                needsPatchCall = true;
+            }
+
+            // KORREKTUR 2: Dieser Block wird entfernt, da 'assign_me_as_bearbeiter'
+            // nicht Teil von 'itemWithDesiredChanges' (Server-Antwort) ist.
+            // Die Zuweisung erfolgt direkt im useItemLocking Hook.
+            // if ((itemWithDesiredChanges as any).assign_me_as_bearbeiter === true) {
+            //     payloadForPatch.assign_me_as_bearbeiter = true;
+            //     needsPatchCall = true;
+            // }
+
+            if (currentView === 'beschwerden') {
+                if ('attachment_filename' in itemWithDesiredChanges &&
+                    itemWithDesiredChanges.attachment_filename === null) {
+                    payloadForPatch.attachment_filename = null;
+                    needsPatchCall = true;
+                }
+            }
+
+            if (needsPatchCall && viewSpecificApiBase) {
+                console.log(`ContaintTable: PATCHing Item ${sourceForItemPatch.id} to ${viewSpecificApiBase} with payload:`, payloadForPatch);
+                const patchResponse = await fetch(viewSpecificApiBase, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payloadForPatch),
+                });
+
+                if (!patchResponse.ok) {
+                    const errorData = await patchResponse.json().catch(() => ({}));
+                    if (patchResponse.status === 401) { logout(); setUiError("Sitzung abgelaufen."); throw new Error("Sitzung abgelaufen."); }
+                    throw new Error(errorData.details || errorData.error || `Fehler beim Speichern der Änderungen (${patchResponse.status})`);
+                }
+                serverConfirmedItem = await patchResponse.json();
+                console.log("ContaintTable: PATCH successful. Final server response:", serverConfirmedItem);
+            } else if (file && currentView === 'beschwerden') {
+                console.log("ContaintTable: File was uploaded, no further PATCH needed. Using item state after upload:", serverConfirmedItem);
+            } else if (!needsPatchCall) {
+                console.warn(`ContaintTable: onItemUpdate for item ${sourceForItemPatch.id} did not result in a required API call for PATCH. Using existing merged/desired state for cache.`);
+            }
+
+            if (serverConfirmedItem) {
+                updateSingleItemInCache(serverConfirmedItem);
             }
 
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : "Unbekannter Fehler beim Aktualisieren.";
+            const errorMessage = err instanceof Error ? err.message : "Unbekannter Fehler beim Aktualisieren des Eintrags.";
+            console.error("ContaintTable: Error in handleItemUpdate:", err);
             setUiError(errorMessage);
-            throw err; 
+            throw err;
         }
     }, [token, logout, currentView, updateSingleItemInCache, setUiError]);
-    
+
     const handleCopyToClipboard = useCallback(async (textToCopy: string, cellKey: string) => {
         if (!textToCopy) return;
         if (!navigator.clipboard) { setUiError("Kopieren nicht möglich: Clipboard API nicht unterstützt oder nicht sicher (HTTPS benötigt)."); setTimeout(() => setUiError(null), 3000); return; }
@@ -229,7 +271,7 @@ export default function ContaintTable() {
                                             copiedCellKey={copiedCellKey} onCopyToClipboard={handleCopyToClipboard}
                                             onStatusChange={(itemId, newStatus) => handleStatusChangeForCard(itemId, newStatus as AnyItemStatus, currentView)}
                                             cardAccentsEnabled={cardAccentsEnabled}
-                                            onItemUpdate={handleItemUpdate} 
+                                            onItemUpdate={handleItemUpdate}
                                         />
                                     ))}
                                 </motion.div>

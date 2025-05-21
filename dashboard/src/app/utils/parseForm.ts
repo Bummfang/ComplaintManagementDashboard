@@ -11,16 +11,14 @@ export interface ParsedForm {
 // Damit FormidableFile direkt genutzt werden kann, falls Ihre Typen es nicht kennen
 export type { FormidableFile };
 
-
-
-
 export const parseForm = (req: NextApiRequest): Promise<ParsedForm> => {
-    const form = formidable({ 
+    const form = formidable({
         maxFileSize: 5 * 1024 * 1024, // Gleiches Limit wie im Handler
         // uploadDir: '/tmp', // Ggf. anpassen oder formidable die OS-Defaults nutzen lassen
     });
     return new Promise((resolve, reject) => {
-        form.parse(req, (err: any, fields: Fields, files: Files) => {
+        // KORREKTUR: 'err: any' ersetzt durch 'err: Error | null'
+        form.parse(req, (err: Error | null, fields: Fields, files: Files) => {
             if (err) {
                 return reject(err);
             }
