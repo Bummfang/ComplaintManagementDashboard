@@ -19,7 +19,7 @@ interface CardActionsProps {
     isAssigning: boolean;
     isProcessingFile: boolean;
     isFinalized: boolean;
-    canFlip: boolean; // Erhält den Wert, ob der View-Typ das Flippen prinzipiell erlaubt
+    canFlip: boolean; 
     onStatusChange: (newStatus: StrictStatus) => void;
     onToggleLock: () => void;
     onFlip: () => void;
@@ -34,7 +34,7 @@ const CardActions: React.FC<CardActionsProps> = ({
     isAssigning,
     isProcessingFile,
     isFinalized,
-    canFlip, // Dieses canFlip kommt jetzt von DataItemCard und ist true für 'beschwerden'
+    canFlip, 
     onStatusChange,
     onToggleLock,
     onFlip,
@@ -47,26 +47,25 @@ const CardActions: React.FC<CardActionsProps> = ({
     const [animateLockIconWhenActionDisabled, setAnimateLockIconWhenActionDisabled] = useState(false);
     const [isLockIconHovered, setIsLockIconHovered] = useState(false);
 
-    const generalActionLock = isLockedByHook || isAssigning || isProcessingFile;
-
-    const disableResolveActions = generalActionLock || (isClarificationMissingInSavedDetails && status === "In Bearbeitung" && currentView === 'beschwerden');
+    const generalActionsDisabled = isLockedByHook || isAssigning || isProcessingFile;
+    const disableResolveActions = generalActionsDisabled || (isClarificationMissingInSavedDetails && status === "In Bearbeitung" && currentView === 'beschwerden');
 
     const handleMainActionButtonHover = (isHovering: boolean) => {
         if (isClarificationMissingInSavedDetails && status === "In Bearbeitung" && currentView === 'beschwerden' && disableResolveActions) {
             setAnimateSettingsIcon(isHovering);
         }
-        if (generalActionLock && status && !isFinalized ) { // Lock-Animation nur wenn nicht finalisiert und Aktion blockiert
+        if (generalActionsDisabled && status && !isFinalized ) {
            setAnimateLockIconWhenActionDisabled(isHovering);
-        } else if (generalActionLock && isFinalized && status !== "Offen"){ // Für den "Wieder öffnen" Button wenn blockiert
+        } else if (generalActionsDisabled && isFinalized && status !== "Offen"){ 
             setAnimateLockIconWhenActionDisabled(isHovering);
         }
     };
 
     let actionButton = null;
 
-    if (isFinalized) { // Logik für finalisierte Fälle zuerst
+    if (isFinalized) { 
         if (currentView === 'lob' && status === 'Gelöst') {
-             actionButton = (
+            actionButton = (
                 <div className="text-center text-xs text-green-400 py-1.5">
                     Lob wurde als erledigt markiert.
                 </div>
@@ -77,18 +76,20 @@ const CardActions: React.FC<CardActionsProps> = ({
             actionButton = (
                 <div className={`text-center text-xs py-1.5 ${textColor}`}>
                     {messageText}
-                    <span className="block text-slate-400 text-xxs">(Nicht mehr zu bearbeiten ohne Wiedereröffnung)</span>
+                    <span className="block text-slate-400 text-xxs">(Kann wieder geöffnet werden)</span>
                 </div>
             );
-        } else { // Für 'beschwerden' und andere, die wieder geöffnet werden können
-            actionButton = (
+        }
+        
+        if (currentView !== 'lob') { // "Wieder öffnen" für alle außer Lob
+            actionButton = ( 
                 <motion.button
                     onClick={() => onStatusChange("Offen")}
                     className="w-full text-sky-300 hover:text-sky-200 bg-sky-600/30 hover:bg-sky-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
-                    title={generalActionLock ? "Aktion blockiert (siehe Schloss-Icon)" : "Wieder öffnen"}
-                    whileHover={{ scale: generalActionLock ? 1 : 1.03, y: generalActionLock ? 0 : -2, transition: buttonHoverSpring }}
-                    whileTap={{ scale: generalActionLock ? 1 : 0.97 }}
-                    disabled={generalActionLock} // Deaktiviert durch allgemeinen Lock-Status
+                    title={generalActionsDisabled ? "Aktion blockiert (siehe Schloss-Icon)" : "Wieder öffnen"}
+                    whileHover={{ scale: generalActionsDisabled ? 1 : 1.03, y: generalActionsDisabled ? 0 : -2, transition: buttonHoverSpring }}
+                    whileTap={{ scale: generalActionsDisabled ? 1 : 0.97 }}
+                    disabled={generalActionsDisabled} 
                     onHoverStart={() => handleMainActionButtonHover(true)}
                     onHoverEnd={() => handleMainActionButtonHover(false)}
                 >
@@ -96,17 +97,17 @@ const CardActions: React.FC<CardActionsProps> = ({
                 </motion.button>
             );
         }
-    } else { // Logik für nicht-finalisierte Fälle
+    } else { 
         switch (status) {
             case "Offen":
                 actionButton = (
                     <motion.button
                         onClick={() => onStatusChange("In Bearbeitung")}
                         className="w-full text-amber-300 hover:text-amber-200 bg-amber-600/30 hover:bg-amber-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                        title={generalActionLock ? "Karte ist gesperrt (Schloss-Icon)" : "Bearbeitung starten"}
-                        whileHover={{ scale: generalActionLock ? 1 : 1.03, y: generalActionLock ? 0 : -2, transition: buttonHoverSpring }}
-                        whileTap={{ scale: generalActionLock ? 1 : 0.97 }}
-                        disabled={generalActionLock}
+                        title={generalActionsDisabled ? "Karte ist gesperrt (Schloss-Icon)" : "Bearbeitung starten"}
+                        whileHover={{ scale: generalActionsDisabled ? 1 : 1.03, y: generalActionsDisabled ? 0 : -2, transition: buttonHoverSpring }}
+                        whileTap={{ scale: generalActionsDisabled ? 1 : 0.97 }}
+                        disabled={generalActionsDisabled}
                         onHoverStart={() => handleMainActionButtonHover(true)}
                         onHoverEnd={() => handleMainActionButtonHover(false)}
                     >
@@ -120,7 +121,7 @@ const CardActions: React.FC<CardActionsProps> = ({
                         <motion.button
                             onClick={() => onStatusChange("Gelöst")}
                             className={`text-green-300 hover:text-green-200 bg-green-600/30 hover:bg-green-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed ${currentView === 'lob' ? 'w-full' : 'flex-1'}`}
-                            title={disableResolveActions ? (generalActionLock && !isClarificationMissingInSavedDetails ? "Karte ist gesperrt (Schloss-Icon)" : "Interne Details ausfüllen (Zahnrad-Icon)") : (currentView === 'lob' ? "Als erledigt markieren" : (currentView === 'anregungen' ? "Anregung annehmen" : "Als gelöst markieren"))}
+                            title={disableResolveActions ? (generalActionsDisabled && !isClarificationMissingInSavedDetails ? "Karte gesperrt (Schloss-Icon)" : "Interne Details ausfüllen (Zahnrad-Icon)") : (currentView === 'lob' ? "Als erledigt markieren" : (currentView === 'anregungen' ? "Anregung annehmen" : "Als gelöst markieren"))}
                             whileHover={{ scale: disableResolveActions ? 1 : 1.03, y: disableResolveActions ? 0 : -2, transition: buttonHoverSpring }}
                             whileTap={{ scale: disableResolveActions ? 1 : 0.97 }}
                             disabled={disableResolveActions}
@@ -133,7 +134,7 @@ const CardActions: React.FC<CardActionsProps> = ({
                             <motion.button
                                 onClick={() => onStatusChange("Abgelehnt")}
                                 className="flex-1 text-red-300 hover:text-red-200 bg-red-600/30 hover:bg-red-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                                title={disableResolveActions ? (generalActionLock && !isClarificationMissingInSavedDetails ? "Karte ist gesperrt (Schloss-Icon)" : "Interne Details ausfüllen (Zahnrad-Icon)") : (currentView === 'anregungen' ? "Anregung verwerfen" : "Ablehnen")}
+                                title={disableResolveActions ? (generalActionsDisabled && !isClarificationMissingInSavedDetails ? "Karte gesperrt (Schloss-Icon)" : "Interne Details ausfüllen (Zahnrad-Icon)") : (currentView === 'anregungen' ? "Anregung verwerfen" : "Ablehnen")}
                                 whileHover={{ scale: disableResolveActions ? 1 : 1.03, y: disableResolveActions ? 0 : -2, transition: buttonHoverSpring }}
                                 whileTap={{ scale: disableResolveActions ? 1 : 0.97 }}
                                 disabled={disableResolveActions}
@@ -150,22 +151,20 @@ const CardActions: React.FC<CardActionsProps> = ({
     }
 
     if (!status) return null;
-    if (!actionButton && !isFinalized) return <div className="h-[33px]"></div>; // Placeholder für Layout
-
 
     return (
         <motion.div variants={contentItemVariants} className="pt-2">
             <div className={`flex ${canFlip ? 'justify-between' : 'justify-end'} items-center mb-2`}>
-                {canFlip && ( // canFlip kommt von DataItemCard und ist true für 'beschwerden' (unabhängig von isFinalized)
+                {canFlip && (
                     <motion.button
                         onClick={onFlip}
-                        disabled={isLockedByHook || isAssigning || isProcessingFile} // Nur durch echten Lock/Processing sperren
+                        disabled={isLockedByHook || isAssigning || isProcessingFile}
                         className="p-1.5 rounded-full text-slate-400 hover:text-sky-400 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Interne Details bearbeiten"
                         onHoverStart={() => setIsSettingsIconHovered(true)}
                         onHoverEnd={() => setIsSettingsIconHovered(false)}
                         animate={
-                            animateSettingsIcon && !(isLockedByHook || isAssigning || isProcessingFile) ? // Animation nur wenn nicht gesperrt
+                            animateSettingsIcon && !(isLockedByHook || isAssigning || isProcessingFile) ?
                             { scale: [1, 1.5, 1.2, 1.5, 1], rotate: [0, 15, -12, 10, -8, 0], transition: { duration: 0.7, ease: "easeInOut", repeat: 0 } } :
                             (isLockedByHook || isAssigning || isProcessingFile) ? { scale: 1, rotate: 0 } :
                             isSettingsIconHovered ? { scale: 1.15, rotate: 15, transition: { type: "spring", stiffness: 350, damping: 10 } } :
@@ -178,7 +177,7 @@ const CardActions: React.FC<CardActionsProps> = ({
                 )}
                 <motion.button
                     onClick={onToggleLock}
-                    disabled={isAssigning || isProcessingFile} // Lock-Toggle nur bei diesen direkten Aktionen deaktivieren
+                    disabled={isAssigning || isProcessingFile} 
                     className={`p-1.5 rounded-full transition-colors duration-150 ease-in-out
                                 ${isLockedByHook && !isAssigning ? 'text-slate-400 hover:text-sky-400' : (!isLockedByHook && !isAssigning ? 'text-emerald-400 hover:text-emerald-300' : '')}
                                 ${isAssigning ? 'text-sky-500' : ''}

@@ -84,11 +84,10 @@ export default function DataItemCard({
         currentView,
     });
 
-    // canFlip bestimmt nur, ob der View-Typ das Flippen generell erlaubt
     const canFlip = useMemo(() => currentView === 'beschwerden', [currentView]);
     const isFinalized = useMemo(() => effectiveStatus === "Gelöst" || effectiveStatus === "Abgelehnt", [effectiveStatus]);
     const isClarificationMissingInSavedDetails = useMemo(() => {
-        if (canFlip) { // Hier bleibt canFlip relevant für die Logik der fehlenden Details
+        if (canFlip) {
             return !item.internal_details?.clarificationType;
         }
         return false;
@@ -105,7 +104,7 @@ export default function DataItemCard({
     }, [item.status, item.bearbeiter_id, item.action_required, isStatusRelevantView, setIsLocked, isLocked]);
 
     const handleFileSelectForCard = useCallback((file: File | null) => {
-        if (isFinalized) return; // Keine Dateiauswahl, wenn finalisiert
+        if (isFinalized) return;
         setSelectedPdfFile(file);
     }, [isFinalized]);
 
@@ -123,47 +122,29 @@ export default function DataItemCard({
         try {
             await onItemUpdate(item, selectedPdfFile);
             setSelectedPdfFile(null);
-            console.log(`DataItemCard ID ${item.id}: Upload für Datei "${selectedPdfFile.name}" initiiert.`);
-        } catch (error) {
-            console.error(`DataItemCard ID ${item.id}: Fehler beim Initiieren des Datei-Uploads:`, error);
-        } finally {
-            setIsProcessingFile(false);
-        }
+        } catch (error) { console.error(`DataItemCard ID ${item.id}: Fehler beim Initiieren des Datei-Uploads:`, error); }
+        finally { setIsProcessingFile(false); }
     }, [item, selectedPdfFile, onItemUpdate, setSelectedPdfFile, isFinalized]);
 
     const handleRemoveAttachment = useCallback(async () => {
         if (isFinalized) return;
-        if (currentView !== 'beschwerden' || typeof item.id !== 'number' || !(item as BeschwerdeItem).attachment_filename) {
-            return;
-        }
-        if (!token) {
-            console.error("Kein Authentifizierungstoken für Löschvorgang vorhanden.");
-            return;
-        }
-        if (typeof onItemUpdate !== 'function') {
-            console.error("onItemUpdate ist keine Funktion (für remove).");
-            return;
-        }
+        if (currentView !== 'beschwerden' || typeof item.id !== 'number' || !(item as BeschwerdeItem).attachment_filename) return;
+        if (!token) { console.error("Kein Authentifizierungstoken für Löschvorgang vorhanden."); return; }
+        if (typeof onItemUpdate !== 'function') { console.error("onItemUpdate ist keine Funktion (für remove)."); return; }
         setIsProcessingFile(true);
         try {
             const beschwerdenApiBase = API_ENDPOINTS.beschwerden;
             if (!beschwerdenApiBase) throw new Error("Beschwerden API Endpunkt nicht definiert.");
-
             const response = await fetch(`${beschwerdenApiBase}/${item.id}/attachment`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` },
+                method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` },
             });
-
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ message: "Fehler ohne JSON-Body" }));
                 throw new Error(errorData.message || `Fehler ${response.status} beim Löschen des Anhangs serverseitig.`);
             }
             await onItemUpdate({ ...item, attachment_filename: null, attachment_mimetype: null } as CardSpecificDataItem, undefined);
-        } catch (error) {
-            console.error(`DataItemCard ID ${item.id}: Fehler beim Löschen des Anhangs:`, error);
-        } finally {
-            setIsProcessingFile(false);
-        }
+        } catch (error) { console.error(`DataItemCard ID ${item.id}: Fehler beim Löschen des Anhangs:`, error); }
+        finally { setIsProcessingFile(false); }
     }, [item, currentView, token, onItemUpdate, isFinalized]);
 
     const handleSaveInternal = useCallback(async () => {
@@ -176,11 +157,8 @@ export default function DataItemCard({
                 await onItemUpdate(updatedItemWithInternalDetails, selectedPdfFile);
                 setSelectedPdfFile(null);
                 setIsFlipped(false);
-            } catch (error) {
-                console.error(`DataItemCard ID ${item.id}: Fehler beim Speichern der internen Details mit Datei:`, error);
-            } finally {
-                setIsProcessingFile(false);
-            }
+            } catch (error) { console.error(`DataItemCard ID ${item.id}: Fehler beim Speichern der internen Details mit Datei:`, error); }
+            finally { setIsProcessingFile(false); }
         }
     }, [item, selectedPdfFile, isFinalized, validateAndPrepareSaveData, onItemUpdate, setSelectedPdfFile, setIsFlipped]);
 
@@ -190,22 +168,27 @@ export default function DataItemCard({
     }, [item.internal_details, resetInternalDetails, setIsFlipped]);
 
     const handleProtectedStatusChange = useCallback(async (newStatus: StrictStatus) => {
-        const processingOrLockedForNonReopen = isProcessingFile || (isLocked && !(isFinalized && newStatus === "Offen"));
-
-        if (processingOrLockedForNonReopen && !(isFinalized && newStatus === "Offen" && !isProcessingFile && (!isLocked || item.bearbeiter_id === user?.userId))) {
-             if(!isFlipped && !(isFinalized && newStatus === "Offen")){ // Shaken nur wenn Vorderseite und nicht gerade ein Reopen versucht wird
-                triggerShakeLock();
-                return;
-             }
-        }
-        
         if (isFinalized && newStatus !== "Offen") {
             console.log(`DataItemCard ID ${item.id}: Item ist bereits '${effectiveStatus}'. Nur 'Wieder öffnen' ist erlaubt.`);
+            triggerShakeLock(); // Visuelles Feedback
             return;
         }
 
+        // Lock-Prüfung:
+        // Wenn "Wieder öffnen" eines finalisierten Falls: Erlaube, wenn nicht gerade ein anderer Prozess läuft oder von anderem User gesperrt.
+        // Ansonsten: Normale Lock-Prüfung.
+        const blockAction = (isLocked || isProcessingFile) &&
+                            !(isFinalized && newStatus === "Offen" && !isProcessingFile && (!isLocked || item.bearbeiter_id === user?.userId));
+
+        if (blockAction) {
+            if (!isFlipped) { // Nur auf Vorderseite shaken, wenn Aktion blockiert ist (und es nicht um ein erlaubtes "Wieder öffnen" geht)
+                triggerShakeLock();
+            }
+            return;
+        }
+        
         if (canFlip && (newStatus === "Gelöst" || newStatus === "Abgelehnt")) {
-            // Diese Bedingung wird nur erreicht, wenn isFinalized false ist (siehe oben)
+            // Diese Bedingung wird nur erreicht, wenn isFinalized false ist (durch die Prüfung oben)
             const validatedInternalDataFromHook = validateAndPrepareSaveData();
             if (!validatedInternalDataFromHook) {
                 setIsFlipped(true);
@@ -223,6 +206,7 @@ export default function DataItemCard({
             }
             return;
         }
+        // Für alle anderen Statusänderungen (z.B. "Offen" -> "In Bearbeitung", oder "Gelöst/Abgelehnt" -> "Offen" nach obiger Prüfung)
         onStatusChange(item.id, newStatus, currentView);
     }, [
         isLocked, isProcessingFile, isFlipped, triggerShakeLock, canFlip,
@@ -241,11 +225,9 @@ export default function DataItemCard({
         <motion.div key={cardKey} variants={cardContainerVariants} initial="hidden" animate="visible" exit="exit" layout
             className={`relative rounded-xl ${resolvedBackgroundClass} backdrop-blur-md shadow-xl shadow-slate-900/30 flex flex-col justify-between overflow-hidden`}
             style={{ perspective: '1000px' }}
-             // Hover/Tap-Effekte nur, wenn nicht geflippt und der View-Typ das Flippen generell erlaubt (unabhängig von isFinalized)
             whileHover={!isFlipped && canFlip ? { y: -8, scale: 1.02, boxShadow: "0px 10px 25px rgba(0,0,0,0.25), 0px 6px 10px rgba(0,0,0,0.22)", transition: { type: "spring", stiffness: 200, damping: 15 } } : {}}
             whileTap={!isFlipped && canFlip ? { scale: 0.995, boxShadow: "0px 4px 12px rgba(0,0,0,0.18), 0px 2px 6px rgba(0,0,0,0.15)" } : {}} >
             <AnimatePresence mode="wait" initial={false}>
-                {/* Zeige Vorderseite, wenn nicht geflippt ODER wenn der View-Typ kein Flippen erlaubt */}
                 {(!isFlipped || !canFlip) ? (
                     <motion.div key={`${cardKey}-frontface`} variants={flipContentVariantsFront} initial="initial" animate="animate" exit="exit" className="flex flex-col flex-grow" >
                         <CardFront
@@ -266,6 +248,7 @@ export default function DataItemCard({
                             isProcessingFile={isProcessingFile}
                             onRemoveAttachment={currentView === 'beschwerden' && typeof onItemUpdate === 'function' ? handleRemoveAttachment : undefined}
                             isFinalized={isFinalized}
+                            token={token} 
                         />
                         {isStatusRelevantView && effectiveStatus && (
                             <div className="px-4 md:px-5 pb-4 pt-1 border-t border-slate-700/60 mt-auto">
@@ -275,18 +258,17 @@ export default function DataItemCard({
                                     isAssigning={isAssigning}
                                     isProcessingFile={isProcessingFile}
                                     isFinalized={isFinalized}
-                                    canFlip={canFlip} // Hier das originale canFlip übergeben
+                                    canFlip={canFlip} 
                                     onStatusChange={handleProtectedStatusChange}
                                     onToggleLock={handleToggleLock}
                                     onFlip={() => {
-                                        // Flippen nur blockieren durch Lock/Processing, wenn Flippen generell erlaubt ist
-                                        if ((isLocked || isAssigning || isProcessingFile) && canFlip) {
-                                            triggerShakeLock();
-                                            return;
-                                        }
-                                        if (canFlip) { // canFlip ist hier true, wenn currentView 'beschwerden' ist
-                                            clearValidationError();
-                                            setIsFlipped(true);
+                                        if (canFlip) { 
+                                            if (isLocked || isAssigning || isProcessingFile) { 
+                                                triggerShakeLock();
+                                            } else {
+                                                clearValidationError();
+                                                setIsFlipped(true);
+                                            }
                                         }
                                     }}
                                     shakeLockAnim={shakeLockAnim}
@@ -296,7 +278,7 @@ export default function DataItemCard({
                             </div>
                         )}
                     </motion.div>
-                ) : ( // Zeige Rückseite, wenn geflippt UND der View-Typ Flippen erlaubt
+                ) : ( 
                     <motion.div key={`${cardKey}-backface`} variants={flipContentVariantsBack} initial="initial" animate="animate" exit="exit" className="flex flex-col flex-grow h-full" >
                         <CardBack
                             internalDetails={internalDetails}

@@ -1,9 +1,9 @@
 // ./src/app/components/DataItemCard/CardFront.tsx
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react'; // useState importiert
 import { motion } from 'framer-motion';
-import { ClockIcon, UserIcon, PaperclipIcon, XCircleIcon, DownloadIcon, ReplaceIcon, UploadCloudIcon } from 'lucide-react';
+import { ClockIcon, UserIcon, PaperclipIcon, XCircleIcon, DownloadIcon, ReplaceIcon, UploadCloudIcon, Loader2Icon } from 'lucide-react'; // Loader2Icon für Ladeanzeige
 import {
     CardSpecificDataItem,
     ViewType,
@@ -52,7 +52,8 @@ interface CardFrontProps {
     onUploadSelectedFile?: () => void;
     isProcessingFile?: boolean;
     isLocked?: boolean;
-    isFinalized?: boolean; // Neue Prop
+    isFinalized?: boolean;
+    token: string | null;
 }
 
 const CardFront: React.FC<CardFrontProps> = ({
@@ -72,34 +73,37 @@ const CardFront: React.FC<CardFrontProps> = ({
     onUploadSelectedFile,
     isProcessingFile,
     isLocked,
-    isFinalized = false, // Standardwert
+    isFinalized = false,
+    token,
 }) => {
     const cardKey = `card-${currentView}-${item.id}`;
+    const [isDownloading, setIsDownloading] = useState(false);
 
+    // ***** KORREKTE DEFINITION VON beschwerdeItemData *****
     const isBeschwerdeTypeCheck = (dataItem: CardSpecificDataItem): dataItem is BeschwerdeItem => {
         return currentView === 'beschwerden' && 'beschwerdegrund' in dataItem;
     };
     const beschwerdeItemData = isBeschwerdeTypeCheck(item) ? item : null;
+    // ***** ENDE DER DEFINITION *****
 
-    // Kombinierte Deaktivierungsbedingung für Dateiaktionen
-    const disableFileActions = isLocked || isProcessingFile || isFinalized;
+    const disableFileModificationActions = isLocked || isProcessingFile || isFinalized;
 
     const handleLocalFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (disableFileActions) return;
+        if (disableFileModificationActions) return;
         const file = event.target.files?.[0];
         if (file && file.type === "application/pdf") {
             onFileSelect(file);
         } else if (file) {
             alert("Bitte nur PDF-Dateien auswählen.");
             onFileSelect(null);
-            event.target.value = "";
+            if (event.target) event.target.value = "";
         } else {
             onFileSelect(null);
         }
     };
 
     const removeSelectedLocalFile = () => {
-        if (disableFileActions) return;
+        if (disableFileModificationActions) return;
         onFileSelect(null);
         const fileInput = document.getElementById(fileInputId) as HTMLInputElement;
         if (fileInput) fileInput.value = "";
@@ -108,22 +112,60 @@ const CardFront: React.FC<CardFrontProps> = ({
     const fileInputId = `pdf-upload-${item.id}-${currentView}`;
 
     const triggerFileInput = () => {
-        if (disableFileActions) return;
+        if (disableFileModificationActions) return;
         document.getElementById(fileInputId)?.click();
     };
 
-    let downloadUrl: string | undefined = undefined;
+    let downloadUrlApi: string | undefined = undefined;
     let dbAttachmentFilename: string | null = null;
 
     if (isBeschwerdeAndHasAttachment(item, currentView)) {
         dbAttachmentFilename = item.attachment_filename;
         const beschwerdenApiBase = API_ENDPOINTS.beschwerden;
         if (beschwerdenApiBase && item.id) {
-            downloadUrl = `${beschwerdenApiBase}/${item.id}/attachment`;
+            downloadUrlApi = `${beschwerdenApiBase}/${item.id}/attachment`;
         }
     }
 
-    const showUploadButtonForSelectedFile = selectedFile && typeof onUploadSelectedFile === 'function' && !disableFileActions;
+    const showUploadButtonForSelectedFile = selectedFile && typeof onUploadSelectedFile === 'function' && !disableFileModificationActions;
+
+    const handleDownloadAttachment = async () => {
+        if (!downloadUrlApi || !token || !dbAttachmentFilename) {
+            alert("Download-Informationen unvollständig.");
+            return;
+        }
+        if (isDownloading || isProcessingFile) return;
+
+        setIsDownloading(true);
+        try {
+            const response = await fetch(downloadUrlApi, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            if (!response.ok) {
+                let errorMsg = `Download fehlgeschlagen: Serverantwort ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    errorMsg = errorData.message || errorData.details || errorData.error || errorMsg;
+                } catch (e) { /* ignore if response is not json */ }
+                throw new Error(errorMsg);
+            }
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = dbAttachmentFilename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        } catch (error) {
+            console.error("Fehler beim Herunterladen des Anhangs:", error);
+            alert(`Fehler beim Herunterladen: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`);
+        } finally {
+            setIsDownloading(false);
+        }
+    };
 
     return (
         <div className="p-4 md:p-5 flex flex-col flex-grow">
@@ -151,29 +193,37 @@ const CardFront: React.FC<CardFrontProps> = ({
                     <div className="flex justify-between items-center">
                         <span className="text-xs text-slate-400">
                             PDF-Anhang
-                            {isFinalized ? " (Abgeschlossen - keine Änderung möglich)" : (disableFileActions && !isProcessingFile ? " (Gesperrt)" : "")}
-                            {isProcessingFile ? " (Verarbeite Datei...)" : ""}
+                            {isFinalized && dbAttachmentFilename ? " (Abgeschlossen)" : ""}
+                            {isFinalized && !dbAttachmentFilename ? " (Abgeschlossen, kein Anhang)" : ""}
+                            {!isFinalized && isLocked && !isProcessingFile ? " (Gesperrt)" : ""}
+                            {isProcessingFile && !isDownloading ? " (Datei-Upload läuft...)" : ""}
+                            {isDownloading ? " (Download läuft...)" : ""}
                         </span>
                     </div>
 
-                    <input type="file" id={fileInputId} accept=".pdf" onChange={handleLocalFileChange} className="hidden" disabled={disableFileActions} />
+                    <input type="file" id={fileInputId} accept=".pdf" onChange={handleLocalFileChange} className="hidden" disabled={disableFileModificationActions} />
 
-                    {dbAttachmentFilename && downloadUrl && (
+                    {dbAttachmentFilename && downloadUrlApi && (
                         <div className="space-y-2">
                             <div className="flex items-center gap-2 text-xs text-slate-300 bg-slate-700/50 px-2 py-1.5 rounded-md">
                                 <PaperclipIcon size={14} className="text-sky-400 shrink-0" />
                                 <span className="truncate flex-grow" title={dbAttachmentFilename}> {dbAttachmentFilename} </span>
-                                <a href={downloadUrl} download={dbAttachmentFilename} className={`p-1 text-sky-400 hover:text-sky-300 transition-colors ${isProcessingFile ? "cursor-not-allowed opacity-50" : ""}`} title="Anhang herunterladen" onClick={(e) => { if (isProcessingFile) e.preventDefault(); }} rel="noopener noreferrer" >
-                                    <DownloadIcon size={16} />
-                                </a>
+                                <button
+                                    onClick={handleDownloadAttachment}
+                                    disabled={isDownloading || isProcessingFile}
+                                    className={`p-1 text-sky-400 hover:text-sky-300 transition-colors disabled:opacity-50 disabled:cursor-wait`}
+                                    title="Anhang herunterladen"
+                                >
+                                    {isDownloading ? <Loader2Icon size={16} className="animate-spin" /> : <DownloadIcon size={16} />}
+                                </button>
                             </div>
-                            {!disableFileActions && (
+                            {!disableFileModificationActions && (
                                 <div className="flex gap-2">
-                                    <button onClick={triggerFileInput} className="flex-1 cursor-pointer bg-amber-600 hover:bg-amber-500 text-white text-xs px-3 py-1.5 rounded-md shadow-sm transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed" disabled={disableFileActions}>
+                                    <button onClick={triggerFileInput} className="flex-1 cursor-pointer bg-amber-600 hover:bg-amber-500 text-white text-xs px-3 py-1.5 rounded-md shadow-sm transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed" disabled={disableFileModificationActions}>
                                         <ReplaceIcon size={14} /> Ersetzen
                                     </button>
                                     {typeof onRemoveAttachment === 'function' && (
-                                        <button onClick={onRemoveAttachment} className="flex-1 cursor-pointer bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1.5 rounded-md shadow-sm transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed" disabled={disableFileActions}>
+                                        <button onClick={onRemoveAttachment} className="flex-1 cursor-pointer bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1.5 rounded-md shadow-sm transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed" disabled={disableFileModificationActions}>
                                             <XCircleIcon size={14} /> Löschen
                                         </button>
                                     )}
@@ -190,8 +240,8 @@ const CardFront: React.FC<CardFrontProps> = ({
                                     <PaperclipIcon size={14} className="shrink-0" />
                                     <span className="truncate" title={selectedFile.name}>{selectedFile.name}</span>
                                 </div>
-                                {!disableFileActions && (
-                                    <button onClick={removeSelectedLocalFile} className="text-red-400 hover:text-red-300 p-1 disabled:opacity-50 disabled:cursor-not-allowed" title="Lokale Auswahl entfernen" disabled={disableFileActions}>
+                                {!disableFileModificationActions && (
+                                    <button onClick={removeSelectedLocalFile} className="text-red-400 hover:text-red-300 p-1 disabled:opacity-50 disabled:cursor-not-allowed" title="Lokale Auswahl entfernen" disabled={disableFileModificationActions}>
                                         <XCircleIcon size={16} />
                                     </button>
                                 )}
@@ -199,13 +249,13 @@ const CardFront: React.FC<CardFrontProps> = ({
                         </div>
                     )}
 
-                    {showUploadButtonForSelectedFile && !isFinalized && (
+                    {showUploadButtonForSelectedFile && ( 
                         <button
                             onClick={onUploadSelectedFile}
-                            disabled={disableFileActions}
+                            disabled={isProcessingFile} 
                             className="w-full mt-2 cursor-pointer bg-green-600 hover:bg-green-500 disabled:bg-slate-500 disabled:cursor-not-allowed text-white text-xs px-3 py-1.5 rounded-md shadow-sm transition-colors flex items-center justify-center gap-1.5"
                         >
-                            {isProcessingFile ? (
+                             {isProcessingFile ? (
                                 <motion.svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></motion.svg>
                             ) : ( <UploadCloudIcon size={14} /> )}
                             {isProcessingFile ? 'Wird verarbeitet...' : `"${selectedFile?.name}" hochladen`}
@@ -214,15 +264,15 @@ const CardFront: React.FC<CardFrontProps> = ({
 
                     {!dbAttachmentFilename && !selectedFile && !isFinalized && (
                         <>
-                            <button onClick={triggerFileInput} disabled={disableFileActions} className={`w-full cursor-pointer bg-sky-600 hover:bg-sky-500 disabled:bg-slate-500 disabled:cursor-not-allowed text-white text-xs px-3 py-1.5 rounded-md shadow-sm transition-colors flex items-center justify-center gap-1.5`}>
+                            <button onClick={triggerFileInput} disabled={disableFileModificationActions} className={`w-full cursor-pointer bg-sky-600 hover:bg-sky-500 disabled:bg-slate-500 disabled:cursor-not-allowed text-white text-xs px-3 py-1.5 rounded-md shadow-sm transition-colors flex items-center justify-center gap-1.5`}>
                                 <PaperclipIcon size={14} /> PDF auswählen
                             </button>
                             <p className="text-xs text-slate-500 mt-1">Keine PDF angehängt.</p>
                         </>
                     )}
-                     {isFinalized && (
+                     {isFinalized && ( 
                         <p className="text-xs text-slate-500 mt-2 text-center py-1.5 bg-slate-700/30 rounded-md">
-                            {dbAttachmentFilename ? `Anhang "${dbAttachmentFilename}" kann nicht mehr geändert werden.` : "Dem abgeschlossenen Fall kann kein Anhang mehr hinzugefügt werden."}
+                            {dbAttachmentFilename ? `Anhang "${dbAttachmentFilename}" kann nicht mehr geändert werden (nur Download).` : "Dem abgeschlossenen Fall kann kein Anhang mehr hinzugefügt werden."}
                         </p>
                     )}
                 </motion.div>
