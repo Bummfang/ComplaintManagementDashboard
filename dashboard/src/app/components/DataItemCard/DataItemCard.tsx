@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { CardSpecificDataItem, ViewType, AnyItemStatus as StrictStatus, BeschwerdeItem } from '@/app/types'; 
 import { useAuth } from '@/app/contexts/AuthContext'; 
-import { API_ENDPOINTS } from '@/app/constants'; // Wird für handleRemoveAttachment benötigt
+import { API_ENDPOINTS } from '@/app/constants'; // Für handleRemoveAttachment
 
 import CardFront from './CardFront';
 import CardBack from './CardBack';
@@ -19,14 +19,14 @@ import {
     flipContentVariantsBack
 } from './variants';
 
+// WICHTIGE ÄNDERUNG HIER: onItemUpdate ist jetzt async und erwartet ein Promise
 export interface DataItemCardProps {
     item: CardSpecificDataItem;
     currentView: ViewType;
     copiedCellKey: string | null;
     onCopyToClipboard: (textToCopy: string, cellKey: string) => void;
-    onStatusChange: (itemId: number, newStatus: StrictStatus, itemType: ViewType) => void;
+    onStatusChange: (itemId: number, newStatus: StrictStatus, itemType: ViewType) => void; // Bleibt vorerst synchron
     cardAccentsEnabled: boolean;
-    // WICHTIG: onItemUpdate akzeptiert jetzt optional eine Datei und gibt ein Promise zurück
     onItemUpdate: (updatedItem: CardSpecificDataItem, file?: File | null) => Promise<void>; 
 }
 
@@ -37,13 +37,13 @@ export default function DataItemCard({
     onCopyToClipboard,
     onStatusChange,
     cardAccentsEnabled,
-    onItemUpdate,
+    onItemUpdate, // Wird jetzt für Dateioperationen verwendet
 }: DataItemCardProps) {
-    const { user, token } = useAuth(); // token wird für handleRemoveAttachment benötigt
+    const { user, token } = useAuth(); // token für handleRemoveAttachment
     const [isFlipped, setIsFlipped] = useState(false);
     const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
     
-    // NEU: State für Ladeanzeige während Upload/Löschen der PDF
+    // NEU: State für Ladeanzeige während Dateioperationen (Upload/Löschen)
     const [isProcessingFile, setIsProcessingFile] = useState(false);
 
     const {
@@ -73,14 +73,22 @@ export default function DataItemCard({
     } = useItemLocking({
         item,
         initialLockedState: !(item.bearbeiter_id && user && item.bearbeiter_id === user.userId),
-        // onItemUpdate von useItemLocking sollte jetzt auch ein Promise sein, wenn es onItemUpdate aufruft.
-        // Wir nehmen an, dass onItemUpdate aus den Props das schon ist.
+        // onItemUpdate aus useItemLocking ruft das übergeordnete onItemUpdate auf
         onItemUpdate: async (updatedItemFromLocking) => {
+            // Wenn useItemLocking das Item aktualisiert (z.B. Bearbeiterzuweisung),
+            // wird hier KEINE Datei mitgesendet, außer selectedPdfFile wäre zufällig gesetzt.
+            // Normalerweise sollte selectedPdfFile hier null sein oder ignoriert werden,
+            // es sei denn, dein Workflow sieht das anders vor.
+            // Um Verwirrung zu vermeiden, senden wir hier explizit KEINE Datei,
+            // da der Fokus von useItemLocking auf dem Item-Lock/Bearbeiter liegt.
+            // Der Datei-Upload wird separat durch handleUploadFile getriggert.
+            setIsProcessingFile(true); // Zeige Ladeindikator, falls die Zuweisung länger dauert
             try {
-                await onItemUpdate(updatedItemFromLocking, selectedPdfFile);
+                await onItemUpdate(updatedItemFromLocking, undefined); // undefined für Datei
             } catch (error) {
                 console.error("Fehler bei onItemUpdate durch useItemLocking:", error);
-                // Ggf. Fehlerbehandlung, falls das Promise von onItemUpdate rejectet
+            } finally {
+                setIsProcessingFile(false);
             }
         },
         currentView,
@@ -109,19 +117,27 @@ export default function DataItemCard({
         setSelectedPdfFile(file);
     }, []);
     
-    // NEU: Funktion für direkten PDF-Upload
+    // NEU: Funktion für direkten PDF-Upload (wird an CardFront weitergegeben)
     const handleUploadFile = useCallback(async () => {
-        if (!selectedPdfFile) return;
-        if (typeof onItemUpdate !== 'function') {
-            console.error("onItemUpdate ist keine Funktion in DataItemCard");
+        if (!selectedPdfFile) {
+            console.warn(`DataItemCard ID ${item.id}: Keine Datei zum Hochladen ausgewählt.`);
             return;
         }
+        if (typeof onItemUpdate !== 'function') { // Überprüfung, ob die Prop übergeben wurde
+            console.error(`DataItemCard ID ${item.id}: onItemUpdate Prop ist keine Funktion und für den Upload notwendig.`);
+            return;
+        }
+
         setIsProcessingFile(true);
         try {
-            await onItemUpdate(item, selectedPdfFile); // Übergibt das aktuelle Item und die neue Datei
-            // Elternkomponente ist verantwortlich für das Update des 'item' mit neuem attachment_filename
-            // und das Zurücksetzen von selectedPdfFile hier ist gut, da der Upload gestartet wurde.
+            // Das aktuelle Item wird mitgesendet, falls das Backend Kontext benötigt.
+            // Die Elternkomponente (via onItemUpdate) handhabt den API Call.
+            await onItemUpdate(item, selectedPdfFile); 
+            
+            // Annahme: Die Elternkomponente aktualisiert das `item` (inkl. `attachment_filename` vom Server).
+            // Die `selectedPdfFile` wird hier zurückgesetzt, da der Upload-Prozess gestartet wurde.
             setSelectedPdfFile(null); 
+            console.log(`DataItemCard ID ${item.id}: Upload für Datei "${selectedPdfFile.name}" initiiert.`);
         } catch (error) {
             console.error(`DataItemCard ID ${item.id}: Fehler beim Initiieren des Datei-Uploads:`, error);
             // Hier könnte eine Fehlermeldung für den Benutzer angezeigt werden
@@ -130,17 +146,18 @@ export default function DataItemCard({
         }
     }, [item, selectedPdfFile, onItemUpdate, setSelectedPdfFile]);
 
-    // NEU: Funktion zum Löschen eines serverseitigen Anhangs
+    // NEU: Funktion zum Löschen eines serverseitigen Anhangs (wird an CardFront weitergegeben)
     const handleRemoveAttachment = useCallback(async () => {
         if (currentView !== 'beschwerden' || typeof item.id !== 'number' || !(item as BeschwerdeItem).attachment_filename) {
+            console.warn(`DataItemCard ID ${item.id}: Kein serverseitiger Anhang zum Löschen für dieses Item oder View-Typ.`);
             return;
         }
         if (!token) {
-            console.error("Kein Authentifizierungstoken für Löschvorgang vorhanden.");
+            console.error(`DataItemCard ID ${item.id}: Kein Authentifizierungstoken für Löschvorgang vorhanden.`);
             return;
         }
-         if (typeof onItemUpdate !== 'function') {
-            console.error("onItemUpdate ist keine Funktion in DataItemCard (für remove)");
+        if (typeof onItemUpdate !== 'function') {
+             console.error(`DataItemCard ID ${item.id}: onItemUpdate Prop ist keine Funktion und für das Löschen notwendig.`);
             return;
         }
 
@@ -149,34 +166,40 @@ export default function DataItemCard({
             const beschwerdenApiBase = API_ENDPOINTS.beschwerden;
             if (!beschwerdenApiBase) throw new Error("Beschwerden API Endpunkt nicht definiert.");
 
+            // BACKEND-AUFRUF ZUM LÖSCHEN (Beispiel)
             const response = await fetch(`${beschwerdenApiBase}/${item.id}/attachment`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` },
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({})); // Leeres Objekt bei Fehler
-                throw new Error(errorData.message || `Fehler ${response.status} beim Löschen des Anhangs.`);
+                const errorData = await response.json().catch(() => ({ message: "Fehler ohne JSON-Body" }));
+                throw new Error(errorData.message || `Fehler ${response.status} beim Löschen des Anhangs serverseitig.`);
             }
             
-            // Informiere die Elternkomponente, das Item zu aktualisieren (ohne Anhangsinfo)
-            // Das 'file'-Argument ist `undefined` oder `null`, um anzuzeigen, dass es entfernt wurde
+            console.log(`DataItemCard ID ${item.id}: Serverseitiger Anhang erfolgreich gelöscht.`);
+            // Informiere Elternkomponente, dass Item aktualisiert wurde (ohne Anhang).
+            // Die Elternkomponente sollte dann das Item in ihrem State aktualisieren.
             await onItemUpdate({ ...item, attachment_filename: null, attachment_mimetype: null } as CardSpecificDataItem, undefined);
 
         } catch (error) {
             console.error(`DataItemCard ID ${item.id}: Fehler beim Löschen des Anhangs:`, error);
+             // Hier könnte eine Fehlermeldung für den Benutzer angezeigt werden
         } finally {
             setIsProcessingFile(false);
         }
     }, [item, currentView, token, onItemUpdate]);
 
+    // Anpassung: handleSaveInternal ruft jetzt auch onItemUpdate mit der Datei auf
     const handleSaveInternal = useCallback(async () => {
         if (isFinalized) return;
         const validData = validateAndPrepareSaveData();
         if (validData) {
             const updatedItemWithInternalDetails: CardSpecificDataItem = { ...item, internal_details: validData };
+            
             setIsProcessingFile(true); 
             try {
+                // Wenn interne Details gespeichert werden, wird auch die aktuell ausgewählte Datei (falls vorhanden) mitgesendet.
                 await onItemUpdate(updatedItemWithInternalDetails, selectedPdfFile);
                 setSelectedPdfFile(null); 
                 setIsFlipped(false);
@@ -190,11 +213,14 @@ export default function DataItemCard({
 
     const handleCancelInternal = useCallback(() => {
         resetInternalDetails(item.internal_details);
+        // Optional: Auch selectedPdfFile zurücksetzen, wenn Bearbeitung abgebrochen wird?
+        // setSelectedPdfFile(null); 
         setIsFlipped(false);
     }, [item.internal_details, resetInternalDetails, setIsFlipped]);
 
     const handleProtectedStatusChange = useCallback(async (newStatus: StrictStatus) => {
-        if (isLocked || isProcessingFile && !isFlipped ) { // Auch sperren wenn Datei verarbeitet wird
+        // Logik prüft, ob Karte gesperrt ist oder eine Datei verarbeitet wird
+        if ((isLocked || isProcessingFile) && !isFlipped ) {
             triggerShakeLock();
             return;
         }
@@ -204,24 +230,30 @@ export default function DataItemCard({
                 setIsFlipped(true);
                 return;
             }
-            // Wenn Status auf "Gelöst" oder "Abgelehnt" gesetzt wird und interne Details validiert sind,
-            // werden diese Details (und eine evtl. ausgewählte Datei) zuerst gespeichert.
+            // Wenn Status auf "Gelöst"/"Abgelehnt" & interne Details valid -> Speichern + Datei
             setIsProcessingFile(true);
             try {
+                // Das Backend sollte den Status im `item` Objekt aktualisieren, wenn es das Objekt zurückgibt
                 await onItemUpdate({ ...item, internal_details: validatedInternalDataFromHook, status: newStatus }, selectedPdfFile);
-                setSelectedPdfFile(null);
-                // onStatusChange wird hier nicht mehr separat aufgerufen, da onItemUpdate den Status setzen sollte.
-                // Stelle sicher, dass dein Backend und onItemUpdate dies handhaben.
+                setSelectedPdfFile(null); 
+                // Da onItemUpdate jetzt den Status setzen sollte (via Backend-Antwort und State-Update in Parent),
+                // ist ein separater onStatusChange-Aufruf hier eventuell nicht mehr nötig oder führt zu doppelten Updates.
+                // Dies hängt stark von der Implementierung deiner onItemUpdate-Logik in der Elternkomponente und der API ab.
+                // Fürs Erste lassen wir den direkten onStatusChange hier weg, wenn onItemUpdate den Job mit erledigt.
             } catch (error) {
-                console.error(`DataItemCard ID ${item.id}: Fehler beim Speichern vor Statuswechsel zu ${newStatus}:`, error);
+                console.error(`DataItemCard ID ${item.id}: Fehler beim Speichern/Statuswechsel zu ${newStatus}:`, error);
             } finally {
                 setIsProcessingFile(false);
             }
-            return; // Wichtig, um das folgende onStatusChange zu verhindern, wenn onItemUpdate den Status schon setzt
+            return; 
         }
-        // Für andere Statusänderungen, die nicht "Gelöst" oder "Abgelehnt" sind (z.B. "In Bearbeitung")
+        // Für andere Statusänderungen, die nicht die internen Details erfordern
         onStatusChange(item.id, newStatus, currentView);
-    }, [isLocked, isProcessingFile, isFlipped, triggerShakeLock, canFlip, validateAndPrepareSaveData, setIsFlipped, item, currentView, onStatusChange, selectedPdfFile, onItemUpdate, setSelectedPdfFile]);
+    }, [
+        isLocked, isProcessingFile, isFlipped, triggerShakeLock, canFlip, 
+        validateAndPrepareSaveData, setIsFlipped, item, currentView, onStatusChange, 
+        selectedPdfFile, onItemUpdate, setSelectedPdfFile
+    ]);
     
     const itemTypePrefix = useMemo(() => currentView === "beschwerden" ? "CMP-" : currentView === "lob" ? "LOB-" : "ANG-", [currentView]);
     const cardKey = `dataitemcard-${currentView}-${item.id}`;
@@ -250,11 +282,11 @@ export default function DataItemCard({
                             statusToDisplay={statusToDisplayForFront}
                             selectedFile={selectedPdfFile}
                             onFileSelect={handleFileSelectForCard}
-                            isLocked={isLocked || isAssigning || isProcessingFile}
-                            // --- NEUE/AKTUALISIERTE PROPS ---
-                            onUploadSelectedFile={handleUploadFile} 
-                            isUploadingFile={isProcessingFile} // Umbenannt zu isProcessingFile für Konsistenz
-                            onRemoveAttachment={currentView === 'beschwerden' ? handleRemoveAttachment : undefined}
+                            isLocked={isLocked || isAssigning || isProcessingFile} 
+                            // --- Props für Dateiaktionen ---
+                            onUploadSelectedFile={typeof onItemUpdate === 'function' ? handleUploadFile : undefined} 
+                            isProcessingFile={isProcessingFile}
+                            onRemoveAttachment={currentView === 'beschwerden' && typeof onItemUpdate === 'function' ? handleRemoveAttachment : undefined}
                         />
                         {isStatusRelevantView && effectiveStatus && (
                             <div className="px-4 md:px-5 pb-4 pt-1 border-t border-slate-700/60 mt-auto">
@@ -282,7 +314,7 @@ export default function DataItemCard({
                             onCancel={handleCancelInternal}
                             validationError={validationError} 
                             cardKey={cardKey} 
-                            isSubmitting={isAssigning || isProcessingFile} // Auch hier isProcessingFile für den Ladezustand
+                            isSubmitting={isAssigning || isProcessingFile} 
                             isFinalized={isFinalized} 
                         />
                     </motion.div>
