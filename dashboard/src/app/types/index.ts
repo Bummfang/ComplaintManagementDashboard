@@ -19,6 +19,8 @@ export interface BeschwerdeItem {
     bearbeiter_id?: number | null; // << Sicherstellen, dass vorhanden
     bearbeiter_name?: string | null; // << NEU HINZUGEFÜGT
     internal_details?: InternalCardData;
+    attachment_filename?: string | null; 
+    attachment_mimetype?: string | null; 
 }
 
 export type AllowedLobStatus = "Offen" | "In Bearbeitung" | "Gelöst" | "Abgelehnt";
