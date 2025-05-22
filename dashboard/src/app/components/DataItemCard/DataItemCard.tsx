@@ -13,6 +13,7 @@ import { useInternalDetails } from './hooks/useInternalDetails';
 import { useItemLocking } from './hooks/useItemLocking';
 import { useStatusLogic, getCardBackgroundAccentClasses } from './hooks/useStatusLogic';
 import {cardContainerVariants,flipContentVariantsFront,flipContentVariantsBack} from './variants';
+import React from 'react';
 
 
 
@@ -34,7 +35,7 @@ export interface DataItemCardProps {
 
 
 
-export default function DataItemCard({
+function DataItemCard({
     item,
     currentView,
     copiedCellKey,
@@ -122,6 +123,7 @@ export default function DataItemCard({
     }, [isFinalized]);
 
     const handleUploadFile = useCallback(async () => {
+         console.log("[DataItemCard] handleUploadFile: Aufgerufen."); // <-- HINZUFÜGEN
         if (isFinalized) return;
         if (!selectedPdfFile) {
             console.warn(`DataItemCard ID ${item.id}: Keine Datei zum Hochladen ausgewählt.`);
@@ -173,6 +175,7 @@ export default function DataItemCard({
 
 
     const handleSaveInternal = useCallback(async () => {
+        console.log("[DataItemCard] handleSaveInternal: Aufgerufen."); // <-- HINZUFÜGEN
         if (isFinalized) return;
         const validData = validateAndPrepareSaveData();
         if (validData) {
@@ -312,7 +315,7 @@ export default function DataItemCard({
 
     
     return (
-        <motion.div key={cardKey} variants={cardContainerVariants} initial="hidden" animate="visible" exit="exit" layout
+        <motion.div key={cardKey} variants={cardContainerVariants} initial="hidden" animate="visible" exit="exit"
             className={`relative rounded-xl ${resolvedBackgroundClass} backdrop-blur-md shadow-xl shadow-slate-900/30 flex flex-col justify-between overflow-hidden`}
             style={{ perspective: '1000px' }}
             whileHover={!isFlipped && canFlip ? { y: -8, scale: 1.02, boxShadow: "0px 10px 25px rgba(0,0,0,0.25), 0px 6px 10px rgba(0,0,0,0.22)", transition: { type: "spring", stiffness: 200, damping: 15 } } : {}}
@@ -377,3 +380,4 @@ export default function DataItemCard({
         </motion.div>
     );
 }
+export default  React.memo(DataItemCard);

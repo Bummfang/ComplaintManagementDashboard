@@ -34,57 +34,185 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 // Handler für GET-Anfragen zum Abrufen aller Beschwerden
 export async function GET(request: NextRequest) {
-    const requestTimestamp = new Date().toISOString();
-    if (!JWT_SECRET) { 
-        console.error(`[${requestTimestamp}] JWT_SECRET nicht konfiguriert.`);
-        return NextResponse.json({ error: 'Serverkonfigurationsfehler.' }, { status: 500 }); 
+    const initialRequestTimestamp = new Date().toISOString(); // Für Logging, falls früh ein Fehler auftritt
+
+    if (!JWT_SECRET) {
+        console.error(`[${initialRequestTimestamp}] JWT_SECRET nicht konfiguriert.`);
+        return NextResponse.json({ error: 'Serverkonfigurationsfehler.' }, { status: 500 });
     }
 
     const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) { 
-        return NextResponse.json({ error: 'Authentifizierungstoken fehlt oder ist ungültig.' }, { status: 401 }); 
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return NextResponse.json({ error: 'Authentifizierungstoken fehlt oder ist ungültig.' }, { status: 401 });
     }
     const token = authHeader.split(' ')[1];
 
-    try { 
-        jwt.verify(token, JWT_SECRET); 
-    } catch (error) { 
+    try {
+        jwt.verify(token, JWT_SECRET);
+    } catch (error) {
+        const verificationErrorTimestamp = new Date().toISOString();
         const errorMessage = error instanceof Error ? error.message : 'Unbekannter Token Fehler';
-        console.error(`[${requestTimestamp}] Token Verifizierungsfehler (GET /api/containt):`, errorMessage);
-        return NextResponse.json({ error: 'Ungültiges oder abgelaufenes Token.' }, { status: 401 }); 
+        console.error(`[${verificationErrorTimestamp}] Token Verifizierungsfehler (GET /api/containt):`, errorMessage);
+        return NextResponse.json({ error: 'Ungültiges oder abgelaufenes Token.' }, { status: 401 });
     }
 
-    const poolToUse = getDbPool();
+    const searchParams = request.nextUrl.searchParams;
+    const operationTimestamp = new Date().toISOString(); // Zeitstempel für diese spezifische Operation
+
+    // Paginierungsparameter
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '20', 10); // Standardlimit 20
+    const offset = (page - 1) * limit;
+
+    // Filterparameter
+    const statusFilter = searchParams.get('status');
+    const searchTerm = searchParams.get('searchTerm');
+    const emailSearchTerm = searchParams.get('emailSearchTerm');
+    const idSearchTerm = searchParams.get('idSearchTerm');
+    const assigneeSearchTerm = searchParams.get('assigneeSearchTerm');
+    const haltestelleSearchTerm = searchParams.get('haltestelleSearchTerm');
+    const linieSearchTerm = searchParams.get('linieSearchTerm');
+    const startDate = searchParams.get('startDate'); // Format: YYYY-MM-DD
+    const endDate = searchParams.get('endDate');     // Format: YYYY-MM-DD
+    const dateFilterTargetParam = searchParams.get('dateFilterTarget');
+
     let client: PoolClient | undefined;
+
     try {
-        client = await poolToUse.connect();
-        const query = `
-            SELECT
-                b.id, b.name, b.email, b.tel, b.betreff, b.beschreibung,
-                b.beschwerdegrund, b.datum, b.uhrzeit, b.haltestelle, b.linie, 
-                b.erstelltam, b.status, b.abgeschlossenam, b.bearbeiter_id,
-                u.name || ' ' || u.nachname AS bearbeiter_name,
-                b.interne_notizen, 
-                b.interne_klaerungsart, 
-                b.interne_teamleiter_informiert,
-                b.interne_bereichsleiter_informiert, 
-                b.interne_an_subunternehmer_weitergeleitet,
-                b.interne_an_versicherung_weitergeleitet, 
-                b.interne_geld_erstattet, 
-                b.interne_erstattungsbetrag,
-                b.attachment_filename,
-                b.attachment_mimetype
+        client = await getDbPool().connect();
+
+        const conditions: string[] = [];
+        const queryParams: (string | number | boolean | null)[] = []; 
+        let paramIdx = 1;
+
+        // Status-Filter (ignoriert "alle" oder wenn nicht vorhanden)
+        if (statusFilter && statusFilter.toLowerCase() !== 'alle') {
+            conditions.push(`b.status = $${paramIdx++}`);
+            queryParams.push(statusFilter);
+        }
+
+        // Allgemeiner Suchbegriff
+        if (searchTerm) {
+            const searchTermPattern = `%${searchTerm}%`;
+            const searchFields = ['b.name', 'b.email', 'b.betreff', 'b.beschreibung'];
+            // Versuch, die ID auch über den allgemeinen Suchbegriff zu finden, falls es eine Zahl ist
+            const searchIdNum = parseInt(searchTerm, 10);
+            if (!isNaN(searchIdNum)) {
+                 searchFields.push(`b.id::text`); // Suche auch in ID als Text
+            }
+            const generalSearchClauses = searchFields.map(field => `${field} ILIKE $${paramIdx}`);
+            conditions.push(`(${generalSearchClauses.join(' OR ')})`);
+            queryParams.push(searchTermPattern);
+            paramIdx++; // Wichtig: paramIdx nur einmal erhöhen, da $${paramIdx} für alle Felder oben verwendet wird
+        }
+
+        // E-Mail-Filter (spezifisch, falls unterschiedlich zum allgemeinen searchTerm)
+        if (emailSearchTerm) {
+            conditions.push(`b.email ILIKE $${paramIdx++}`);
+            queryParams.push(`%${emailSearchTerm}%`);
+        }
+
+        // ID-Filter (spezifisch)
+        if (idSearchTerm) {
+            const idNum = parseInt(idSearchTerm, 10);
+            if (!isNaN(idNum)) {
+                conditions.push(`b.id = $${paramIdx++}`);
+                queryParams.push(idNum);
+            } else {
+                // Wenn eine ungültige ID gesucht wird, die keine Zahl ist, könnten wir 0 Ergebnisse zurückgeben
+                // indem wir eine immer falsche Bedingung hinzufügen
+                conditions.push(`1 = 0`); // Verhindert Ergebnisse, wenn ID keine Zahl
+            }
+        }
+
+        // Bearbeiter-Filter
+        if (assigneeSearchTerm) {
+            conditions.push(`(u.name || ' ' || u.nachname) ILIKE $${paramIdx++}`);
+            queryParams.push(`%${assigneeSearchTerm}%`);
+        }
+
+        // Haltestellen-Filter
+        if (haltestelleSearchTerm) {
+            conditions.push(`b.haltestelle ILIKE $${paramIdx++}`);
+            queryParams.push(`%${haltestelleSearchTerm}%`);
+        }
+
+        // Linien-Filter
+        if (linieSearchTerm) {
+            conditions.push(`b.linie ILIKE $${paramIdx++}`);
+            queryParams.push(`%${linieSearchTerm}%`);
+        }
+
+        // Datumsfilter
+        // Standardmäßig auf 'erstelltam', wenn dateFilterTarget nicht 'datum' ist oder fehlt
+        const dateColumnToFilter = dateFilterTargetParam === 'datum' ? 'b.datum' : 'b.erstelltam';
+
+        if (startDate) {
+            // PostgreSQL kann YYYY-MM-DD direkt mit date und timestamptz vergleichen
+            conditions.push(`${dateColumnToFilter} >= $${paramIdx++}`);
+            queryParams.push(startDate);
+        }
+        if (endDate) {
+            // Um das gesamte Enddatum einzuschließen, wenn die Spalte ein Timestamp ist:
+            // Für 'date'-Spalten ist ein direkter Vergleich ok.
+            // Für 'timestamptz'-Spalten (wie 'erstelltam') ist es genauer, bis zum Ende des Tages zu filtern.
+            if (dateColumnToFilter === 'b.erstelltam') {
+                conditions.push(`${dateColumnToFilter} < ($${paramIdx++}::date + interval '1 day')`);
+            } else { // für 'b.datum'
+                conditions.push(`${dateColumnToFilter} <= $${paramIdx++}`);
+            }
+            queryParams.push(endDate);
+        }
+
+        const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+        const selectFields = `
+            b.id, b.name, b.email, b.tel, b.betreff, b.beschreibung,
+            b.beschwerdegrund, b.datum, b.uhrzeit, b.haltestelle, b.linie, 
+            b.erstelltam, b.status, b.abgeschlossenam, b.bearbeiter_id,
+            u.name || ' ' || u.nachname AS bearbeiter_name,
+            b.interne_notizen, b.interne_klaerungsart, b.interne_teamleiter_informiert,
+            b.interne_bereichsleiter_informiert, b.interne_an_subunternehmer_weitergeleitet,
+            b.interne_an_versicherung_weitergeleitet, b.interne_geld_erstattet, 
+            b.interne_erstattungsbetrag, b.attachment_filename, b.attachment_mimetype
+        `;
+
+        // Abfrage für die Gesamtanzahl der gefilterten Einträge
+        const totalCountQuery = `SELECT COUNT(DISTINCT b.id) AS total_items FROM "beschwerde" b LEFT JOIN "users" u ON b.bearbeiter_id = u.id ${whereClause}`;
+        const totalResult = await client.query(totalCountQuery, queryParams); // Dieselben queryParams wie für die WHERE-Klausel
+        const totalItems = parseInt(totalResult.rows[0].total_items, 10);
+
+        // Parameter für die Datenabfrage (Filterparameter + Paginierungsparameter)
+        const dataQueryParams = [...queryParams];
+        dataQueryParams.push(limit);    // Parameter für LIMIT $X
+        dataQueryParams.push(offset);   // Parameter für OFFSET $Y
+
+        const dataQuery = `
+            SELECT ${selectFields}
             FROM "beschwerde" b
             LEFT JOIN "users" u ON b.bearbeiter_id = u.id
-            ORDER BY b.erstelltam DESC;
+            ${whereClause}
+            ORDER BY b.erstelltam DESC
+            LIMIT $${paramIdx++} OFFSET $${paramIdx++}; 
         `;
-        const result = await client.query<BeschwerdeDbRow>(query);
-        // mapDbRowToApiResponse wird hier angewendet und sollte den Status validieren/defaulten
+
+        const result = await client.query<BeschwerdeDbRow>(dataQuery, dataQueryParams);
         const responseData = result.rows.map(mapDbRowToApiResponse);
-        return NextResponse.json(responseData, { status: 200 });
+
+        console.log(`[${operationTimestamp}] GET /api/containt - Seite: ${page}, Limit: ${limit}, Filter aktiv: ${conditions.length > 0}, Gefundene Items: ${result.rowCount}, Total Items (gefiltert): ${totalItems}`);
+
+        return NextResponse.json({
+            data: responseData,
+            totalItems: totalItems,
+            currentPage: page,
+            totalPages: Math.ceil(totalItems / limit),
+            limit: limit,
+        }, { status: 200 });
+
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unbekannter Datenbankfehler';
-        console.error(`[${requestTimestamp}] Fehler beim Abrufen von Beschwerden (/api/containt GET):`, errorMessage, error);
+        const errorTimestamp = new Date().toISOString();
+        const errorMessage = error instanceof Error ? error.message : 'Unbekannter Datenbankfehler im GET /api/containt.';
+        console.error(`[${errorTimestamp}] Fehler beim Abrufen von Beschwerden (GET /api/containt):`, errorMessage, error);
         return NextResponse.json({ error: 'Fehler beim Abrufen von Beschwerden.', details: errorMessage }, { status: 500 });
     } finally {
         if (client) client.release();

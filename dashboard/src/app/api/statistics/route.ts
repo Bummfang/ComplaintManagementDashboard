@@ -6,11 +6,14 @@ import jwt from 'jsonwebtoken';
 
 export type ChartComplaintStatusType = "Offen" | "In Bearbeitung" | "Gelöst" | "Abgelehnt" | "Unbekannt";
 
+
+
+
+
 interface ComplaintByStatusAPI { status: ChartComplaintStatusType; count: number; }
 interface ComplaintOverTimeAPI { date: string; count: number; }
 interface ComplaintReasonAPI { reason: string; count: number; }
 interface ComplaintHotspotAPI { name: string; count: number; }
-
 interface StatisticsApiResponse {
   totalComplaints: number;
   totalPraises: number;
