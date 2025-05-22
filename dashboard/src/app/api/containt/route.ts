@@ -162,7 +162,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             let paramIndex = 1;
 
             let statusWirdGesetzt = false; // Flag um zu prüfen ob Status schon in Bearbeitung ist
-
+            console.log(statusWirdGesetzt);
             if (assign_me_as_bearbeiter && currentItem.bearbeiter_id === null && decodedTokenInfo.userId) {
                 setClauses.push(`bearbeiter_id = $${paramIndex++}`);
                 updateQueryParams.push(decodedTokenInfo.userId);

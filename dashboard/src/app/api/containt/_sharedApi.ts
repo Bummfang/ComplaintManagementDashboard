@@ -69,6 +69,7 @@ export function mapDbRowToApiResponse(row: BeschwerdeDbRow): BeschwerdeApiRespon
         interne_an_versicherung_weitergeleitet,
         interne_geld_erstattet,
         interne_erstattungsbetrag,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         attachment_data,    // Wird nicht in die API-Response übernommen
         status: dbStatus,   // Status aus der Datenbank (kann null sein)
         // Alle anderen Felder aus row werden in apiRelevantFields gesammelt

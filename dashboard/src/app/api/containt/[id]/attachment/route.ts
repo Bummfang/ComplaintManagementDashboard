@@ -9,7 +9,7 @@ import {
     allowedStatusesList // NEU: Importiert für Statusvalidierung
 } from '../../_sharedApi'; // Pfad zu _sharedApi.ts (../../ da _sharedApi in /containt liegt)
 
-import { 
+import {
     InternalCardData as FrontendInternalCardData,
     AllowedBeschwerdeStatus // NEU: Importiert für Typ-Casting
 } from '@/app/types';
@@ -17,11 +17,11 @@ import {
 const JWT_SECRET = process.env.JWT_SECRET;
 
 interface ResolvedParamsType {
-  id: string;
+    id: string;
 }
 
 interface ExpectedRouteContext {
-  params: Promise<ResolvedParamsType>;
+    params: Promise<ResolvedParamsType>;
 }
 
 async function preProcessRequest(
@@ -46,7 +46,7 @@ async function preProcessRequest(
             return { errorResponse: NextResponse.json({ error: 'Fehler beim Verarbeiten der Anfrage-Daten.' }, { status: 400 }) };
         }
     } else if (request.method !== 'POST' && needsFormData) { // Korrektur: needsFormData nur bei POST relevant
-         // Mache nichts hier, wenn keine FormData benötigt oder falsche Methode
+        // Mache nichts hier, wenn keine FormData benötigt oder falsche Methode
     }
 
 
@@ -76,6 +76,18 @@ async function preProcessRequest(
     }
     return { itemId, token, requestTimestamp, formData: formDataToReturn };
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 // POST-Handler für den Datei-Upload
 export async function POST(
@@ -202,7 +214,7 @@ export async function POST(
             return NextResponse.json({ error: 'Fehler beim Abrufen des aktualisierten Items.' }, { status: 500 });
         }
         await client.query('COMMIT');
-        
+
         // mapDbRowToApiResponse wird den Status validieren/defaulten
         const apiResponseData = mapDbRowToApiResponse(updatedItemResult.rows[0]);
         console.log(`[${requestTimestamp}] POST /api/containt/[id]/attachment - Status für ID ${itemId} nach mapDbRowToApiResponse: ${apiResponseData.status}`);
@@ -220,16 +232,39 @@ export async function POST(
     }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // GET Handler (unverändert von deiner Datei)
 export async function GET(
     request: NextRequest,
-    context: ExpectedRouteContext
+    context: ExpectedRouteContext // Stelle sicher, dass ExpectedRouteContext definiert ist
 ) {
-    const resolvedParams = await context.params;
+    const resolvedParams = await context.params; // Stelle sicher, dass context.params korrekt aufgelöst wird
     const { errorResponse, itemId, token, requestTimestamp } = await preProcessRequest(request, resolvedParams);
     if (errorResponse) return errorResponse;
 
-    if (itemId === undefined || !token || !requestTimestamp) return NextResponse.json({ error: 'Interne Fehler bei der Vorverarbeitung der Anfrage für GET.' }, { status: 500 });
+    if (itemId === undefined || !token || !requestTimestamp) {
+        return NextResponse.json({ error: 'Interne Fehler bei der Vorverarbeitung der Anfrage für GET.' }, { status: 500 });
+    }
 
     let client: PoolClient | undefined;
     try {
@@ -242,8 +277,15 @@ export async function GET(
         if (result.rows.length === 0 || !result.rows[0].attachment_data || !result.rows[0].attachment_filename) {
             return NextResponse.json({ error: 'Anhang nicht gefunden oder leer.' }, { status: 404 });
         }
-        const { attachment_data, attachment_filename, attachment_mimetype } = result.rows[0];
-        const buffer = Buffer.isBuffer(attachment_data) ? attachment_data : Buffer.from(attachment_data as any); // Wurde Buffer.from(attachment_data) geändert
+
+        // Nach der obigen Prüfung ist sicher, dass attachment_data ein Buffer ist.
+        const attachment_data: Buffer = result.rows[0].attachment_data;
+        const attachment_filename: string = result.rows[0].attachment_filename; // Annahme: filename ist immer string
+        const attachment_mimetype: string | null | undefined = result.rows[0].attachment_mimetype;
+
+        // KORRIGIERTE ZEILE: Da attachment_data hier garantiert ein Buffer ist,
+        // ist die Überprüfung und der Cast nicht mehr nötig.
+        const buffer: Buffer = attachment_data;
 
         return new NextResponse(buffer, {
             status: 200,
@@ -254,12 +296,28 @@ export async function GET(
         });
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Datenbankfehler.';
+        // requestTimestamp ist hier definiert
         console.error(`[${requestTimestamp}] Fehler beim Abrufen des Anhangs (ID ${itemId}):`, errorMsg, error);
         return NextResponse.json({ error: 'Fehler beim Abrufen des Anhangs.', details: errorMsg }, { status: 500 });
     } finally {
         if (client) client.release();
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // DELETE Handler (unverändert von deiner Datei, profitiert von mapDbRowToApiResponse Korrektur)
 export async function DELETE(
