@@ -19,7 +19,9 @@ export default function PaginationControls({
     totalItems
 }: PaginationControlsProps) {
     // Keine Paginierung anzeigen, wenn nicht nötig (z.B. nur eine Seite)
+    console.log("[PaginationControls] Props received:", { currentPage, totalPages, itemsPerPage, totalItems });
     if (totalPages <= 1 && totalItems <= itemsPerPage) { // Auch prüfen, ob überhaupt mehr Items als pro Seite angezeigt werden
+        console.log("[PaginationControls] Bedingung zum Verstecken der vollen Controls ist WAHR.");
         if (totalItems > 0) { // Zeige Info nur, wenn überhaupt Items da sind
              return (
                 <div className="mt-8 flex flex-col sm:flex-row justify-between items-center text-sm text-slate-400 space-y-3 sm:space-y-0">
@@ -30,7 +32,7 @@ export default function PaginationControls({
         return null;
     }
 
-
+ console.log("[PaginationControls] Bedingung zum Verstecken der vollen Controls ist FALSCH. Rendere volle Controls.");
     const pageNumbers = [];
     const maxPagesToShow = 5; // Wie viele Seitenzahlen maximal direkt angezeigt werden
     let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));

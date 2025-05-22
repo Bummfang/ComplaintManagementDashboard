@@ -447,6 +447,12 @@ const handleStatusChangeForCard = (
                                             />
                                         ))}
                                     </motion.div>
+                                    {console.log("[ContaintTable] Props to PaginationControls:", {
+                                          currentPagePassed: currentPage,
+                                          totalPagesPassed: totalPages,
+                                          itemsPerPagePassed: itemsPerPage,
+                                          totalItemsPassed: totalItems
+                                      })}
                                     <PaginationControls
                                         currentPage={currentPage}
                                         totalPages={totalPages}
