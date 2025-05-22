@@ -122,6 +122,7 @@ export default function DataItemCard({
     }, [isFinalized]);
 
     const handleUploadFile = useCallback(async () => {
+         console.log("[DataItemCard] handleUploadFile: Aufgerufen."); // <-- HINZUFÜGEN
         if (isFinalized) return;
         if (!selectedPdfFile) {
             console.warn(`DataItemCard ID ${item.id}: Keine Datei zum Hochladen ausgewählt.`);
@@ -173,6 +174,7 @@ export default function DataItemCard({
 
 
     const handleSaveInternal = useCallback(async () => {
+        console.log("[DataItemCard] handleSaveInternal: Aufgerufen."); // <-- HINZUFÜGEN
         if (isFinalized) return;
         const validData = validateAndPrepareSaveData();
         if (validData) {
