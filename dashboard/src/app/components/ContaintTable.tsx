@@ -4,7 +4,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useAuth } from '../contexts/AuthContext';
-import { ViewType, AnyItemStatus, CardSpecificDataItem, BeschwerdeItem, InternalCardData } from '../types';
+import { ViewType, AnyItemStatus, CardSpecificDataItem, InternalCardData } from '../types';
 import { API_ENDPOINTS, VIEW_TITLES } from '../constants';
 import StatusBar from './StatusBar';
 import ViewTabs from './ViewTabs';
@@ -15,7 +15,8 @@ import AdminSection from './AdminSection';
 import { useAppFilters } from '../hooks/useAppFilters';
 import { useDataFetching } from '../hooks/useDataFetching';
 import PaginationControls from "./PaginationControls"; // Importiere deine Paginierungskomponente
-
+import {ApiErrorResponse} from "../types/index"
+type FetchFilters = Record<string, string | number | boolean | null | undefined>;
 export type DateFilterTarget = 'erstelltam' | 'datum';
 
 interface PatchPayload {
@@ -61,7 +62,7 @@ export default function ContaintTable() {
 
     // Filterobjekt für useDataFetching erstellen
     const currentFilters = useMemo(() => {
-        const filters: Record<string, any> = {
+        const filters: FetchFilters = {
             status: activeStatusFilter === 'alle' ? undefined : activeStatusFilter,
             searchTerm: searchTerm || undefined,
             emailSearchTerm: emailSearchTerm || undefined,
@@ -308,9 +309,36 @@ export default function ContaintTable() {
         }
     }, [token, logout, currentView, updateSingleItemInCache, setUiError, items, refetchData, currentPage, itemsPerPage, currentFilters]); // items und Refetch-Parameter für Optimistic Update und Fallbacks hinzugefügt
 
-    const handleCopyToClipboard = useCallback(async ( /* ... wie zuvor ... */) => {
-        // ... Deine Logik ...
-    }, [setUiError, setCopiedCellKey]);
+
+
+
+
+    const handleCopyToClipboard = useCallback(async (textToCopy: string, cellKey: string) => {
+        if (!textToCopy) {
+            console.warn("[ContaintTable] handleCopyToClipboard: Kein Text zum Kopieren vorhanden für Key:", cellKey);
+            return;
+        }
+        if (!navigator.clipboard) {
+            console.error("[ContaintTable] handleCopyToClipboard: Clipboard API nicht verfügbar.");
+            setUiError("Kopieren nicht möglich: Clipboard API nicht unterstützt oder nicht sicher (HTTPS benötigt).");
+            setTimeout(() => setUiError(null), 3000);
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            // console.log("[ContaintTable] Text in Zwischenablage kopiert:", textToCopy);
+            setCopiedCellKey(cellKey);
+            setTimeout(() => setCopiedCellKey(null), 1500); // Visuelles Feedback für 1.5 Sekunden
+        } catch (err) {
+            console.error("[ContaintTable] handleCopyToClipboard: Fehler beim Kopieren in die Zwischenablage:", err);
+            setUiError("Kopieren in die Zwischenablage fehlgeschlagen.");
+            setTimeout(() => setUiError(null), 3000);
+            if (copiedCellKey === cellKey) {
+                setCopiedCellKey(null);
+            }
+        }
+
+    }, [copiedCellKey]);
 
     const performStatusChangeAsync = useCallback(async (itemId: number, newStatus: AnyItemStatus, viewForApi: ViewType) => {
         if (!token || !user) { /* ... */ return; }
@@ -338,9 +366,9 @@ export default function ContaintTable() {
             if (!response.ok) {
                 // Versuche, das optimistische Update zurückzurollen oder zumindest die Fehlermeldung anzuzeigen
                 if (itemToUpdateOptimistically) updateSingleItemInCache(itemToUpdateOptimistically as CardSpecificDataItem); // Rolle zurück zum vorherigen Zustand des Items
-                const errorData = updatedItemFromServer || {}; // Nutze geparste Antwort, falls vorhanden
+                const errorData = response as ApiErrorResponse; // Nutze geparste Antwort, falls vorhanden
                 if (response.status === 401) { logout(); setUiError("Sitzung abgelaufen."); return; }
-                throw new Error((errorData as any).details || (errorData as any).error || `Statusupdate fehlgeschlagen (${response.status})`);
+                throw new Error((errorData as ApiErrorResponse).details || (errorData as ApiErrorResponse).error || `Statusupdate fehlgeschlagen (${response.status})`);
             }
             updateSingleItemInCache(updatedItemFromServer); // Bestätigtes Update
 

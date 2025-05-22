@@ -84,7 +84,11 @@ export interface InternalCardData {
 }
 
 
-
+export interface ApiErrorResponse {
+    error?: string;
+    details?: string;
+    message?: string; 
+}
 
 
 export const defaultInternalDetails: InternalCardData = {

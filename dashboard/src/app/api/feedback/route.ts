@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     }
     const token = authHeader.split(' ')[1];
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; username: string; isAdmin: boolean };
+        jwt.verify(token, JWT_SECRET) as { userId: number; username: string; isAdmin: boolean };
         // console.log(`[${initialRequestTimestamp}] GET /api/feedback: Token verifiziert für Benutzer: ${decoded.username} (ID: ${decoded.userId})`);
     } catch (error) {
         console.error(`[${initialRequestTimestamp}] GET /api/feedback: Ungültiges Token. Error: ${error instanceof Error ? error.message : String(error)}`);
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
         client = await getDbPool().connect();
 
         const conditions: string[] = [];
-        const queryParams: any[] = [];
+        const queryParams: (string | number | boolean | null)[] = []; 
         let paramIdx = 1;
 
         if (statusFilter && statusFilter.toLowerCase() !== 'alle') {

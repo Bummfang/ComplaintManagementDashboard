@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
         client = await getDbPool().connect();
 
         const conditions: string[] = [];
-        const queryParams: any[] = [];
+        const queryParams: (string | number | boolean | null)[] = []; 
         let paramIdx = 1;
 
         // Status-Filter (ignoriert "alle" oder wenn nicht vorhanden)

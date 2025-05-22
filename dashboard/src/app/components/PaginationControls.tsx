@@ -36,7 +36,7 @@ export default function PaginationControls({
     const pageNumbers = [];
     const maxPagesToShow = 5; // Wie viele Seitenzahlen maximal direkt angezeigt werden
     let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
 
     // Korrektur, falls am Ende nicht genug Seiten für maxPagesToShow sind
     if (totalPages > maxPagesToShow && (endPage - startPage + 1 < maxPagesToShow)) {
