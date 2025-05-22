@@ -434,7 +434,7 @@ const handleStatusChangeForCard = (
                                 <div className="text-center py-10 text-neutral-500">Keine Einträge für die aktuellen Filter gefunden.</div>
                             ) : dataToDisplay.length > 0 && !dataFetchingError ? ( // Zeige Daten, auch wenn im Hintergrund geladen wird
                                 <>
-                                    <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
+                                    <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
                                         {dataToDisplay.map((item) => (
                                             <DataItemCard
                                                 key={`${currentView}-${item.id}-${item.erstelltam || item.id}`} // Fallback für Key

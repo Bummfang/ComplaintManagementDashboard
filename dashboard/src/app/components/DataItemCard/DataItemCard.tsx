@@ -314,7 +314,7 @@ export default function DataItemCard({
 
     
     return (
-        <motion.div key={cardKey} variants={cardContainerVariants} initial="hidden" animate="visible" exit="exit" layout
+        <motion.div key={cardKey} variants={cardContainerVariants} initial="hidden" animate="visible" exit="exit"
             className={`relative rounded-xl ${resolvedBackgroundClass} backdrop-blur-md shadow-xl shadow-slate-900/30 flex flex-col justify-between overflow-hidden`}
             style={{ perspective: '1000px' }}
             whileHover={!isFlipped && canFlip ? { y: -8, scale: 1.02, boxShadow: "0px 10px 25px rgba(0,0,0,0.25), 0px 6px 10px rgba(0,0,0,0.22)", transition: { type: "spring", stiffness: 200, damping: 15 } } : {}}
