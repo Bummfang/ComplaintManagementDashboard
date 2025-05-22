@@ -2,40 +2,31 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { PoolClient } from 'pg';
 import { getDbPool } from '@/lib/db';
-import jwt from 'jsonwebtoken'; // Import für jwt.verify
-// JwtPayload wird nicht direkt benötigt, wenn wir den dekodierten Typ nicht explizit verwenden
+import jwt from 'jsonwebtoken';
 import {
     BeschwerdeDbRow,
-    mapDbRowToApiResponse
-} from '../../_sharedApi'; // Pfad zu _sharedApi.ts
+    mapDbRowToApiResponse,
+    allowedStatusesList // NEU: Importiert für Statusvalidierung
+} from '../../_sharedApi'; // Pfad zu _sharedApi.ts (../../ da _sharedApi in /containt liegt)
 
-// NEUER IMPORT: FrontendInternalCardData für den FormData-Teil
-import { InternalCardData as FrontendInternalCardData } from '@/app/types';
+import { 
+    InternalCardData as FrontendInternalCardData,
+    AllowedBeschwerdeStatus // NEU: Importiert für Typ-Casting
+} from '@/app/types';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// Das Interface 'DecodedToken' wird entfernt, da es in dieser Datei nicht verwendet wird.
-// interface DecodedToken extends JwtPayload {
-//     userId: number;
-//     username: string;
-//     isAdmin: boolean;
-// }
-
-// NEU: Typ für die aufgelösten Parameter
 interface ResolvedParamsType {
   id: string;
 }
 
-// NEU: Typ für den Kontext, wie ihn der Build-Prozess zu erwarten scheint
 interface ExpectedRouteContext {
-  params: Promise<ResolvedParamsType>; // params ist ein Promise
+  params: Promise<ResolvedParamsType>;
 }
 
-// Hilfsfunktion zur Vorverarbeitung und Validierung
-// Akzeptiert jetzt die bereits aufgelösten Parameter
 async function preProcessRequest(
     request: NextRequest,
-    resolvedParams: ResolvedParamsType, // Erwartet das aufgelöste Objekt
+    resolvedParams: ResolvedParamsType,
     needsFormData: boolean = false
 ): Promise<{
     errorResponse?: NextResponse,
@@ -54,11 +45,12 @@ async function preProcessRequest(
             console.error(`[${requestTimestamp}] Fehler beim Verarbeiten von FormData:`, e);
             return { errorResponse: NextResponse.json({ error: 'Fehler beim Verarbeiten der Anfrage-Daten.' }, { status: 400 }) };
         }
-    } else if (request.method !== 'POST') {
-        await Promise.resolve(); // Bleibt für andere Methoden
+    } else if (request.method !== 'POST' && needsFormData) { // Korrektur: needsFormData nur bei POST relevant
+         // Mache nichts hier, wenn keine FormData benötigt oder falsche Methode
     }
 
-    const itemIdStr = resolvedParams.id; // Direkter Zugriff auf .id vom aufgelösten Objekt
+
+    const itemIdStr = resolvedParams.id;
     const itemId = parseInt(itemIdStr, 10);
 
     if (isNaN(itemId)) {
@@ -77,7 +69,7 @@ async function preProcessRequest(
     const token = authHeader.split(' ')[1];
 
     try {
-        jwt.verify(token, JWT_SECRET); // Token wird verifiziert, aber Payload hier nicht direkt genutzt.
+        jwt.verify(token, JWT_SECRET);
     } catch (error) {
         console.error(`[${requestTimestamp}] Token Verifizierungsfehler (${request.method}):`, error instanceof Error ? error.message : String(error));
         return { errorResponse: NextResponse.json({ error: 'Ungültiges oder abgelaufenes Token.' }, { status: 401 }) };
@@ -88,10 +80,10 @@ async function preProcessRequest(
 // POST-Handler für den Datei-Upload
 export async function POST(
     request: NextRequest,
-    context: ExpectedRouteContext // Verwendet den neuen Kontext-Typ
+    context: ExpectedRouteContext
 ) {
-    const resolvedParams = await context.params; // Parameter auflösen
-    const processed = await preProcessRequest(request, resolvedParams, true);
+    const resolvedParams = await context.params;
+    const processed = await preProcessRequest(request, resolvedParams, true); // needsFormData = true
     if (processed.errorResponse) return processed.errorResponse;
 
     const { itemId, token, requestTimestamp, formData } = processed;
@@ -126,19 +118,19 @@ export async function POST(
             try {
                 internalDetailsFromFormData = JSON.parse(internalDetailsJson);
             } catch (e) {
-                // requestTimestamp ist hier nicht direkt verfügbar, außer es wird von preProcessRequest zurückgegeben und hier genutzt
-                console.warn(`Konnte internal_details_json nicht parsen (ID: ${itemId}):`, e);
+                console.warn(`[${requestTimestamp}] Konnte internal_details_json nicht parsen (ID: ${itemId}):`, e);
             }
         }
 
         client = await getDbPool().connect();
         await client.query('BEGIN');
 
-        const itemCheck = await client.query('SELECT id FROM beschwerde WHERE id = $1 FOR UPDATE', [itemId]);
+        const itemCheck = await client.query('SELECT id, status FROM beschwerde WHERE id = $1 FOR UPDATE', [itemId]);
         if (itemCheck.rowCount === 0) {
             await client.query('ROLLBACK');
             return NextResponse.json({ error: 'Beschwerde nicht gefunden.' }, { status: 404 });
         }
+        // const currentItemStatus = itemCheck.rows[0].status; // Aktuellen Status für evtl. Logik speichern
 
         const updateClauses = [
             'attachment_filename = $1',
@@ -148,22 +140,28 @@ export async function POST(
         const queryParams: (string | number | boolean | Buffer | null)[] = [fileName, mimeType, fileBuffer];
         let paramIdx = 4;
 
+        // Status nur aktualisieren, wenn ein gültiger Wert vom Client kommt
         if (statusFromFormData) {
-            updateClauses.push(`status = $${paramIdx++}`);
-            queryParams.push(statusFromFormData);
-            if (statusFromFormData === 'Gelöst' || statusFromFormData === 'Abgelehnt') {
-                updateClauses.push(`abgeschlossenam = CURRENT_TIMESTAMP`);
-            } else if (statusFromFormData === 'Offen') {
-                updateClauses.push(`abgeschlossenam = NULL`);
+            if (allowedStatusesList.includes(statusFromFormData as AllowedBeschwerdeStatus)) {
+                updateClauses.push(`status = $${paramIdx++}`);
+                queryParams.push(statusFromFormData);
+                if (statusFromFormData === 'Gelöst' || statusFromFormData === 'Abgelehnt') {
+                    updateClauses.push(`abgeschlossenam = CURRENT_TIMESTAMP`);
+                } else if (statusFromFormData === 'Offen') {
+                    updateClauses.push(`abgeschlossenam = NULL`);
+                }
+            } else {
+                console.warn(`[${requestTimestamp}] Ungültiger Statuswert '${statusFromFormData}' in FormData beim Datei-Upload für ID ${itemId} ignoriert.`);
+                // Optional: Fehler zurückgeben, statt zu ignorieren
+                // await client.query('ROLLBACK');
+                // return NextResponse.json({ error: `Ungültiger Statuswert in FormData: ${statusFromFormData}` }, { status: 400 });
             }
         }
 
         if (internalDetailsFromFormData) {
+            // (Logik für internalDetailsFromFormData bleibt wie in deiner Originaldatei)
             if (internalDetailsFromFormData.generalNotes !== undefined) { updateClauses.push(`interne_notizen = $${paramIdx++}`); queryParams.push(internalDetailsFromFormData.generalNotes); }
-            if (internalDetailsFromFormData.clarificationType !== undefined) {
-                updateClauses.push(`interne_klaerungsart = $${paramIdx++}`);
-                queryParams.push(internalDetailsFromFormData.clarificationType);
-            }
+            if (internalDetailsFromFormData.clarificationType !== undefined) { updateClauses.push(`interne_klaerungsart = $${paramIdx++}`); queryParams.push(internalDetailsFromFormData.clarificationType); }
             if (internalDetailsFromFormData.teamLeadInformed !== undefined) { updateClauses.push(`interne_teamleiter_informiert = $${paramIdx++}`); queryParams.push(internalDetailsFromFormData.teamLeadInformed); }
             if (internalDetailsFromFormData.departmentHeadInformed !== undefined) { updateClauses.push(`interne_bereichsleiter_informiert = $${paramIdx++}`); queryParams.push(internalDetailsFromFormData.departmentHeadInformed); }
             if (internalDetailsFromFormData.forwardedToSubcontractor !== undefined) { updateClauses.push(`interne_an_subunternehmer_weitergeleitet = $${paramIdx++}`); queryParams.push(internalDetailsFromFormData.forwardedToSubcontractor); }
@@ -185,8 +183,10 @@ export async function POST(
             }
         }
 
-        queryParams.push(itemId);
+        queryParams.push(itemId); // itemId für die WHERE-Klausel
 
+        // Nur updaten, wenn es tatsächlich etwas zu updaten gibt (mindestens Anhang)
+        // Die Klauseln für den Anhang sind immer dabei, also ist updateClauses.length immer > 0
         const updateQueryText = `UPDATE beschwerde SET ${updateClauses.join(', ')} WHERE id = $${paramIdx};`;
         await client.query(updateQueryText, queryParams);
 
@@ -202,23 +202,25 @@ export async function POST(
             return NextResponse.json({ error: 'Fehler beim Abrufen des aktualisierten Items.' }, { status: 500 });
         }
         await client.query('COMMIT');
+        
+        // mapDbRowToApiResponse wird den Status validieren/defaulten
         const apiResponseData = mapDbRowToApiResponse(updatedItemResult.rows[0]);
-        // requestTimestamp aus processed verwenden für Konsistenz
-        console.log(`[${processed.requestTimestamp}] Datei und ggf. Status/Details für Beschwerde ID ${itemId} erfolgreich aktualisiert: ${fileName}`);
+        console.log(`[${requestTimestamp}] POST /api/containt/[id]/attachment - Status für ID ${itemId} nach mapDbRowToApiResponse: ${apiResponseData.status}`);
         return NextResponse.json(apiResponseData, { status: 200 });
 
     } catch (error) {
         if (client) {
-            try { await client.query('ROLLBACK'); } catch (rbError) { console.error(`[${processed.requestTimestamp || new Date().toISOString()}] Fehler beim Rollback (Attachment POST für ID ${itemId}):`, rbError); }
+            try { await client.query('ROLLBACK'); } catch (rbError) { console.error(`[${requestTimestamp}] Fehler beim Rollback (Attachment POST für ID ${itemId}):`, rbError); }
         }
         const errorMsg = error instanceof Error ? error.message : 'Unbekannter Fehler beim Datei-Upload.';
-        console.error(`[${processed.requestTimestamp || new Date().toISOString()}] Fehler beim Datei-Upload für Beschwerde ID ${itemId}:`, errorMsg, error);
+        console.error(`[${requestTimestamp}] Fehler beim Datei-Upload für Beschwerde ID ${itemId}:`, errorMsg, error);
         return NextResponse.json({ error: "Fehler beim Verarbeiten der Datei.", details: errorMsg }, { status: 500 });
     } finally {
         if (client) client.release();
     }
 }
 
+// GET Handler (unverändert von deiner Datei)
 export async function GET(
     request: NextRequest,
     context: ExpectedRouteContext
@@ -241,7 +243,7 @@ export async function GET(
             return NextResponse.json({ error: 'Anhang nicht gefunden oder leer.' }, { status: 404 });
         }
         const { attachment_data, attachment_filename, attachment_mimetype } = result.rows[0];
-        const buffer = Buffer.isBuffer(attachment_data) ? attachment_data : Buffer.from(attachment_data);
+        const buffer = Buffer.isBuffer(attachment_data) ? attachment_data : Buffer.from(attachment_data as any); // Wurde Buffer.from(attachment_data) geändert
 
         return new NextResponse(buffer, {
             status: 200,
@@ -259,6 +261,7 @@ export async function GET(
     }
 }
 
+// DELETE Handler (unverändert von deiner Datei, profitiert von mapDbRowToApiResponse Korrektur)
 export async function DELETE(
     request: NextRequest,
     context: ExpectedRouteContext
@@ -290,10 +293,11 @@ export async function DELETE(
         if (finalItemResult.rows.length === 0) {
             return NextResponse.json({ error: 'Aktualisiertes Item nicht gefunden nach Löschen des Anhangs.' }, { status: 500 });
         }
+        // mapDbRowToApiResponse wird den Status validieren/defaulten
         const apiResponseData = mapDbRowToApiResponse(finalItemResult.rows[0]);
+        console.log(`[${requestTimestamp}] DELETE /api/containt/[id]/attachment - Status für ID ${itemId} nach mapDbRowToApiResponse: ${apiResponseData.status}`);
         return NextResponse.json(apiResponseData, { status: 200 });
     } catch (error) {
-        // requestTimestamp aus processed verwenden, falls verfügbar
         const ts = requestTimestamp || new Date().toISOString();
         if (client) { try { await client.query('ROLLBACK'); } catch (rbErr) { console.error(`[${ts}] Rollback Fehler (DELETE Attachment ID ${itemId}):`, rbErr); } }
         const errorMsg = error instanceof Error ? error.message : 'Fehler beim Löschen des Anhangs.';

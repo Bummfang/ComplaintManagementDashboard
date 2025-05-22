@@ -3,7 +3,7 @@
 
 import { motion } from 'framer-motion';
 import { Settings2Icon, Lock, Unlock, RotateCcwIcon } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react'; // useMemo hinzugefügt
 import { AnyItemStatus as StrictStatus, ViewType } from '@/app/types';
 
 const contentItemVariants = {
@@ -50,19 +50,49 @@ const CardActions: React.FC<CardActionsProps> = ({
     const generalActionsDisabled = isLockedByHook || isAssigning || isProcessingFile;
     const disableResolveActions = generalActionsDisabled || (isClarificationMissingInSavedDetails && status === "In Bearbeitung" && currentView === 'beschwerden');
 
+    // NEU: Logik für den Disabled-Zustand des Settings/Flip-Buttons
+    const settingsButtonDisabled = useMemo(() => {
+        if (!canFlip) return true; 
+        if (isAssigning || isProcessingFile) return true; 
+        if (isFinalized) return false; 
+        return isLockedByHook; 
+    }, [canFlip, isAssigning, isProcessingFile, isFinalized, isLockedByHook]);
+
+    // NEU: Logik für den Titel des Settings/Flip-Buttons
+    const settingsButtonTitle = useMemo(() => {
+        if (!canFlip) return ""; 
+
+        if (settingsButtonDisabled && !isFinalized) {
+            if (isLockedByHook) return "Interne Details gesperrt (Schloss-Icon)";
+            if (isAssigning) return "Zuweisung läuft, Details nicht verfügbar";
+            if (isProcessingFile) return "Dateiverarbeitung läuft, Details nicht verfügbar";
+            return "Interne Details nicht verfügbar";
+        }
+
+        if (isFinalized) return "Interne Details ansehen";
+        return "Interne Details bearbeiten";
+    }, [canFlip, settingsButtonDisabled, isFinalized, isLockedByHook, isAssigning, isProcessingFile]);
+
     const handleMainActionButtonHover = (isHovering: boolean) => {
-        if (isClarificationMissingInSavedDetails && status === "In Bearbeitung" && currentView === 'beschwerden' && disableResolveActions) {
+        if (isClarificationMissingInSavedDetails && status === "In Bearbeitung" && currentView === 'beschwerden' && disableResolveActions && !isFinalized) {
             setAnimateSettingsIcon(isHovering);
         }
-        if (generalActionsDisabled && status && !isFinalized ) {
+        // Beachte: generalActionsDisabled beinhaltet isLockedByHook.
+        // Wenn die Karte finalisiert ist, soll das Schloss-Icon nicht unbedingt animieren,
+        // da die Hauptaktionen ohnehin meist ausgeblendet sind oder eine andere Bedeutung haben ("Wieder öffnen").
+        if (generalActionsDisabled && status && !isFinalized ) { 
            setAnimateLockIconWhenActionDisabled(isHovering);
-        } else if (generalActionsDisabled && isFinalized && status !== "Offen"){ 
+        } else if (generalActionsDisabled && isFinalized && status !== "Offen" && status !== undefined){ 
+            // Nur animieren, wenn "Wieder öffnen" Button (der generalActionsDisabled ignoriert) nicht die primäre Aktion ist.
+            // Diese Logik muss ggf. noch feiner justiert werden, je nach gewünschtem Verhalten des Lock-Icons bei finalisierten Karten.
+            // Aktuell: Animiert, wenn finalized UND gesperrt UND nicht 'Offen'.
             setAnimateLockIconWhenActionDisabled(isHovering);
         }
     };
 
     let actionButton = null;
 
+    // Original actionButton Logik aus deiner Datei
     if (isFinalized) { 
         if (currentView === 'lob' && status === 'Gelöst') {
             actionButton = (
@@ -81,11 +111,15 @@ const CardActions: React.FC<CardActionsProps> = ({
             );
         }
         
-        if (currentView !== 'lob') { // "Wieder öffnen" für alle außer Lob
+        // "Wieder öffnen" Button wird nur angezeigt, wenn currentView NICHT 'lob' ist
+        // UND wenn das Item tatsächlich finalisiert ist.
+        // Die onStatusChange-Logik in DataItemCard behandelt dann die Rechte dafür.
+        if (currentView !== 'lob') { 
             actionButton = ( 
                 <motion.button
                     onClick={() => onStatusChange("Offen")}
                     className="w-full text-sky-300 hover:text-sky-200 bg-sky-600/30 hover:bg-sky-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                    // generalActionsDisabled prüft isLockedByHook. Für "Wieder öffnen" ist das relevant.
                     title={generalActionsDisabled ? "Aktion blockiert (siehe Schloss-Icon)" : "Wieder öffnen"}
                     whileHover={{ scale: generalActionsDisabled ? 1 : 1.03, y: generalActionsDisabled ? 0 : -2, transition: buttonHoverSpring }}
                     whileTap={{ scale: generalActionsDisabled ? 1 : 0.97 }}
@@ -97,7 +131,7 @@ const CardActions: React.FC<CardActionsProps> = ({
                 </motion.button>
             );
         }
-    } else { 
+    } else { // Nicht finalisiert
         switch (status) {
             case "Offen":
                 actionButton = (
@@ -121,7 +155,10 @@ const CardActions: React.FC<CardActionsProps> = ({
                         <motion.button
                             onClick={() => onStatusChange("Gelöst")}
                             className={`text-green-300 hover:text-green-200 bg-green-600/30 hover:bg-green-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed ${currentView === 'lob' ? 'w-full' : 'flex-1'}`}
-                            title={disableResolveActions ? (generalActionsDisabled && !isClarificationMissingInSavedDetails ? "Karte gesperrt (Schloss-Icon)" : "Interne Details ausfüllen (Zahnrad-Icon)") : (currentView === 'lob' ? "Als erledigt markieren" : (currentView === 'anregungen' ? "Anregung annehmen" : "Als gelöst markieren"))}
+                            title={disableResolveActions ? 
+                                    (generalActionsDisabled && !isClarificationMissingInSavedDetails && !isFinalized ? "Karte gesperrt (Schloss-Icon)" : "Interne Details ausfüllen (Zahnrad-Icon)") : 
+                                    (currentView === 'lob' ? "Als erledigt markieren" : (currentView === 'anregungen' ? "Anregung annehmen" : "Als gelöst markieren"))
+                                  }
                             whileHover={{ scale: disableResolveActions ? 1 : 1.03, y: disableResolveActions ? 0 : -2, transition: buttonHoverSpring }}
                             whileTap={{ scale: disableResolveActions ? 1 : 0.97 }}
                             disabled={disableResolveActions}
@@ -134,7 +171,10 @@ const CardActions: React.FC<CardActionsProps> = ({
                             <motion.button
                                 onClick={() => onStatusChange("Abgelehnt")}
                                 className="flex-1 text-red-300 hover:text-red-200 bg-red-600/30 hover:bg-red-600/50 px-3 py-1.5 rounded-lg transition-all duration-150 ease-in-out text-xs font-semibold shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                                title={disableResolveActions ? (generalActionsDisabled && !isClarificationMissingInSavedDetails ? "Karte gesperrt (Schloss-Icon)" : "Interne Details ausfüllen (Zahnrad-Icon)") : (currentView === 'anregungen' ? "Anregung verwerfen" : "Ablehnen")}
+                                title={disableResolveActions ? 
+                                        (generalActionsDisabled && !isClarificationMissingInSavedDetails && !isFinalized ? "Karte gesperrt (Schloss-Icon)" : "Interne Details ausfüllen (Zahnrad-Icon)") : 
+                                        (currentView === 'anregungen' ? "Anregung verwerfen" : "Ablehnen")
+                                      }
                                 whileHover={{ scale: disableResolveActions ? 1 : 1.03, y: disableResolveActions ? 0 : -2, transition: buttonHoverSpring }}
                                 whileTap={{ scale: disableResolveActions ? 1 : 0.97 }}
                                 disabled={disableResolveActions}
@@ -157,20 +197,22 @@ const CardActions: React.FC<CardActionsProps> = ({
             <div className={`flex ${canFlip ? 'justify-between' : 'justify-end'} items-center mb-2`}>
                 {canFlip && (
                     <motion.button
-                        onClick={onFlip}
-                        disabled={isLockedByHook || isAssigning || isProcessingFile}
+                        onClick={onFlip} // Ruft DataItemCard's handleFlipCard auf
+                        disabled={settingsButtonDisabled} // ANGEPASST
                         className="p-1.5 rounded-full text-slate-400 hover:text-sky-400 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Interne Details bearbeiten"
+                        title={settingsButtonTitle} // ANGEPASST
                         onHoverStart={() => setIsSettingsIconHovered(true)}
                         onHoverEnd={() => setIsSettingsIconHovered(false)}
-                        animate={
-                            animateSettingsIcon && !(isLockedByHook || isAssigning || isProcessingFile) ?
+                        animate={ // Logik für Animation des Settings-Icons
+                            (animateSettingsIcon && status === "In Bearbeitung" && !settingsButtonDisabled) ?
                             { scale: [1, 1.5, 1.2, 1.5, 1], rotate: [0, 15, -12, 10, -8, 0], transition: { duration: 0.7, ease: "easeInOut", repeat: 0 } } :
-                            (isLockedByHook || isAssigning || isProcessingFile) ? { scale: 1, rotate: 0 } :
-                            isSettingsIconHovered ? { scale: 1.15, rotate: 15, transition: { type: "spring", stiffness: 350, damping: 10 } } :
+                            (settingsButtonDisabled && !isFinalized) ? 
+                            { scale: 1, rotate: 0 } :
+                            (isSettingsIconHovered && !settingsButtonDisabled) ? 
+                            { scale: 1.15, rotate: 15, transition: { type: "spring", stiffness: 350, damping: 10 } } :
                             { scale: 1, rotate: 0 }
                         }
-                        whileTap={{ scale: (isLockedByHook || isAssigning || isProcessingFile) ? 1 : 0.9 }}
+                        whileTap={{ scale: (settingsButtonDisabled && !isFinalized) ? 1 : 0.9 }}
                     >
                         <Settings2Icon size={20} />
                     </motion.button>
@@ -188,7 +230,7 @@ const CardActions: React.FC<CardActionsProps> = ({
                     title={isAssigning ? "Wird zugewiesen..." : (isLockedByHook ? "Bearbeitung entsperren (mir zuweisen)" : "Bearbeitung sperren (für mich freigeben)")}
                     onHoverStart={() => setIsLockIconHovered(true)}
                     onHoverEnd={() => setIsLockIconHovered(false)}
-                     animate={
+                    animate={
                         shakeLockAnim ?
                         { x: [0, -8, 8, -6, 6, -4, 4, 0], scale: [1, 1.1, 1, 1.05, 1], transition: { duration: 0.4, ease: "easeInOut" } } :
                         animateLockIconWhenActionDisabled ?

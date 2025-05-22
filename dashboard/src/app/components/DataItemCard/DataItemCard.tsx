@@ -94,7 +94,10 @@ export default function DataItemCard({
     }, [item.internal_details, canFlip]);
 
     useEffect(() => {
-        if (isFlipped) clearValidationError();
+        // Clear validation error when flipping to the back or if internal_details change while on back
+        if (isFlipped) {
+            clearValidationError();
+        }
     }, [item.internal_details, isFlipped, clearValidationError]);
 
     useEffect(() => {
@@ -154,8 +157,8 @@ export default function DataItemCard({
             const updatedItemWithInternalDetails: CardSpecificDataItem = { ...item, internal_details: validData };
             setIsProcessingFile(true);
             try {
-                await onItemUpdate(updatedItemWithInternalDetails, selectedPdfFile);
-                setSelectedPdfFile(null);
+                await onItemUpdate(updatedItemWithInternalDetails, selectedPdfFile); // Pass selectedPdfFile if it exists
+                setSelectedPdfFile(null); // Clear selected file after attempting save
                 setIsFlipped(false);
             } catch (error) { console.error(`DataItemCard ID ${item.id}: Fehler beim Speichern der internen Details mit Datei:`, error); }
             finally { setIsProcessingFile(false); }
@@ -163,42 +166,81 @@ export default function DataItemCard({
     }, [item, selectedPdfFile, isFinalized, validateAndPrepareSaveData, onItemUpdate, setSelectedPdfFile, setIsFlipped]);
 
     const handleCancelInternal = useCallback(() => {
-        resetInternalDetails(item.internal_details);
-        setIsFlipped(false);
+        resetInternalDetails(item.internal_details); // Reset form to original internal_details
+        setIsFlipped(false); // Flip back to front
     }, [item.internal_details, resetInternalDetails, setIsFlipped]);
+
+    // NEUER/MODIFIZIERTER Handler für die onFlip-Aktion
+    const handleFlipCard = useCallback(() => {
+        if (!canFlip) return; // Nur flippen, wenn erlaubt durch ViewType
+
+        // Priorität 1: Harte Blocker (wenn gerade eine Zuweisung oder Dateiverarbeitung läuft)
+        // Der Button in CardActions sollte durch diese Zustände bereits deaktiviert sein.
+        if (isAssigning || isProcessingFile) {
+            triggerShakeLock(); // Sicherheitshalber shaken, falls doch geklickt werden kann
+            return;
+        }
+
+        // Priorität 2: Finalisierte Karten
+        // Erlaube immer das Umdrehen, um interne Details anzusehen.
+        // Das Bearbeiten auf der Rückseite wird durch CardBack's isFinalized-Prop verhindert.
+        if (isFinalized) {
+            if (!isFlipped) clearValidationError(); // Fehler nur löschen, wenn zur Rückseite gewechselt wird
+            setIsFlipped(prev => !prev); // Erlaube das Hin- und Herdrehen
+            return;
+        }
+
+        // Priorität 3: Nicht-finalisierte Karten - reguläre Sperrprüfung
+        if (isLocked) {
+            triggerShakeLock(); // Karte ist gesperrt (z.B. durch anderen User oder nicht zugewiesen)
+        } else {
+            // Nicht finalisiert und nicht gesperrt: Erlaube Umdrehen zum Bearbeiten
+            if (!isFlipped) clearValidationError();
+            setIsFlipped(prev => !prev);
+        }
+    }, [
+        canFlip,
+        isAssigning,
+        isProcessingFile,
+        isFinalized,
+        isLocked,
+        isFlipped, // Hinzugefügt, um clearValidationError korrekt zu steuern
+        clearValidationError,
+        setIsFlipped,
+        triggerShakeLock
+    ]);
 
     const handleProtectedStatusChange = useCallback(async (newStatus: StrictStatus) => {
         if (isFinalized && newStatus !== "Offen") {
             console.log(`DataItemCard ID ${item.id}: Item ist bereits '${effectiveStatus}'. Nur 'Wieder öffnen' ist erlaubt.`);
-            triggerShakeLock(); // Visuelles Feedback
+            triggerShakeLock();
             return;
         }
 
-        // Lock-Prüfung:
-        // Wenn "Wieder öffnen" eines finalisierten Falls: Erlaube, wenn nicht gerade ein anderer Prozess läuft oder von anderem User gesperrt.
-        // Ansonsten: Normale Lock-Prüfung.
         const blockAction = (isLocked || isProcessingFile) &&
                             !(isFinalized && newStatus === "Offen" && !isProcessingFile && (!isLocked || item.bearbeiter_id === user?.userId));
 
         if (blockAction) {
-            if (!isFlipped) { // Nur auf Vorderseite shaken, wenn Aktion blockiert ist (und es nicht um ein erlaubtes "Wieder öffnen" geht)
+            if (!isFlipped) {
                 triggerShakeLock();
             }
             return;
         }
         
         if (canFlip && (newStatus === "Gelöst" || newStatus === "Abgelehnt")) {
-            // Diese Bedingung wird nur erreicht, wenn isFinalized false ist (durch die Prüfung oben)
             const validatedInternalDataFromHook = validateAndPrepareSaveData();
             if (!validatedInternalDataFromHook) {
-                setIsFlipped(true);
+                // Wenn Validierung fehlschlägt und Karte nicht schon auf Rückseite ist, dorthin drehen
+                if (!isFlipped) setIsFlipped(true);
                 return;
             }
             setIsProcessingFile(true);
             try {
+                // internal_details werden mitgesendet, auch wenn sie sich nicht geändert haben,
+                // da sie für die Statusänderung relevant sein könnten (z.B. Pflichtfelder)
                 await onItemUpdate({ ...item, internal_details: validatedInternalDataFromHook, status: newStatus }, selectedPdfFile);
                 setSelectedPdfFile(null);
-                if(isFlipped) setIsFlipped(false);
+                if(isFlipped) setIsFlipped(false); // Nach erfolgreichem Speichern/Statuswechsel zurückdrehen
             } catch (error) {
                 console.error(`DataItemCard ID ${item.id}: Fehler beim Speichern/Statuswechsel zu ${newStatus}:`, error);
             } finally {
@@ -206,7 +248,6 @@ export default function DataItemCard({
             }
             return;
         }
-        // Für alle anderen Statusänderungen (z.B. "Offen" -> "In Bearbeitung", oder "Gelöst/Abgelehnt" -> "Offen" nach obiger Prüfung)
         onStatusChange(item.id, newStatus, currentView);
     }, [
         isLocked, isProcessingFile, isFlipped, triggerShakeLock, canFlip,
@@ -228,7 +269,7 @@ export default function DataItemCard({
             whileHover={!isFlipped && canFlip ? { y: -8, scale: 1.02, boxShadow: "0px 10px 25px rgba(0,0,0,0.25), 0px 6px 10px rgba(0,0,0,0.22)", transition: { type: "spring", stiffness: 200, damping: 15 } } : {}}
             whileTap={!isFlipped && canFlip ? { scale: 0.995, boxShadow: "0px 4px 12px rgba(0,0,0,0.18), 0px 2px 6px rgba(0,0,0,0.15)" } : {}} >
             <AnimatePresence mode="wait" initial={false}>
-                {(!isFlipped || !canFlip) ? (
+                {(!isFlipped || !canFlip) ? ( // Zeige Vorderseite, wenn nicht geflippt oder Flippen für diesen View nicht möglich
                     <motion.div key={`${cardKey}-frontface`} variants={flipContentVariantsFront} initial="initial" animate="animate" exit="exit" className="flex flex-col flex-grow" >
                         <CardFront
                             item={item}
@@ -257,20 +298,11 @@ export default function DataItemCard({
                                     isLockedByHook={isLocked}
                                     isAssigning={isAssigning}
                                     isProcessingFile={isProcessingFile}
-                                    isFinalized={isFinalized}
-                                    canFlip={canFlip} 
+                                    isFinalized={isFinalized} // Weitergeben
+                                    canFlip={canFlip}         // Weitergeben
                                     onStatusChange={handleProtectedStatusChange}
                                     onToggleLock={handleToggleLock}
-                                    onFlip={() => {
-                                        if (canFlip) { 
-                                            if (isLocked || isAssigning || isProcessingFile) { 
-                                                triggerShakeLock();
-                                            } else {
-                                                clearValidationError();
-                                                setIsFlipped(true);
-                                            }
-                                        }
-                                    }}
+                                    onFlip={handleFlipCard} // Hier den neuen Handler verwenden
                                     shakeLockAnim={shakeLockAnim}
                                     isClarificationMissingInSavedDetails={isClarificationMissingInSavedDetails}
                                     currentView={currentView}
@@ -278,17 +310,17 @@ export default function DataItemCard({
                             </div>
                         )}
                     </motion.div>
-                ) : ( 
+                ) : ( // Zeige Rückseite, wenn geflippt und Flippen für diesen View möglich
                     <motion.div key={`${cardKey}-backface`} variants={flipContentVariantsBack} initial="initial" animate="animate" exit="exit" className="flex flex-col flex-grow h-full" >
                         <CardBack
                             internalDetails={internalDetails}
                             onDetailChange={handleInternalDetailChange}
                             onSave={handleSaveInternal}
-                            onCancel={handleCancelInternal}
+                            onCancel={handleCancelInternal} // Dieser Handler dreht die Karte zurück und verwirft Änderungen
                             validationError={validationError}
                             cardKey={cardKey}
                             isSubmitting={isAssigning || isProcessingFile}
-                            isFinalized={isFinalized}
+                            isFinalized={isFinalized} // Weitergeben
                         />
                     </motion.div>
                 )}
