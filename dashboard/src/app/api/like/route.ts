@@ -29,6 +29,9 @@ interface LobData extends QueryResultRow {
 
 
 
+
+
+
 export async function GET(request: NextRequest) {
     const requestTimestamp = new Date().toISOString();
     if (!JWT_SECRET) {
@@ -227,8 +230,6 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             LEFT JOIN users u ON l.bearbeiter_id = u.id
             WHERE l.id = $1;
         `;
-
-
 
 
         const finalItemResult = await client.query<LobData>(finalSelectQuery, [itemId]);

@@ -17,6 +17,9 @@ interface LoginRequestBody {
 
 
 
+
+
+
 // Dieses Interface sollte die Spalten deiner 'users'-Tabelle widerspiegeln
 interface UserRecord extends QueryResultRow {
     id: number;
@@ -132,6 +135,9 @@ export async function POST(request: NextRequest) {
 
    
    
+
+
+
    
    
     } catch (error) {
@@ -156,6 +162,10 @@ export async function POST(request: NextRequest) {
    
    
    
+
+
+
+
    
    
     } finally {
