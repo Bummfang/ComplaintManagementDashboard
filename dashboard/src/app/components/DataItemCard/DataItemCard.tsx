@@ -13,6 +13,7 @@ import { useInternalDetails } from './hooks/useInternalDetails';
 import { useItemLocking } from './hooks/useItemLocking';
 import { useStatusLogic, getCardBackgroundAccentClasses } from './hooks/useStatusLogic';
 import {cardContainerVariants,flipContentVariantsFront,flipContentVariantsBack} from './variants';
+import React from 'react';
 
 
 
@@ -34,7 +35,7 @@ export interface DataItemCardProps {
 
 
 
-export default function DataItemCard({
+function DataItemCard({
     item,
     currentView,
     copiedCellKey,
@@ -379,3 +380,4 @@ export default function DataItemCard({
         </motion.div>
     );
 }
+export default  React.memo(DataItemCard);
