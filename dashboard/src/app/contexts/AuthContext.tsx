@@ -10,6 +10,10 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
  * Diese Struktur sollte den Daten entsprechen, die von deinen API-Endpunkten
  * /api/login (in der Antwort) und /api/verify-token (im 'user'-Objekt der Antwort) zurückgegeben werden.
  */
+
+
+
+
 export interface User {
   userId: number;
   username: string;
@@ -21,6 +25,11 @@ export interface User {
 /**
  * Definiert den Typ für den Wert, den der AuthContext bereitstellt.
  */
+
+
+
+
+
 interface AuthContextType {
   isAuthenticated: boolean;    // Ist der Benutzer aktuell authentifiziert?
   user: User | null;           // Die Daten des angemeldeten Benutzers oder null.
@@ -30,37 +39,33 @@ interface AuthContextType {
   logout: () => void;          // Funktion zum Abmelden.
 }
 
-// Erstellt den AuthContext. Initialwert ist undefined.
+
+
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/**
- * Der AuthProvider ist eine Komponente, die den AuthContext für ihre Kinder bereitstellt.
- * Sie enthält die Logik zur Verwaltung des Authentifizierungsstatus.
- */
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true); // Beginnt als true, da wir den Status erst prüfen.
-  // const router = useRouter(); // Einkommentieren, falls für Redirects benötigt
-
-  /**
-   * Führt den Logout-Vorgang durch: Entfernt Token, setzt Benutzer-Status zurück.
-   */
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true); 
   const performLogout = useCallback(() => {
-    localStorage.removeItem('authToken'); // Token aus dem Browser-Speicher entfernen
+    localStorage.removeItem('authToken'); 
     setUser(null);
     setToken(null);
     setIsAuthenticated(false);
-    setIsLoadingAuth(false); // Nach dem Logout ist der Ladevorgang auch abgeschlossen.
+    setIsLoadingAuth(false); 
     console.log("AuthContext: User logged out, token removed from localStorage.");
-    // Hier könnte eine Weiterleitung zur Login-Seite erfolgen:
-    // router.push('/deine-login-route'); // Passe den Pfad entsprechend an
-  }, [/* router */]); // router als Abhängigkeit hinzufügen, wenn router.push verwendet wird
+   
+  }, [/* router */]);
 
   /**
    * Prüft beim ersten Laden der Anwendung, ob ein gültiges Token im localStorage vorhanden ist.
    */
+
+
+
   const verifyTokenAndInitializeAuth = useCallback(async () => {
     console.log("AuthContext: Initializing auth - attempting to verify token from localStorage...");
     setIsLoadingAuth(true);
@@ -136,6 +141,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log("AuthContext: User logged in. Token stored in localStorage. User data:", contextUser);
   };
 
+
+
+
   // Stellt den Context-Wert (Zustände und Funktionen) für alle Kind-Komponenten bereit.
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, token, isLoadingAuth, login, logout: performLogout }}>
@@ -144,10 +152,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
+
+
+
+
 /**
  * Ein benutzerdefinierter Hook, um den AuthContext einfacher in Komponenten verwenden zu können.
  * Stellt sicher, dass der Hook innerhalb eines AuthProviders verwendet wird.
  */
+
+
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

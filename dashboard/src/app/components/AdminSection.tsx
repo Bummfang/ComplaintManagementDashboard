@@ -15,14 +15,23 @@ const sectionVariants = {
   },
 };
 
+
+
+
+
+
 const itemVariants = {
   hidden: { opacity: 0, x: -20 },
   visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 120, damping: 18} },
 };
 
+
+
+
+
+
 export default function AdminSection() {
   const { token, user } = useAuth();
-
   const [showCreateUserModal, setShowCreateUserModal] = useState<boolean>(false);
   const [createUserError, setCreateUserError] = useState<string | null>(null);
   const [createUserSuccess, setCreateUserSuccess] = useState<string | null>(null);
@@ -33,12 +42,20 @@ export default function AdminSection() {
     setShowCreateUserModal(true);
   };
 
+
+
+
+
   const handleCloseCreateUserModal = () => {
     setShowCreateUserModal(false);
     // Erfolgs- und Fehlermeldungen können hier optional auch zurückgesetzt werden,
     // aber sie werden beim nächsten Öffnen sowieso zurückgesetzt.
   };
 
+
+
+
+  
   const handleCreateUserSubmit = async (newUserData: NewUserFormData) => {
     if (!token || !user?.isAdmin) {
       setCreateUserError("Nicht autorisiert oder keine Admin-Rechte.");

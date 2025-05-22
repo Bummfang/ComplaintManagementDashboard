@@ -13,6 +13,11 @@ interface AllApiEndpoints {
     createUser: string;
 }
 
+
+
+
+
+
 export const API_ENDPOINTS: AllApiEndpoints = {
     beschwerden: '/api/containt',
     lob: '/api/like',
@@ -24,6 +29,11 @@ export const API_ENDPOINTS: AllApiEndpoints = {
     createUser: '/api/admin/create-user',
 };
 
+
+
+
+
+
 export const VIEW_TITLES: Record<ViewType, string> = {
     beschwerden: "Beschwerdeübersicht",
     lob: "Lobübersicht",
@@ -32,6 +42,11 @@ export const VIEW_TITLES: Record<ViewType, string> = {
     admin: "Administration",
 };
 
+
+
+
+
+
 export const FILTER_LABELS: Record<StatusFilterMode, string> = {
     alle: "Alle",
     Offen: "Offen",
@@ -39,6 +54,11 @@ export const FILTER_LABELS: Record<StatusFilterMode, string> = {
     Gelöst: "Gelöst",
     Abgelehnt: "Abgelehnt",
 };
+
+
+
+
+
 
 export const LOGIN_APP_NAME = "BM";
 export const COMPANY_NAME = "Cottbusverkehr";

@@ -1,14 +1,22 @@
 // app/components/DataItemCard/hooks/useInternalDetails.ts
 "use client";
-
 import { useState, useCallback, useEffect } from 'react';
 import { InternalCardData, defaultInternalDetails } from '../../../types'; // Pfad an deine Struktur angepasst
+
+
+
+
+
+
 
 export function useInternalDetails(initialData?: InternalCardData) {
     // State for the internal details form
     const [internalDetails, setInternalDetails] = useState<InternalCardData>(
         initialData ? { ...defaultInternalDetails, ...initialData } : { ...defaultInternalDetails }
     );
+
+
+    
     // State for validation errors on the internal details form
     const [validationError, setValidationError] = useState<string | null>(null);
 

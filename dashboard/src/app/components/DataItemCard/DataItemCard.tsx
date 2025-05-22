@@ -6,19 +6,17 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { CardSpecificDataItem, ViewType, AnyItemStatus as StrictStatus, BeschwerdeItem } from '@/app/types';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { API_ENDPOINTS } from '@/app/constants';
-
 import CardFront from './CardFront';
 import CardBack from './CardBack';
 import CardActions from './CardActions';
 import { useInternalDetails } from './hooks/useInternalDetails';
 import { useItemLocking } from './hooks/useItemLocking';
 import { useStatusLogic, getCardBackgroundAccentClasses } from './hooks/useStatusLogic';
+import {cardContainerVariants,flipContentVariantsFront,flipContentVariantsBack} from './variants';
 
-import {
-    cardContainerVariants,
-    flipContentVariantsFront,
-    flipContentVariantsBack
-} from './variants';
+
+
+
 
 export interface DataItemCardProps {
     item: CardSpecificDataItem;
@@ -29,6 +27,12 @@ export interface DataItemCardProps {
     cardAccentsEnabled: boolean;
     onItemUpdate: (updatedItem: CardSpecificDataItem, file?: File | null) => Promise<void>;
 }
+
+
+
+
+
+
 
 export default function DataItemCard({
     item,
@@ -84,6 +88,12 @@ export default function DataItemCard({
         currentView,
     });
 
+
+
+
+
+
+
     const canFlip = useMemo(() => currentView === 'beschwerden', [currentView]);
     const isFinalized = useMemo(() => effectiveStatus === "Gelöst" || effectiveStatus === "Abgelehnt", [effectiveStatus]);
     const isClarificationMissingInSavedDetails = useMemo(() => {
@@ -129,6 +139,11 @@ export default function DataItemCard({
         finally { setIsProcessingFile(false); }
     }, [item, selectedPdfFile, onItemUpdate, setSelectedPdfFile, isFinalized]);
 
+
+
+
+
+
     const handleRemoveAttachment = useCallback(async () => {
         if (isFinalized) return;
         if (currentView !== 'beschwerden' || typeof item.id !== 'number' || !(item as BeschwerdeItem).attachment_filename) return;
@@ -150,6 +165,13 @@ export default function DataItemCard({
         finally { setIsProcessingFile(false); }
     }, [item, currentView, token, onItemUpdate, isFinalized]);
 
+
+
+
+
+
+
+
     const handleSaveInternal = useCallback(async () => {
         if (isFinalized) return;
         const validData = validateAndPrepareSaveData();
@@ -165,12 +187,24 @@ export default function DataItemCard({
         }
     }, [item, selectedPdfFile, isFinalized, validateAndPrepareSaveData, onItemUpdate, setSelectedPdfFile, setIsFlipped]);
 
+
+
+
+
+
+
     const handleCancelInternal = useCallback(() => {
         resetInternalDetails(item.internal_details); // Reset form to original internal_details
         setIsFlipped(false); // Flip back to front
     }, [item.internal_details, resetInternalDetails, setIsFlipped]);
 
-    // NEUER/MODIFIZIERTER Handler für die onFlip-Aktion
+
+
+
+
+
+
+
     const handleFlipCard = useCallback(() => {
         if (!canFlip) return; // Nur flippen, wenn erlaubt durch ViewType
 
@@ -209,6 +243,11 @@ export default function DataItemCard({
         setIsFlipped,
         triggerShakeLock
     ]);
+
+
+
+
+
 
     const handleProtectedStatusChange = useCallback(async (newStatus: StrictStatus) => {
         if (isFinalized && newStatus !== "Offen") {
@@ -255,13 +294,23 @@ export default function DataItemCard({
         selectedPdfFile, onItemUpdate, setSelectedPdfFile, isFinalized, effectiveStatus, user?.userId
     ]);
 
+
+
+
+
+
     const itemTypePrefix = useMemo(() => currentView === "beschwerden" ? "CMP-" : currentView === "lob" ? "LOB-" : "ANG-", [currentView]);
     const cardKey = `dataitemcard-${currentView}-${item.id}`;
     const resolvedBackgroundClass = cardAccentsEnabled && isStatusRelevantView && effectiveStatus ? getCardBackgroundAccentClasses(effectiveStatus) : getCardBackgroundAccentClasses(undefined);
     const statusToDisplayForFront = effectiveStatus || (isStatusRelevantView ? "Offen" : "N/A");
-
     const overallIsLockedForActions = isLocked || isAssigning || isProcessingFile;
 
+
+
+
+
+
+    
     return (
         <motion.div key={cardKey} variants={cardContainerVariants} initial="hidden" animate="visible" exit="exit" layout
             className={`relative rounded-xl ${resolvedBackgroundClass} backdrop-blur-md shadow-xl shadow-slate-900/30 flex flex-col justify-between overflow-hidden`}

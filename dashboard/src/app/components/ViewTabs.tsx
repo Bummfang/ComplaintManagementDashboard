@@ -6,11 +6,20 @@ import { VIEW_TITLES } from '../constants';
 import { motion } from 'framer-motion';
 import { User as AuthUser } from '../contexts/AuthContext'; // Import User-Typ aus AuthContext
 
+
+
+
+
+
 interface ViewTabsProps {
   currentView: ViewType;
   setCurrentView: (view: ViewType) => void;
   user: AuthUser | null; // NEU: Benutzerobjekt für Admin-Check
 }
+
+
+
+
 
 export default function ViewTabs({ currentView, setCurrentView, user }: ViewTabsProps) {
   const getTabTitle = (viewKey: ViewType): string => {
@@ -34,6 +43,11 @@ export default function ViewTabs({ currentView, setCurrentView, user }: ViewTabs
     return true;
   });
 
+
+
+
+
+  
   return (
     <div className="mb-6 flex flex-wrap space-x-1 border-b border-sky-800 pb-px relative">
       {availableViews.map((viewKey) => (

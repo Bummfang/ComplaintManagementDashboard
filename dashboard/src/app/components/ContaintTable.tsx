@@ -1,15 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useState, useCallback, useRef } from "react"; // useRef hinzugefügt
+import { useEffect, useState, useCallback, useRef } from "react"; 
 import { useAuth } from '../contexts/AuthContext';
-import {
-    ViewType,
-    AnyItemStatus,
-    CardSpecificDataItem,
-    BeschwerdeItem,
-    InternalCardData // Sicherstellen, dass dieser Typ importiert ist für PatchPayload
-} from '../types';
+import {ViewType,AnyItemStatus,CardSpecificDataItem,BeschwerdeItem,InternalCardData } from '../types';
 import { API_ENDPOINTS, VIEW_TITLES } from '../constants';
 import StatusBar from './StatusBar';
 import ViewTabs from './ViewTabs';
@@ -19,6 +13,9 @@ import StatisticsView from './StatisticsView';
 import AdminSection from './AdminSection';
 import { useAppFilters } from '../hooks/useAppFilters';
 import { useDataFetching } from '../hooks/useDataFetching';
+
+
+
 
 export type DateFilterTarget = 'erstelltam' | 'datum';
 
@@ -30,6 +27,12 @@ interface PatchPayload {
     attachment_filename?: null;
     // assign_me_as_bearbeiter wird hier nicht benötigt, da es direkt vom useItemLocking Hook gehandhabt wird.
 }
+
+
+
+
+
+
 
 export default function ContaintTable() {
     const { isAuthenticated, user, token, isLoadingAuth, logout } = useAuth();
@@ -216,6 +219,12 @@ export default function ContaintTable() {
         } catch (err) { console.error("Fehler beim Kopieren:", err); setUiError("Kopieren fehlgeschlagen."); setTimeout(() => setUiError(null), 3000); setCopiedCellKey(null); }
     }, [setUiError, setCopiedCellKey]);
 
+
+
+
+
+
+
     const performStatusChangeAsync = useCallback(async (itemId: number, newStatus: AnyItemStatus, viewForApi: ViewType) => {
         if (!token || !user) { setUiError("Nicht autorisiert."); if (!token) logout(); return; }
         const originalItem = data.find(item => item.id === itemId);
@@ -237,12 +246,27 @@ export default function ContaintTable() {
         } catch (err) { updateSingleItemInCache(originalItem as CardSpecificDataItem); setUiError(err instanceof Error ? err.message : `Statusupdate für ${VIEW_TITLES[viewForApi]} fehlgeschlagen.`); }
     }, [token, user, logout, data, currentView, refetchData, updateSingleItemInCache, setUiError]);
 
+
+
+
+
+
+
+
+
+
+
     const handleStatusChangeForCard = (itemId: number, newStatus: AnyItemStatus, itemTypeView: ViewType): void => {
         if (itemTypeView === "beschwerden" || itemTypeView === "lob" || itemTypeView === "anregungen") {
             performStatusChangeAsync(itemId, newStatus as AnyItemStatus, itemTypeView).catch(err => console.error(`ContaintTable: Fehler bei performStatusChangeAsync für ${itemTypeView}:`, err));
         } else { setUiError("Statusänderung in dieser Ansicht nicht möglich."); setTimeout(() => setUiError(null), 3000); }
     };
 
+
+
+
+
+    
     if (isLoadingAuth) { return <div className="text-center py-10">Authentifizierung wird geladen...</div>; }
     if (!isAuthenticated && !isLoadingAuth) { return <div className="text-center py-10">Bitte einloggen.</div>; }
 

@@ -3,18 +3,18 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { PoolClient } from 'pg';
 import { getDbPool } from '@/lib/db';
 import jwt from 'jsonwebtoken';
-import {
-    BeschwerdeDbRow,
-    mapDbRowToApiResponse,
-    allowedStatusesList // NEU: Importiert für Statusvalidierung
-} from '../../_sharedApi'; // Pfad zu _sharedApi.ts (../../ da _sharedApi in /containt liegt)
+import { BeschwerdeDbRow,mapDbRowToApiResponse,allowedStatusesList } from '../../_sharedApi'; 
+import {InternalCardData as FrontendInternalCardData,AllowedBeschwerdeStatus } from '@/app/types';
 
-import {
-    InternalCardData as FrontendInternalCardData,
-    AllowedBeschwerdeStatus // NEU: Importiert für Typ-Casting
-} from '@/app/types';
+
+
 
 const JWT_SECRET = process.env.JWT_SECRET;
+
+
+
+
+
 
 interface ResolvedParamsType {
     id: string;
@@ -23,6 +23,9 @@ interface ResolvedParamsType {
 interface ExpectedRouteContext {
     params: Promise<ResolvedParamsType>;
 }
+
+
+
 
 async function preProcessRequest(
     request: NextRequest,
@@ -45,7 +48,7 @@ async function preProcessRequest(
             console.error(`[${requestTimestamp}] Fehler beim Verarbeiten von FormData:`, e);
             return { errorResponse: NextResponse.json({ error: 'Fehler beim Verarbeiten der Anfrage-Daten.' }, { status: 400 }) };
         }
-    } else if (request.method !== 'POST' && needsFormData) { // Korrektur: needsFormData nur bei POST relevant
+    } else if (request.method !== 'POST' && needsFormData) { 
         // Mache nichts hier, wenn keine FormData benötigt oder falsche Methode
     }
 
@@ -53,20 +56,29 @@ async function preProcessRequest(
     const itemIdStr = resolvedParams.id;
     const itemId = parseInt(itemIdStr, 10);
 
+
+
     if (isNaN(itemId)) {
         return { errorResponse: NextResponse.json({ error: 'Ungültige Beschwerde-ID im Pfad.' }, { status: 400 }) };
     }
+
+
 
     if (!JWT_SECRET) {
         console.error(`[${requestTimestamp}] JWT_SECRET nicht konfiguriert.`);
         return { errorResponse: NextResponse.json({ error: 'Serverkonfigurationsfehler.' }, { status: 500 }) };
     }
 
+
+
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return { errorResponse: NextResponse.json({ error: 'Authentifizierungstoken fehlt oder ist ungültig.' }, { status: 401 }) };
     }
     const token = authHeader.split(' ')[1];
+
+
+
 
     try {
         jwt.verify(token, JWT_SECRET);
@@ -76,6 +88,12 @@ async function preProcessRequest(
     }
     return { itemId, token, requestTimestamp, formData: formDataToReturn };
 }
+
+
+
+
+
+
 
 
 
@@ -303,6 +321,13 @@ export async function GET(
         if (client) client.release();
     }
 }
+
+
+
+
+
+
+
 
 
 

@@ -6,10 +6,6 @@
 
 
 
-
-
-
-
 export const formatDate = (dateString?: string | null, options?: Intl.DateTimeFormatOptions): string => {
     if (!dateString) return "N/A";
     try {
@@ -26,6 +22,11 @@ export const formatDate = (dateString?: string | null, options?: Intl.DateTimeFo
         return "Datumsfehler";
     }
 };
+
+
+
+
+
 
 export const formatTime = (timeString?: string | null): string => {
     if (!timeString || timeString.toLowerCase() === "invalid date") return "N/A";
@@ -51,6 +52,9 @@ export const formatTime = (timeString?: string | null): string => {
     }
 };
 
+
+
+
 export const formatDateTime = (dateTimeString?: string | null): string => {
   if (!dateTimeString) return "N/A";
   try {
@@ -72,6 +76,11 @@ export const formatDateTime = (dateTimeString?: string | null): string => {
     return "Formatierungsfehler";
   }
 };
+
+
+
+
+
 
 export const formatLastUpdateTime = (timestamp: Date | null): string => {
     if (!timestamp) return "N/A";

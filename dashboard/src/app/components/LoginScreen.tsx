@@ -5,18 +5,34 @@ import { motion, Transition as MotionTransition, MotionProps, AnimatePresence } 
 import { UserIcon, LockClosedIcon, ArrowRightOnRectangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import Image from 'next/image';
 import { useAuth } from '../contexts/AuthContext';
-// LOGIN_API_ENDPOINT aus dem Import entfernt, API_ENDPOINTS importiert
 import { LOGIN_APP_NAME, COMPANY_NAME, COMPANY_SUBTITLE, API_ENDPOINTS } from '../constants';
+
+
+
+
+
 
 interface BackgroundBlobProps {
     className: string;
     animateProps: MotionProps['animate'];
     transitionProps: MotionTransition;
 }
+
+
+
+
+
+
+
 type AnimatableXYProperties = {
     x?: string | number | string[] | number[];
     y?: string | number | string[] | number[];
 };
+
+
+
+
+
 const BackgroundBlob = ({ className, animateProps, transitionProps }: BackgroundBlobProps) => {
     const initialMotionValues: MotionProps['initial'] = { scale: 0.8, opacity: 0, };
     if (typeof animateProps === 'object' && animateProps !== null && !Array.isArray(animateProps)) {
@@ -26,6 +42,11 @@ const BackgroundBlob = ({ className, animateProps, transitionProps }: Background
     }
     return ( <motion.div className={`absolute rounded-full filter blur-3xl opacity-30 pointer-events-none ${className}`} initial={initialMotionValues} animate={animateProps} transition={transitionProps} /> );
 };
+
+
+
+
+
 
 export default function LoginScreen() {
     const [username, setUsernameState] = useState('');
@@ -98,7 +119,16 @@ export default function LoginScreen() {
         opacity: { duration: 0.3 }, y: { duration: 0.3 }
     };
 
+
+
+    
     const keyIconEntryDelay = (cardVariants.visible.transition.staggerChildren || 0) + 0.1;
+
+
+
+
+
+
 
     return (
         <div className="min-h-screen w-full bg-gradient-to-br from-[#0D0D12] via-[#111318] to-[#0a0a0f] text-white font-sans flex flex-col items-center justify-center p-4 overflow-hidden relative">

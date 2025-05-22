@@ -3,6 +3,12 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+
+
+
+
+
+
 interface TokenPayload {
     userId: number;
     username: string;
@@ -12,6 +18,14 @@ interface TokenPayload {
     iat?: number;      // Optional, wird von jwt hinzugefügt
     exp?: number;      // Optional, wird von jwt hinzugefügt
 }
+
+
+
+
+
+
+
+
 
 export async function POST(request: NextRequest) {
     const requestTimestamp = new Date().toISOString();

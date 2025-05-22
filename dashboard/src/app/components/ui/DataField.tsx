@@ -5,6 +5,9 @@ import { motion } from 'framer-motion';
 import { CopyIcon, CheckIcon } from 'lucide-react';
 import React from 'react'; // Import React für React.ElementType
 
+
+
+
 interface DataFieldProps {
     label: string;
     value?: string | number | null; // Wert kann auch eine Zahl sein (z.B. ID)
@@ -17,6 +20,9 @@ interface DataFieldProps {
     children?: React.ReactNode; // Für komplexere Werte oder zusätzliche Elemente
 }
 
+
+
+
 const DataField: React.FC<DataFieldProps> = ({
     label,
     value,
@@ -28,6 +34,11 @@ const DataField: React.FC<DataFieldProps> = ({
     icon: Icon,
     children
 }) => {
+   
+   
+   
+   
+   
     // Bestimme den anzuzeigenden Wert. Wenn children vorhanden sind, werden diese verwendet.
     const displayValueNode = children ? children : (value !== null && value !== undefined && String(value).trim() !== "" ? String(value) : "N/A");
     // Der Wert, der tatsächlich kopiert wird.

@@ -12,6 +12,12 @@ interface UseItemLockingProps {
     currentView: ViewType; // Wird für den API-Endpunkt benötigt
 }
 
+
+
+
+
+
+
 export function useItemLocking({
     item,
     initialLockedState = true,
@@ -65,6 +71,10 @@ export function useItemLocking({
         // Nur API-Call ausführen, wenn von "gesperrt" zu "entsperrt" gewechselt wird
         // UND noch kein Bearbeiter zugewiesen ist UND der aktuelle Benutzer gültig ist.
         const isStatusRelevantView = currentView === 'beschwerden' || currentView === 'lob' || currentView === 'anregungen';
+
+
+
+
 
         if (wasLocked && !newLockState && item.bearbeiter_id === null && user?.userId && token && isStatusRelevantView) {
             setIsAssigning(true);
@@ -127,7 +137,6 @@ export function useItemLocking({
         }
 
     }, [isLocked, item, user, token, currentView, onItemUpdate, triggerShakeLock, shakeLockAnim, isAssigning]);
-
     return {
         isLocked,
         setIsLocked, // Erlaube externes Setzen, falls nötig (z.B. durch `action_required`)

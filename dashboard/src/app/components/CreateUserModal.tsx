@@ -5,12 +5,24 @@ import { useState, FormEvent, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XMarkIcon, UserCircleIcon, LockClosedIcon, ShieldCheckIcon, CheckCircleIcon } from '@heroicons/react/24/outline'; // CheckCircleIcon für Erfolg
 
+
+
+
+
+
+
 export interface NewUserFormData {
   name: string;
   nachname: string;
   password_hash: string;
   isAdmin: boolean;
 }
+
+
+
+
+
+
 
 interface CreateUserModalProps {
   isOpen: boolean;
@@ -21,17 +33,31 @@ interface CreateUserModalProps {
   submissionSuccess: string | null;
 }
 
+
+
+
+
+
 const modalVariants = {
   hidden: { opacity: 0, scale: 0.95, y: 30 },
   visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 280, damping: 25 } },
   exit: { opacity: 0, scale: 0.95, y: 30, transition: { duration: 0.2, ease: "easeIn" } },
 };
 
+
+
+
+
 const backdropVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: {duration: 0.2} },
   exit: { opacity: 0, transition: {duration: 0.25, delay: 0.05} },
 };
+
+
+
+
+
 
 export default function CreateUserModal({
   isOpen,
@@ -45,8 +71,11 @@ export default function CreateUserModal({
   const [password, setPassword] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Lokaler Fehler für Client-seitige Validierung, submissionError kommt von außen
   const [validationError, setValidationError] = useState<string | null>(null);
+
+
+
+
 
 
   useEffect(() => {
@@ -61,6 +90,12 @@ export default function CreateUserModal({
     }
   }, [isOpen]);
 
+
+
+
+
+
+  
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setValidationError(null); // Alten Validierungsfehler löschen

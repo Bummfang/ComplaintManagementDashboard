@@ -7,6 +7,12 @@ interface UseAppFiltersProps {
     currentView: ViewType;
 }
 
+
+
+
+
+
+
 export function useAppFilters({ initialData, currentView }: UseAppFiltersProps) {
     const [activeStatusFilter, setActiveStatusFilter] = useState<StatusFilterMode>("alle");
     const [searchTerm, setSearchTerm] = useState<string>("");
@@ -154,6 +160,11 @@ export function useAppFilters({ initialData, currentView }: UseAppFiltersProps) 
         haltestelleSearchTerm, linieSearchTerm, appliedStartDate, appliedEndDate, dateFilterTarget
     ]);
 
+
+
+
+
+    
     useEffect(() => {
         setActiveStatusFilter("alle");
         setSearchTerm("");

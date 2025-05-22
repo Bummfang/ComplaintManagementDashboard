@@ -1,19 +1,31 @@
 "use client";
 
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    ArrowLeftIcon, SaveIcon, XCircleIcon, AlertCircleIcon,
-    StickyNoteIcon, ListChecksIcon, CreditCardIcon, MailIcon, PhoneIcon, Edit3Icon, CheckSquare, Square
-} from 'lucide-react';
+import {ArrowLeftIcon, SaveIcon, XCircleIcon, AlertCircleIcon,StickyNoteIcon, ListChecksIcon, CreditCardIcon, 
+    MailIcon, PhoneIcon, Edit3Icon, CheckSquare, Square} from 'lucide-react';
 import React from 'react';
-import { InternalCardData } from '@/app/types'; // Pfad anpassen
-import FormSection from '@/app/components/ui/FormSection'; // Pfad anpassen
+import { InternalCardData } from '@/app/types'; 
+import FormSection from '@/app/components/ui/FormSection'; 
+
+
+
+
+
+
+
+
 
 // Framer Motion Varianten
 const contentItemVariants = {
     hidden: { opacity: 0, x: -20, scale: 0.95 },
     visible: { opacity: 1, x: 0, scale: 1, transition: { type: "spring", stiffness: 180, damping: 20, delay: 0.05 } }
 };
+
+
+
+
+
+
 
 interface CardBackProps {
     internalDetails: InternalCardData;
@@ -25,6 +37,11 @@ interface CardBackProps {
     isSubmitting?: boolean;
     isFinalized?: boolean; // <--- NEUE PROP DEFINIEREN
 }
+
+
+
+
+
 
 const CardBack: React.FC<CardBackProps> = ({
     internalDetails,
@@ -68,10 +85,16 @@ const CardBack: React.FC<CardBackProps> = ({
         </label>
     );
 
+
+
+
     const clarificationTypes = [
         { value: 'schriftlich', label: 'Schriftlich', icon: MailIcon },
         { value: 'telefonisch', label: 'Telefonisch', icon: PhoneIcon }
     ] as const;
+
+
+
 
     const optionalInternalNotes = [
         { key: 'teamLeadInformed', label: 'Teamleiter informiert' },
@@ -80,11 +103,17 @@ const CardBack: React.FC<CardBackProps> = ({
         { key: 'forwardedToInsurance', label: 'Weiterleitung an Versicherungsabteilung' },
     ];
 
+
+
+
     const baseButtonClass = "px-6 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 ease-out flex items-center justify-center shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800/90 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-md disabled:hover:y-0 disabled:hover:scale-100";
     const primaryButtonClass = `${baseButtonClass} bg-sky-600 hover:bg-sky-500 text-white focus-visible:ring-sky-400 shadow-sky-500/30 hover:shadow-sky-500/40`;
     const secondaryButtonClass = `${baseButtonClass} bg-slate-600 hover:bg-slate-500 text-slate-100 focus-visible:ring-slate-400 shadow-slate-500/20 hover:shadow-slate-500/30`;
-
     const effectiveDisabled = isSubmitting || isFinalized;
+
+
+
+
 
     return (
         <motion.div
@@ -206,6 +235,10 @@ const CardBack: React.FC<CardBackProps> = ({
                     </AnimatePresence>
                 </FormSection>
             </div>
+
+
+
+
 
             <div className="mt-auto pt-5 border-t border-slate-600/70">
                 {validationError && !isFinalized && ( // Validierungsfehler nur anzeigen, wenn Formular noch aktiv sein könnte

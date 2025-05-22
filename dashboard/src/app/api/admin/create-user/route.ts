@@ -12,6 +12,11 @@ interface CreateUserRequestBody {
   isAdmin?: boolean;
 }
 
+
+
+
+
+
 interface UserRecord {
   id: number;
   username: string;
@@ -20,7 +25,14 @@ interface UserRecord {
   ist_admin: boolean;
 }
 
+
+
+
+
+
 const JWT_SECRET = process.env.JWT_SECRET;
+
+
 
 export async function POST(request: NextRequest) {
   const requestTimestamp = new Date().toISOString();
@@ -66,8 +78,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Das Feld 'isAdmin' muss ein Boolean sein." }, { status: 400 });
   }
 
+
+
+
+  
   const pool = getDbPool();
   let client: PoolClient | undefined;
+
+
+
+
+
 
   try {
     client = await pool.connect();
@@ -89,6 +110,11 @@ export async function POST(request: NextRequest) {
         { status: 409 } // 409 Conflict
       );
     }
+
+
+
+
+
 
     // Passwort hashen
     const saltRounds = 10;
@@ -127,6 +153,11 @@ export async function POST(request: NextRequest) {
     );
 
   } catch (error) {
+    
+    
+    
+    
+    
     const errorTimestamp = new Date().toISOString();
     let errorMessage = 'Ein interner Serverfehler ist aufgetreten.';
     let errorDetails = 'Unbekannter Fehler';
@@ -160,6 +191,9 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ error: errorMessage, details: errorDetails }, { status: statusCode });
+
+
+
   } finally {
     if (client) {
       client.release();

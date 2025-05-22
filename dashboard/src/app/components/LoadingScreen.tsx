@@ -1,9 +1,9 @@
 // app/components/LoadingScreen.tsx
 "use client"; // Erforderlich für Framer Motion Hooks
-
 import { motion, Transition as MotionTransition, MotionProps} from 'framer-motion';
 
-// --- BackgroundBlob Komponente (Kann auch in eine separate UI-Datei ausgelagert werden) ---
+
+
 interface BackgroundBlobProps {
   className: string;
   animateProps: MotionProps['animate'];
@@ -13,12 +13,18 @@ type AnimatableXYProperties = {
   x?: string | number | string[] | number[];
   y?: string | number | string[] | number[];
 };
+
+
+
+
 const BackgroundBlob = ({ className, animateProps, transitionProps }: BackgroundBlobProps) => {
   const initialMotionValues: MotionProps['initial'] = {
     scale: 0.8,
     opacity: 0,
   };
-  // Sicherstellen, dass animateProps ein Objekt ist, bevor auf x und y zugegriffen wird
+ 
+  
+
   if (typeof animateProps === 'object' && animateProps !== null && !Array.isArray(animateProps)) {
     const target = animateProps as AnimatableXYProperties;
     if (target.x && Array.isArray(target.x) && typeof target.x[0] === 'number') {
@@ -37,7 +43,9 @@ const BackgroundBlob = ({ className, animateProps, transitionProps }: Background
     />
   );
 };
-// --- Ende BackgroundBlob ---
+
+
+
 
 
 const LoadingScreen = () => {
@@ -57,19 +65,27 @@ const LoadingScreen = () => {
     }
   };
 
+
+
+
+
+
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,
       y: 0,
       transition: {
-        duration: 0.5, // Etwas längere Dauer für einen weicheren Effekt
+        duration: 0.5, 
         ease: "circOut",
       },
     },
   };
 
-  // Varianten für den SVG Spinner Wrapper (pulsierende Skalierung/Opazität)
+
+
+
+
   const spinnerWrapperVariants = {
     initial: { scale: 0.9, opacity: 0.7 },
     animate: {
@@ -82,21 +98,33 @@ const LoadingScreen = () => {
     },
   };
 
-  // Varianten für die animierten Punkte
+
+
+
+
+
+
+
+
+  
   const dotVariants = (delay: number) => ({
     initial: { opacity: 0.3, y: 0 },
     animate: {
       opacity: [0.3, 1, 0.3],
       y: [0, -3, 0],
       transition: {
-        duration: 1.0, // Dauer für einen Zyklus der Punkt-Animation
+        duration: 1.0, 
         repeat: Infinity,
         ease: "easeInOut",
-        delay: delay, // Individueller Delay für jeden Punkt
+        delay: delay, 
       },
     },
   });
 
+
+
+
+  
   const loadingText = "Anwendung wird geladen";
 
   return (

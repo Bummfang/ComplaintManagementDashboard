@@ -3,19 +3,10 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { type PoolClient } from 'pg'; 
 import { getDbPool } from '@/lib/db'; 
 import jwt, { JwtPayload } from 'jsonwebtoken'; 
+import { BeschwerdeDbRow, mapDbRowToApiResponse, allowedStatusesList } from './_sharedApi'; 
+import { InternalCardData as FrontendInternalCardData, AllowedBeschwerdeStatus } from '@/app/types'; 
 
-// Importe aus der Shared-Datei
-import { 
-    BeschwerdeDbRow, 
-    mapDbRowToApiResponse, 
-    allowedStatusesList // Importiert für die Validierung
-} from './_sharedApi'; 
 
-// Globale Typen für Frontend-Datenstrukturen
-import { 
-    InternalCardData as FrontendInternalCardData, 
-    AllowedBeschwerdeStatus 
-} from '@/app/types'; 
 
 // Typ für den dekodierten JWT-Payload
 interface DecodedToken extends JwtPayload {
@@ -23,6 +14,8 @@ interface DecodedToken extends JwtPayload {
     username: string;
     isAdmin: boolean;
 }
+
+
 
 // Typ für den erwarteten Body der PATCH-Anfrage
 interface PatchRequestBody {
@@ -32,7 +25,12 @@ interface PatchRequestBody {
     internal_details?: FrontendInternalCardData; 
 }
 
+
+
 const JWT_SECRET = process.env.JWT_SECRET;
+
+
+
 
 // Handler für GET-Anfragen zum Abrufen aller Beschwerden
 export async function GET(request: NextRequest) {
@@ -92,6 +90,10 @@ export async function GET(request: NextRequest) {
         if (client) client.release();
     }
 }
+
+
+
+
 
 // Handler für PATCH-Anfragen zum Aktualisieren von Beschwerden
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
@@ -213,20 +215,31 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
                 if (internalDetailsFromClient.forwardedToInsurance !== undefined) { setClauses.push(`interne_an_versicherung_weitergeleitet = $${paramIndex++}`); updateQueryParams.push(internalDetailsFromClient.forwardedToInsurance); }
                 if (internalDetailsFromClient.moneyRefunded !== undefined) { setClauses.push(`interne_geld_erstattet = $${paramIndex++}`); updateQueryParams.push(internalDetailsFromClient.moneyRefunded); }
                 if (internalDetailsFromClient.refundAmount !== undefined) {
+                    
+                    
                     if (internalDetailsFromClient.moneyRefunded && typeof internalDetailsFromClient.refundAmount === 'string' && internalDetailsFromClient.refundAmount.trim() !== "") {
                         const amountStr = internalDetailsFromClient.refundAmount.replace(',', '.'); 
                         const amount = parseFloat(amountStr);
                         setClauses.push(`interne_erstattungsbetrag = $${paramIndex++}`);
                         updateQueryParams.push(isNaN(amount) ? null : String(amount)); 
+                   
+                   
                     } else if (!internalDetailsFromClient.moneyRefunded || (typeof internalDetailsFromClient.refundAmount === 'string' && internalDetailsFromClient.refundAmount.trim() === "")) {
                         setClauses.push(`interne_erstattungsbetrag = $${paramIndex++}`);
                         updateQueryParams.push(null);
+                   
                     }
+                
+                
                 } else if (internalDetailsFromClient.moneyRefunded === false) { 
                     setClauses.push(`interne_erstattungsbetrag = $${paramIndex++}`);
                     updateQueryParams.push(null);
                 }
             }
+
+
+
+
 
             if (setClauses.length > 0) {
                 updateQueryParams.push(itemId);
@@ -240,6 +253,10 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
                  console.log(`[${requestTimestamp}] Keine Änderungen für Item ID ${itemId} in PATCH /api/containt durchgeführt, es wird nur neu geladen.`);
             }
 
+
+
+
+
             const finalSelectQuery = `
                 SELECT b.*, 
                         u.name || ' ' || u.nachname AS bearbeiter_name
@@ -247,19 +264,34 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
                 LEFT JOIN users u ON b.bearbeiter_id = u.id
                 WHERE b.id = $1;
             `;
+
+
+
             const finalItemResult = await client.query<BeschwerdeDbRow>(finalSelectQuery, [itemId]);
+
+
+
             if (finalItemResult.rows.length === 0) { 
                 await client.query('ROLLBACK'); 
                 // Sollte nach erfolgreichem Update eigentlich nicht passieren
                 return NextResponse.json({ error: 'Beschwerde nach Update nicht gefunden.' }, { status: 404 }); 
             }
 
+
+
+
             const responseRow = mapDbRowToApiResponse(finalItemResult.rows[0]);
             console.log(`[${requestTimestamp}] PATCH /api/containt - Status des Items ID ${itemId} nach mapDbRowToApiResponse: ${responseRow.status}`);
             const itemToSend = { ...responseRow, ...actionResponsePayload };
 
+
+
+
             await client.query('COMMIT');
             return NextResponse.json(itemToSend, { status: 200 });
+
+
+
 
         } catch (error) {
             if (client) { 
@@ -272,6 +304,9 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         } finally {
             if (client) client.release();
         }
+   
+   
+   
     } catch (e) {
         const errorMsg = e instanceof Error ? e.message : 'Unbekannter Fehler beim Parsen des JSON-Body.';
         console.error(`[${requestTimestamp}] Fehler beim Parsen des JSON-Body (PATCH /api/containt):`, errorMsg, e);

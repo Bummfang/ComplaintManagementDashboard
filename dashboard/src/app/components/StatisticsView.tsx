@@ -3,16 +3,9 @@
 
 import { useEffect, useState, useCallback, ReactNode } from 'react';
 import { motion } from 'framer-motion';
-import {
-  BarChart3, FileText, CalendarRange, FileSpreadsheet, Presentation,
-  AlertTriangle, Loader2, TrendingUp, MessageSquare, ThumbsUp, ClipboardList, Clock, MapPin, TrainFront, AlertOctagon,
-  FilterIcon, XIcon as XMarkIcon
-} from 'lucide-react';
-import {
-  BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList,
-  TooltipProps
-} from 'recharts';
-
+import { BarChart3, FileText, CalendarRange, FileSpreadsheet, Presentation,
+  AlertTriangle, Loader2, TrendingUp, MessageSquare, ThumbsUp, ClipboardList, Clock, MapPin, TrainFront, AlertOctagon, FilterIcon, XIcon as XMarkIcon} from 'lucide-react';
+import {BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList,TooltipProps} from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { API_ENDPOINTS } from '../constants';
 import { formatDate } from '../utils';
@@ -43,6 +36,12 @@ export interface StatisticsData {
   filterApplied: { startDate?: string; endDate?: string; isDefault: boolean };
 }
 
+
+
+
+
+
+
 // --- Animationsvarianten und Hilfskomponenten ---
 const sectionVariants = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }, };
 const itemVariants = { hidden: { opacity: 0, y: 20, scale: 0.98 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1], delay: 0.1 } }, };
@@ -52,6 +51,11 @@ const RECHARTS_ANIMATION_DURATION = 800;
 const RECHARTS_ANIMATION_EASING = 'ease-out';
 const COLORS = { sky: '#0ea5e9', emerald: '#10b981', amber: '#f59e0b', red: '#ef4444', slate: '#94a3b8', complaintStatus: { 'Offen': '#38bdf8', 'In Bearbeitung': '#facc15', 'Gelöst': '#4ade80', 'Abgelehnt': '#f87171', 'Unbekannt': '#94a3b8' } as Record<ChartComplaintStatusType, string>, pie: ['#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#a855f7', '#6366f1', '#f43f5e', '#06b6d4', '#d946ef'] };
 
+
+
+
+
+
 // Hilfskomponente für "Keine Daten"-Nachrichten
 const NoDataDisplay = ({ message }: { message: string }) => (
     <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 p-4">
@@ -59,6 +63,12 @@ const NoDataDisplay = ({ message }: { message: string }) => (
         <p className="text-center text-sm">{message}</p>
     </div>
 );
+
+
+
+
+
+
 
 // ChartWrapper: Zeigt entweder Lade-, Fehlerzustand oder den Inhalt (children) an.
 const ChartWrapper = ({ title, children, icon: Icon, className = "", minHeightClass = "min-h-[320px] sm:min-h-[380px]" }: { title: string; children: ReactNode; icon?: React.ElementType; className?: string; minHeightClass?: string; }) => (
@@ -77,7 +87,11 @@ const ChartWrapper = ({ title, children, icon: Icon, className = "", minHeightCl
   </motion.div>
 );
 
-// StatCard: Definition wie im Original.
+
+
+
+
+
 const StatCard = ({ title, value, icon: Icon, unit }: { title: string; value: string | number; icon: React.ElementType; unit?: string; }) => (
     <motion.div variants={itemVariants} className={`${glassEffectBaseClasses} p-5 sm:p-6 rounded-2xl flex flex-col justify-between min-h-[130px] transition-all duration-300 ${glassEffectHoverClasses} relative`} whileHover={{ y: -4, scale: 1.02, transition: { type: "spring", stiffness: 350, damping: 15 } }} >
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
@@ -86,7 +100,11 @@ const StatCard = ({ title, value, icon: Icon, unit }: { title: string; value: st
     </motion.div>
 );
 
-// ActionCard: Definition wie im Original.
+
+
+
+
+
 const ActionCard = ({ title, icon: Icon, actionText, onActionClick, isDisabled = false, comingSoon = false }: { title: string; icon: React.ElementType; actionText: string; onActionClick?: () => void; isDisabled?: boolean; comingSoon?: boolean; }) => (
     <motion.div variants={itemVariants} className={`${glassEffectBaseClasses} p-6 rounded-2xl flex flex-col items-center text-center h-full transition-all duration-300 ${isDisabled || comingSoon ? 'opacity-70 cursor-not-allowed' : glassEffectHoverClasses} relative`} whileHover={isDisabled || comingSoon ? {} : { y: -6, scale: 1.02, transition: { type: "spring", stiffness: 300, damping: 15 } }} >
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
@@ -95,48 +113,61 @@ const ActionCard = ({ title, icon: Icon, actionText, onActionClick, isDisabled =
     </motion.div>
 );
 
-// CustomTooltip: Definition wie im Original.
-const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => { if (active && payload && payload.length) { return ( <div className="bg-slate-800/90 backdrop-blur-md p-3 rounded-lg shadow-xl border border-slate-100/10"> <p className="text-sm text-sky-300 font-semibold mb-0.5">{label}</p> {payload.map((pld, index) => ( <div key={index} style={{ color: pld.color || COLORS.sky }}> <span className="text-xs text-slate-200">{`${pld.name || 'Wert'}: `}</span> <span className="text-xs font-semibold">{pld.value}</span> </div> ))} </div> ); } return null; };
 
+
+
+
+
+
+
+
+
+const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => { if (active && payload && payload.length) { return ( <div className="bg-slate-800/90 backdrop-blur-md p-3 rounded-lg shadow-xl border border-slate-100/10"> <p className="text-sm text-sky-300 font-semibold mb-0.5">{label}</p> {payload.map((pld, index) => ( <div key={index} style={{ color: pld.color || COLORS.sky }}> <span className="text-xs text-slate-200">{`${pld.name || 'Wert'}: `}</span> <span className="text-xs font-semibold">{pld.value}</span> </div> ))} </div> ); } return null; };
 
 export default function StatisticsView() {
   const { token } = useAuth();
   const [statsData, setStatsData] = useState<StatisticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null); // Für globale API-Fehler
-
+  const [error, setError] = useState<string | null>(null); 
   const [selectedStartDate, setSelectedStartDate] = useState<string>("");
   const [selectedEndDate, setSelectedEndDate] = useState<string>("");
-  // appliedStartDate/EndDate speichern die zuletzt für den API-Call verwendeten Daten
   const [appliedStartDate, setAppliedStartDate] = useState<string | null>(null);
   const [appliedEndDate, setAppliedEndDate] = useState<string | null>(null);
-  const [dateFilterError, setDateFilterError] = useState<string | null>(null); // Für lokale Fehler der Datumseingabe
-
+  const [dateFilterError, setDateFilterError] = useState<string | null>(null); 
   const fetchStatistics = useCallback(async (startDate?: string | null, endDate?: string | null) => {
+   
+   
     if (!token || !API_ENDPOINTS.statistik) {
       setError("Statistik-Endpunkt nicht konfiguriert oder kein Token.");
       setStatsData(null);
       setIsLoading(false);
       return;
     }
-
     setIsLoading(true);
-    setError(null); // Globalen Fehler zurücksetzen
-    setDateFilterError(null); // Lokalen Datumsfilterfehler zurücksetzen
-    // setStatsData(null); // Alte Daten entfernen, während neue geladen werden. Führt zu kurzzeitigem "Keine Daten".
+    setError(null); 
+    setDateFilterError(null); 
+
+
 
     let apiUrl = API_ENDPOINTS.statistik;
     const queryParams = new URLSearchParams();
+
+
     if (startDate) queryParams.append('startDate', startDate);
     if (endDate) queryParams.append('endDate', endDate);
     if (queryParams.toString()) {
       apiUrl += `?${queryParams.toString()}`;
     }
 
+
+
+
+
     try {
       const response = await fetch(apiUrl, {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
+
 
       if (!response.ok) {
         const errResponse = await response.json().catch(() => null);
@@ -144,13 +175,11 @@ export default function StatisticsView() {
         throw new Error(errorDetail);
       }
 
-      // Wichtig: StatisticsApiResponse ist der Typ, den die API sendet.
-      // Es kann sein, dass optionale Felder wie `complaintReasons` als `undefined` kommen.
-      const apiData = await response.json() as Partial<StatisticsData>; // Teilweise Übereinstimmung erlauben
 
-      // Normalisiere die Daten von der API zu unserem strikten StatisticsData Typ
-      // Fehlende Arrays werden zu leeren Arrays.
-      // Die API sollte idealerweise die volle Struktur liefern.
+      const apiData = await response.json() as Partial<StatisticsData>; 
+
+
+
       setStatsData({
         totalComplaints: apiData.totalComplaints ?? 0,
         totalPraises: apiData.totalPraises ?? 0,
@@ -169,6 +198,9 @@ export default function StatisticsView() {
         }
       });
 
+
+
+
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unbekannter Fehler beim Laden der Statistiken.";
       console.error("StatisticsView fetch error:", err, { apiUrl, startDate, endDate });
@@ -180,9 +212,17 @@ export default function StatisticsView() {
   }, [token]);
 
 
+
+
+
   useEffect(() => {
     fetchStatistics(appliedStartDate, appliedEndDate); // Beim Mounten mit den initialen (null) Filtern laden
   }, [fetchStatistics, appliedStartDate, appliedEndDate]); // Neu laden, wenn sich die angewendeten Filter ändern (obwohl fetchStatistics schon via Button getriggert wird)
+
+
+
+
+
 
   const handleApplyDateFilter = () => {
     if (selectedStartDate && selectedEndDate && new Date(selectedStartDate) > new Date(selectedEndDate)) {
@@ -196,6 +236,10 @@ export default function StatisticsView() {
     // fetchStatistics(selectedStartDate || null, selectedEndDate || null); // Direkter Aufruf ist auch möglich
   };
 
+
+
+
+
   const handleClearDateFilter = () => {
     setSelectedStartDate("");
     setSelectedEndDate("");
@@ -205,12 +249,11 @@ export default function StatisticsView() {
     // fetchStatistics(null, null); // Direkter Aufruf
   };
 
+
   const handleComingSoon = (featureName: string) => { alert(`Die Funktion "${featureName}" ist bald verfügbar.`); };
-  
   const isAnyDateSelectedForFilter = selectedStartDate || selectedEndDate;
 
 
-  // Render-Logik für Ladezustand oder globalen Fehler
   if (isLoading && !statsData && !error) { // Initiales Laden
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
@@ -220,7 +263,11 @@ export default function StatisticsView() {
     );
   }
 
-  if (error) { // Globaler Fehler beim Laden der Statistiken
+
+
+
+
+  if (error) { 
     return (
       <motion.div className="flex flex-col items-center justify-center min-h-[400px] text-red-300 bg-slate-800/30 p-8 rounded-2xl" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} >
         <AlertTriangle size={48} className="mb-4 opacity-80" />
@@ -231,10 +278,9 @@ export default function StatisticsView() {
     );
   }
 
-  // Wenn weder geladen wird, noch ein Fehler vorliegt, aber keine Daten da sind (z.B. nach initialem Laden ohne Ergebnis)
-  // Dieser Fall sollte durch die `NoDataDisplay` in den ChartWrappern oder spezifischen Sektionen behandelt werden,
-  // falls `statsData` zwar nicht null ist, aber die Arrays leer sind.
-  // Wenn `statsData` selbst `null` ist (und kein Fehler/Laden), ist das ein ungewöhnlicher Zustand, den wir oben abfangen.
+  
+
+
 
 
   return (
@@ -256,6 +302,9 @@ export default function StatisticsView() {
         </div>
         {dateFilterError && ( <p className="text-xs text-red-400 mt-2">{dateFilterError}</p> )}
         
+
+
+        
         {statsData?.filterApplied && (
             statsData.filterApplied.isDefault ?
             <p className="text-xs text-slate-400 mt-3">Gesamtdatenansicht. Wählen Sie einen Zeitraum für spezifische Analysen.</p> :
@@ -268,7 +317,10 @@ export default function StatisticsView() {
         )}
       </motion.section>
 
-      {/* Gesamtübersicht */}
+
+
+
+
       <motion.section variants={sectionVariants}>
         <div className="flex items-center mb-5 sm:mb-6 px-1"> <TrendingUp size={26} className="text-sky-400 mr-3" /> <h2 className="text-xl sm:text-2xl font-semibold text-slate-100 tracking-tight">Gesamtübersicht</h2> </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
@@ -278,7 +330,10 @@ export default function StatisticsView() {
         </div>
       </motion.section>
 
-      {/* Beschwerde-Analyse */}
+
+
+
+ 
       <motion.section variants={sectionVariants}>
         <div className="flex items-center mb-5 sm:mb-6 px-1"> <BarChart3 size={26} className="text-sky-400 mr-3" /> <h2 className="text-xl sm:text-2xl font-semibold text-slate-100 tracking-tight">Beschwerde-Analyse</h2> </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
@@ -316,7 +371,11 @@ export default function StatisticsView() {
         </div>
       </motion.section>
 
-      {/* Weitere Details */}
+
+
+
+
+
       <motion.section variants={sectionVariants}>
         <div className="flex items-center mb-5 sm:mb-6 px-1"> <ClipboardList size={26} className="text-sky-400 mr-3" /> <h2 className="text-xl sm:text-2xl font-semibold text-slate-100 tracking-tight">Weitere Details</h2> </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
@@ -341,7 +400,11 @@ export default function StatisticsView() {
         </div>
       </motion.section>
 
-      {/* Beschwerde-Hotspots */}
+
+
+
+
+
       <motion.section variants={sectionVariants}>
         <div className="flex items-center mb-5 sm:mb-6 px-1"> <AlertOctagon size={26} className="text-amber-400 mr-3" /> <h2 className="text-xl sm:text-2xl font-semibold text-slate-100 tracking-tight">Beschwerde-Hotspots (Top 10)</h2> </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
@@ -370,7 +433,13 @@ export default function StatisticsView() {
         </div>
       </motion.section>
 
-      {/* Berichte & Export */}
+
+
+
+
+
+
+
       <motion.section variants={sectionVariants}>
         <div className="flex items-center mb-5 sm:mb-6 px-1"> <FileSpreadsheet size={26} className="text-sky-400 mr-3" /> <h2 className="text-xl sm:text-2xl font-semibold text-slate-100 tracking-tight">Berichte & Export</h2> </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">

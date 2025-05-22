@@ -4,19 +4,21 @@
 import React, { useState } from 'react'; // useState importiert
 import { motion } from 'framer-motion';
 import { ClockIcon, UserIcon, PaperclipIcon, XCircleIcon, DownloadIcon, ReplaceIcon, UploadCloudIcon, Loader2Icon } from 'lucide-react'; // Loader2Icon für Ladeanzeige
-import {
-    CardSpecificDataItem,
-    ViewType,
-    BeschwerdeItem
-} from '@/app/types';
+import {CardSpecificDataItem,ViewType,BeschwerdeItem} from '@/app/types';
 import { API_ENDPOINTS } from '@/app/constants';
 import { formatDateTime, formatDate, formatTime } from '@/app/utils';
 import DataField from '@/app/components/ui/DataField';
+
+
+
 
 const contentItemVariants = {
     hidden: { opacity: 0, x: -20, scale: 0.95 },
     visible: { opacity: 1, x: 0, scale: 1, transition: { type: "spring", stiffness: 180, damping: 20 } }
 };
+
+
+
 
 type BeschwerdeItemWithDefiniteAttachment = BeschwerdeItem & {
     attachment_filename: string;
@@ -34,6 +36,10 @@ function isBeschwerdeAndHasAttachment(
         potentialBeschwerde.attachment_filename !== null
     );
 }
+
+
+
+
 
 interface CardFrontProps {
     item: CardSpecificDataItem;
@@ -55,6 +61,11 @@ interface CardFrontProps {
     isFinalized?: boolean;
     token: string | null;
 }
+
+
+
+
+
 
 const CardFront: React.FC<CardFrontProps> = ({
     item,
@@ -79,15 +90,15 @@ const CardFront: React.FC<CardFrontProps> = ({
     const cardKey = `card-${currentView}-${item.id}`;
     const [isDownloading, setIsDownloading] = useState(false);
 
-    // ***** KORREKTE DEFINITION VON beschwerdeItemData *****
     const isBeschwerdeTypeCheck = (dataItem: CardSpecificDataItem): dataItem is BeschwerdeItem => {
         return currentView === 'beschwerden' && 'beschwerdegrund' in dataItem;
     };
+
+
+
+
     const beschwerdeItemData = isBeschwerdeTypeCheck(item) ? item : null;
-    // ***** ENDE DER DEFINITION *****
-
     const disableFileModificationActions = isLocked || isProcessingFile || isFinalized;
-
     const handleLocalFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (disableFileModificationActions) return;
         const file = event.target.files?.[0];
@@ -102,6 +113,9 @@ const CardFront: React.FC<CardFrontProps> = ({
         }
     };
 
+
+
+
     const removeSelectedLocalFile = () => {
         if (disableFileModificationActions) return;
         onFileSelect(null);
@@ -109,15 +123,18 @@ const CardFront: React.FC<CardFrontProps> = ({
         if (fileInput) fileInput.value = "";
     };
 
-    const fileInputId = `pdf-upload-${item.id}-${currentView}`;
 
+
+    const fileInputId = `pdf-upload-${item.id}-${currentView}`;
     const triggerFileInput = () => {
         if (disableFileModificationActions) return;
         document.getElementById(fileInputId)?.click();
     };
 
+
     let downloadUrlApi: string | undefined = undefined;
     let dbAttachmentFilename: string | null = null;
+
 
     if (isBeschwerdeAndHasAttachment(item, currentView)) {
         dbAttachmentFilename = item.attachment_filename;
@@ -128,7 +145,6 @@ const CardFront: React.FC<CardFrontProps> = ({
     }
 
     const showUploadButtonForSelectedFile = selectedFile && typeof onUploadSelectedFile === 'function' && !disableFileModificationActions;
-
     const handleDownloadAttachment = async () => {
         if (!downloadUrlApi || !token || !dbAttachmentFilename) {
             alert("Download-Informationen unvollständig.");
@@ -166,6 +182,10 @@ const CardFront: React.FC<CardFrontProps> = ({
             setIsDownloading(false);
         }
     };
+
+
+
+    
 
     return (
         <div className="p-4 md:p-5 flex flex-col flex-grow">

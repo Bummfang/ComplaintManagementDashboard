@@ -22,6 +22,10 @@ interface AnregungData extends QueryResultRow {
     bearbeiter_name?: string | null;
 }
 
+
+
+
+
 export async function GET(request: NextRequest) {
     const requestTimestamp = new Date().toISOString();
     if (!JWT_SECRET) {
@@ -70,21 +74,44 @@ export async function GET(request: NextRequest) {
     }
 }
 
+
+
+
+
+
+
+
+
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
     const requestTimestamp = new Date().toISOString();
     console.log(`[${requestTimestamp}] API PATCH /api/feedback: Verarbeitungsversuch gestartet.`);
+
+
+
 
     if (!JWT_SECRET) {
         console.error(`[${requestTimestamp}] FATAL für PATCH /api/feedback: JWT_SECRET nicht definiert.`);
         return NextResponse.json({ error: 'Serverkonfigurationsfehler.' }, { status: 500 });
     }
+
+
+
+
+
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return NextResponse.json({ error: 'Authentifizierungstoken fehlt oder ist ungültig.' }, { status: 401 });
     }
-    const token = authHeader.split(' ')[1];
 
+
+
+
+    const token = authHeader.split(' ')[1];
     let decodedTokenInfo: { userId: number; username: string; isAdmin: boolean };
+
+
+
+
     try {
         decodedTokenInfo = jwt.verify(token, JWT_SECRET) as { userId: number; username: string; isAdmin: boolean };
         console.log(`[${requestTimestamp}] PATCH /api/feedback: Token verifiziert für Benutzer: ${decodedTokenInfo.username} (ID: ${decodedTokenInfo.userId})`);
@@ -93,10 +120,17 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({ error: 'Ungültiges oder abgelaufenes Token.' }, { status: 401 });
     }
 
+
+
+
     let requestBody;
     let itemId: number;
     let newStatus: AllowedStatusAnregung | undefined;
     let assignMeAsBearbeiter: boolean | undefined;
+
+
+
+
 
     try {
         requestBody = await request.json();
@@ -115,7 +149,14 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({ error: 'Ungültiger JSON-Body oder fehlerhafte Datenstruktur.' }, { status: 400 });
     }
 
+
+
     console.log(`[${requestTimestamp}] PATCH /api/feedback: Verarbeite Anregung ID ${itemId} - Neuer Status: "${newStatus}", Bearbeiter zuweisen: ${assignMeAsBearbeiter}`);
+
+
+
+
+
 
     let client: PoolClient | undefined;
     try {
@@ -158,12 +199,15 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             }
         }
         
-        // itemToSend is declared with let because it's reassigned later
+
         let itemToSend: AnregungData & { action_required?: "relock_ui" } = {
             ...currentItemDbState,
-            bearbeiter_name: currentItemDbState.bearbeiter_name || null, // Preserve existing name or set null
+            bearbeiter_name: currentItemDbState.bearbeiter_name || null, 
             ...actionResponsePayload
         };
+
+
+
 
         if (setClauses.length > 0) {
             updateQueryParams.push(itemId);
@@ -176,6 +220,10 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             }
         }
         
+
+
+
+
         const finalSelectQuery = `
             SELECT a.id, a.name, a.email, a.tel, a.betreff, a.beschreibung, 
                    a.erstelltam, a.status, a.abgeschlossenam, a.bearbeiter_id,
@@ -186,11 +234,19 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         `;
         const finalItemResult = await client.query<AnregungData>(finalSelectQuery, [itemId]);
 
+
+
+
+
         if (finalItemResult.rows.length === 0) {
             await client.query('ROLLBACK');
             return NextResponse.json({ error: 'Anregung nach Update/Selektion nicht gefunden.' }, { status: 404 });
         }
-        // Reassignment of itemToSend
+
+
+
+
+
         itemToSend = { ...finalItemResult.rows[0], ...actionResponsePayload };
         
         await client.query('COMMIT');
@@ -198,6 +254,9 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         console.log(`[${requestTimestamp}] PATCH /api/feedback (Anregung): Anregung ID ${itemId} erfolgreich verarbeitet. Antwort: ${JSON.stringify(itemToSend)}`);
         return NextResponse.json(itemToSend, { status: 200 });
 
+
+
+        
     } catch (error) {
         if (client) { try { await client.query('ROLLBACK'); } catch (rbError) { console.error('Fehler beim Rollback (Anregung):', rbError); } }
         console.error(`[${requestTimestamp}] PATCH /api/feedback (Anregung) Fehler für ID ${itemId}:`, error);

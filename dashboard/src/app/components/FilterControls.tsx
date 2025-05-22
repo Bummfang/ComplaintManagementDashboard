@@ -1,14 +1,15 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import {
-    Search, X, Mail, Filter, Hash, AlertTriangle, CheckCircle, Trash2, Palette, CalendarDays, PencilLine,
-    MapPin, Waypoints, UserIcon // UserIcon HIER HINZUGEFÜGT
+import {Search, X, Mail, Filter, Hash, AlertTriangle, CheckCircle, Trash2, Palette, CalendarDays, PencilLine,MapPin, Waypoints, UserIcon 
 } from "lucide-react";
 import type { Dispatch, SetStateAction } from 'react';
 import { ViewType, StatusFilterMode } from '../types';
 import { FILTER_LABELS } from '../constants';
-import { DateFilterTarget } from './ContaintTable'; // Annahme: ContaintTable ist im selben Verzeichnis oder Pfad muss angepasst werden
+import { DateFilterTarget } from './ContaintTable';
+
+
+
 
 type SearchSetter = Dispatch<SetStateAction<string>> | ((value: string) => void);
 
@@ -43,9 +44,50 @@ interface FilterControlsProps {
     setDateFilterTarget: Dispatch<SetStateAction<DateFilterTarget>>;
 }
 
-// ... (containerVariants, itemVariants, neonButton Klassen wie bisher) ...
-const containerVariants = { /* ... wie bisher ... */ };
-const itemVariants = { /* ... wie bisher ... */ };
+
+const containerVariants = {
+  hidden: {
+    opacity: 0,
+    // Optional: Eine leichte Verschiebung, um das Hereinkommen zu betonen
+    // y: 10,
+  },
+  visible: {
+    opacity: 1,
+    // y: 0,
+    transition: {
+      // when: "beforeChildren", // Optional, falls der Container selbst eine Animation hat
+      delayChildren: 0.2,  // Kleine Verzögerung bevor die Kindelemente animieren
+      staggerChildren: 0.1 // Jedes Kindelement startet mit dieser Verzögerung nach dem vorigen
+    }
+  }
+};
+const itemVariants = {
+  hidden: {
+    opacity: 0,
+    y: 20 // Startet etwas tiefer und unsichtbar
+  },
+  visible: {
+    opacity: 1,
+    y: 0,    // Bewegt sich zur finalen Position (y=0)
+    transition: {
+      type: "spring",    // Sorgt für einen netten "Bounce"-Effekt
+      stiffness: 100,    // Steifigkeit der Feder
+      damping: 12        // Dämpfung der Feder
+      // duration: 0.3 // Alternative: eine feste Dauer
+    }
+  },
+  exit: { // Falls Elemente auch beim Ausblenden animiert werden sollen (z.B. innerhalb von AnimatePresence)
+  opacity: 0,
+  y: -10,
+  transition: {
+  duration: 0.2
+  }
+  }
+};
+
+
+
+
 const neonButtonBaseClasses = "px-4 py-2 text-xs sm:text-sm font-semibold rounded-full transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900/80 shadow-md whitespace-nowrap flex items-center justify-center gap-2";
 const neonButtonSkyClasses = `bg-sky-600/80 hover:bg-sky-500/90 text-sky-50 hover:text-white focus-visible:ring-sky-400 shadow-[0_0_10px_1px_rgba(56,189,248,0.3),0_0_20px_2px_rgba(56,189,248,0.2)] hover:shadow-[0_0_15px_2px_rgba(56,189,248,0.4),0_0_30px_4px_rgba(56,189,248,0.3)]`;
 const neonButtonSlateClasses = `bg-slate-600/80 hover:bg-slate-500/90 text-slate-100 hover:text-white focus-visible:ring-slate-400 shadow-[0_0_10px_1px_rgba(100,116,139,0.3),0_0_20px_2px_rgba(100,116,139,0.2)] hover:shadow-[0_0_15px_2px_rgba(100,116,139,0.4),0_0_30px_4px_rgba(100,116,139,0.3)]`;
@@ -57,30 +99,40 @@ export default function FilterControls({
     searchTerm, setSearchTerm, emailSearchTerm, setEmailSearchTerm,
     idSearchTerm, setIdSearchTerm, haltestelleSearchTerm, setHaltestelleSearchTerm,
     linieSearchTerm, setLinieSearchTerm,
-    assigneeSearchTerm, setAssigneeSearchTerm, // <--- NEUE PROPS DESTRUKTURIEREN
+    assigneeSearchTerm, setAssigneeSearchTerm, 
     showAdvancedFilters, setShowAdvancedFilters,
     startDateInput, setStartDateInput, endDateInput, setEndDateInput,
     handleApplyDateFilter, handleClearDateFilter, isDateFilterApplied,
     cardAccentsEnabled, setCardAccentsEnabled, dateFilterTarget, setDateFilterTarget,
 }: FilterControlsProps) {
 
+
+
+
     const dateFilterActiveColorClasses = "bg-sky-500/90 hover:bg-sky-400 text-white shadow-[0_0_18px_3px_rgba(56,189,248,0.5)] animate-pulse focus-visible:ring-sky-300";
     const dateFilterDefaultColorClasses = neonButtonSkyClasses;
     const warningIconColor = "text-amber-400";
-
     const commonSearchInputs: Array<{ Icon: React.ElementType; placeholder: string; value: string; setter: SearchSetter; title: string; views: ViewType[]; }> = [
         { Icon: Search, placeholder: "Personensuche", value: searchTerm, setter: setSearchTerm, title: "Suche zurücksetzen", views: ["beschwerden", "lob", "anregungen"] },
         { Icon: Mail, placeholder: "E-Mail Suche", value: emailSearchTerm, setter: setEmailSearchTerm, title: "E-Mail-Suche zurücksetzen", views: ["beschwerden", "lob", "anregungen"] },
         { Icon: Hash, placeholder: "ID (Nr.)...", value: idSearchTerm, setter: setIdSearchTerm, title: "ID-Suche zurücksetzen", views: ["beschwerden", "lob", "anregungen"] },
         { Icon: UserIcon, placeholder: "Bearbeiter...", value: assigneeSearchTerm, setter: setAssigneeSearchTerm, title: "Bearbeitersuche zurücksetzen", views: ["beschwerden", "lob", "anregungen"] }, // <--- NEUER FILTER HINZUGEFÜGT
     ];
+
+
+
+
     const beschwerdeSearchInputs: Array<{ Icon: React.ElementType; placeholder: string; value: string; setter: SearchSetter; title: string; views: ViewType[]; }> = [
         { Icon: MapPin, placeholder: "Haltestelle...", value: haltestelleSearchTerm, setter: setHaltestelleSearchTerm, title: "Haltestellensuche zurücksetzen", views: ["beschwerden"] },
         { Icon: Waypoints, placeholder: "Linie...", value: linieSearchTerm, setter: setLinieSearchTerm, title: "Liniensuche zurücksetzen", views: ["beschwerden"] },
     ];
 
+
+
+
     const searchInputs = currentView === "beschwerden" ? [...commonSearchInputs, ...beschwerdeSearchInputs] : commonSearchInputs;
     const showStatusPillsForCurrentView = currentView === "beschwerden" || currentView === "lob" || currentView === "anregungen";
+
 
     return (
         <motion.div

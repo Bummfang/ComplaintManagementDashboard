@@ -11,16 +11,17 @@ import LoadingScreen from "./components/LoadingScreen"; // Importiere den neuen 
 
 export default function Home() {
   const { isAuthenticated, isLoadingAuth } = useAuth();
-
-  // Logge den Status, um das Debugging zu erleichtern
   console.log("Home (page.tsx): isLoadingAuth =", isLoadingAuth, ", isAuthenticated =", isAuthenticated);
-
-  // Varianten für das Ein- und Ausblenden der Hauptinhaltsseite (ContaintTable)
   const mainContentVariants = {
     hidden: { opacity: 0, scale: 0.98, y: 10 },
     visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
     exit: { opacity: 0, scale: 0.98, y: -10, transition: { duration: 0.3, ease: "easeIn" } },
   };
+
+
+
+  
+
 
   return (
     <AnimatePresence mode="wait">

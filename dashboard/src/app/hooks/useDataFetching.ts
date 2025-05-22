@@ -2,6 +2,10 @@ import { useState, useCallback, useEffect } from 'react';
 import { DataItem, ViewType, CardSpecificDataItem } from '../types'; // CardSpecificDataItem hinzugefügt, falls DataItem zu generisch ist
 import { API_ENDPOINTS, VIEW_TITLES } from '../constants';
 
+
+
+
+
 interface UseDataFetchingProps {
     currentView: ViewType;
     token: string | null;
@@ -9,13 +13,19 @@ interface UseDataFetchingProps {
     logout: () => void; // Für 401-Fehler
 }
 
+
+
+
+
+
+
+
 export function useDataFetching({ currentView, token, isAuthenticated, logout }: UseDataFetchingProps) {
     const [data, setData] = useState<(DataItem & { action_required?: "relock_ui" })[]>([]);
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isDbConnected, setIsDbConnected] = useState<boolean>(true);
     const [lastDataUpdateTimestamp, setLastDataUpdateTimestamp] = useState<Date | null>(null);
-
     const fetchDataInternal = useCallback(async (viewToFetch: ViewType, isBackgroundUpdate = false) => {
         if (viewToFetch === "statistik" || viewToFetch === "admin") {
             if (!isBackgroundUpdate) setIsLoadingData(false);
@@ -80,7 +90,11 @@ export function useDataFetching({ currentView, token, isAuthenticated, logout }:
         }
     }, [token, isAuthenticated, logout]);
 
-    // NEUE FUNKTION für gezieltes Update oder Hinzufügen eines Items im Cache
+
+
+
+
+
     const updateSingleItemInCache = useCallback((updatedItem: CardSpecificDataItem) => { // Typ hier spezifischer machen
         setData(prevData => {
             const itemIndex = prevData.findIndex(item => item.id === updatedItem.id);
@@ -103,6 +117,9 @@ export function useDataFetching({ currentView, token, isAuthenticated, logout }:
         setLastDataUpdateTimestamp(new Date());
     }, [setData, setLastDataUpdateTimestamp]); // setData und setLastDataUpdateTimestamp sind stabile Setter
 
+
+
+
     useEffect(() => {
         if (isAuthenticated && token) {
             fetchDataInternal(currentView, false);
@@ -112,6 +129,10 @@ export function useDataFetching({ currentView, token, isAuthenticated, logout }:
             setError(null);
         }
     }, [currentView, isAuthenticated, token, fetchDataInternal]);
+
+
+
+
 
     useEffect(() => {
         let intervalId: NodeJS.Timeout;
@@ -123,6 +144,9 @@ export function useDataFetching({ currentView, token, isAuthenticated, logout }:
         return () => clearInterval(intervalId);
     }, [currentView, isAuthenticated, token, fetchDataInternal]);
 
+
+
+    
     return {
         data,
         isLoadingData,

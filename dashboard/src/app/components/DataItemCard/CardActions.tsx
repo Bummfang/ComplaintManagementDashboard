@@ -6,12 +6,21 @@ import { Settings2Icon, Lock, Unlock, RotateCcwIcon } from 'lucide-react';
 import React, { useState, useMemo } from 'react'; // useMemo hinzugefügt
 import { AnyItemStatus as StrictStatus, ViewType } from '@/app/types';
 
+
+
+
+
+
+
 const contentItemVariants = {
     hidden: { opacity: 0, y: 10 },
     visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 200, damping: 20 } }
 };
 
 const buttonHoverSpring = { type: "spring", stiffness: 400, damping: 15 };
+
+
+
 
 interface CardActionsProps {
     status?: StrictStatus;
@@ -27,6 +36,9 @@ interface CardActionsProps {
     isClarificationMissingInSavedDetails: boolean;
     currentView: ViewType;
 }
+
+
+
 
 const CardActions: React.FC<CardActionsProps> = ({
     status,
@@ -47,10 +59,14 @@ const CardActions: React.FC<CardActionsProps> = ({
     const [animateLockIconWhenActionDisabled, setAnimateLockIconWhenActionDisabled] = useState(false);
     const [isLockIconHovered, setIsLockIconHovered] = useState(false);
 
+
+
+
+
     const generalActionsDisabled = isLockedByHook || isAssigning || isProcessingFile;
     const disableResolveActions = generalActionsDisabled || (isClarificationMissingInSavedDetails && status === "In Bearbeitung" && currentView === 'beschwerden');
-
-    // NEU: Logik für den Disabled-Zustand des Settings/Flip-Buttons
+    
+    
     const settingsButtonDisabled = useMemo(() => {
         if (!canFlip) return true; 
         if (isAssigning || isProcessingFile) return true; 
@@ -58,7 +74,8 @@ const CardActions: React.FC<CardActionsProps> = ({
         return isLockedByHook; 
     }, [canFlip, isAssigning, isProcessingFile, isFinalized, isLockedByHook]);
 
-    // NEU: Logik für den Titel des Settings/Flip-Buttons
+   
+   
     const settingsButtonTitle = useMemo(() => {
         if (!canFlip) return ""; 
 
@@ -72,6 +89,10 @@ const CardActions: React.FC<CardActionsProps> = ({
         if (isFinalized) return "Interne Details ansehen";
         return "Interne Details bearbeiten";
     }, [canFlip, settingsButtonDisabled, isFinalized, isLockedByHook, isAssigning, isProcessingFile]);
+
+
+
+
 
     const handleMainActionButtonHover = (isHovering: boolean) => {
         if (isClarificationMissingInSavedDetails && status === "In Bearbeitung" && currentView === 'beschwerden' && disableResolveActions && !isFinalized) {
@@ -89,6 +110,10 @@ const CardActions: React.FC<CardActionsProps> = ({
             setAnimateLockIconWhenActionDisabled(isHovering);
         }
     };
+
+
+
+
 
     let actionButton = null;
 
@@ -190,8 +215,11 @@ const CardActions: React.FC<CardActionsProps> = ({
         }
     }
 
-    if (!status) return null;
 
+
+
+    
+    if (!status) return null;
     return (
         <motion.div variants={contentItemVariants} className="pt-2">
             <div className={`flex ${canFlip ? 'justify-between' : 'justify-end'} items-center mb-2`}>

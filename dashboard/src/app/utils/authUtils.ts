@@ -22,6 +22,9 @@ interface TokenPayload {
     exp?: number;
 }
 
+
+
+
 /**
  * Verifiziert den JWT aus dem Authorization Header einer NextApiRequest (Pages Router)
  * und gibt die Benutzerdaten zurück oder null bei Fehlern.
@@ -34,6 +37,9 @@ export async function verifyTokenAndGetUser(req: NextApiRequest): Promise<Authen
         return null; 
     }
 
+
+
+
     try {
         const authHeader = req.headers.authorization; // Kleingeschrieben für NextApiRequest
         if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
@@ -41,10 +47,15 @@ export async function verifyTokenAndGetUser(req: NextApiRequest): Promise<Authen
             return null;
         }
 
+
+
+
         const token = authHeader.split(' ')[1];
         const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload;
 
-        // Überprüfen, ob die erwarteten Felder im dekodierten Token vorhanden sind
+
+
+
         if (typeof decoded.name === 'undefined' || 
             typeof decoded.nachname === 'undefined' ||
             typeof decoded.userId === 'undefined' ||
@@ -54,6 +65,9 @@ export async function verifyTokenAndGetUser(req: NextApiRequest): Promise<Authen
             return null; // Token ist nicht valide genug
         }
         
+
+
+
         return {
             userId: decoded.userId,
             username: decoded.username,
@@ -62,6 +76,9 @@ export async function verifyTokenAndGetUser(req: NextApiRequest): Promise<Authen
             nachname: decoded.nachname,
         };
 
+
+
+        
     } catch (error) {
         const errorTimestamp = new Date().toISOString();
         if (error instanceof jwt.JsonWebTokenError) {

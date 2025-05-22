@@ -9,6 +9,14 @@ interface LoginRequestBody {
     password?: string;
 }
 
+
+
+
+
+
+
+
+
 // Dieses Interface sollte die Spalten deiner 'users'-Tabelle widerspiegeln
 interface UserRecord extends QueryResultRow {
     id: number;
@@ -19,6 +27,12 @@ interface UserRecord extends QueryResultRow {
     ist_admin: boolean;
 }
 
+
+
+
+
+
+
 interface LoginSuccessResponse {
     userId: number;
     username: string;
@@ -28,6 +42,14 @@ interface LoginSuccessResponse {
     message: string;
     token: string;
 }
+
+
+
+
+
+
+
+
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -108,6 +130,10 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json(responsePayload, { status: 200 });
 
+   
+   
+   
+   
     } catch (error) {
         const errorTimestamp = new Date().toISOString();
         let errorMessage = 'Ein interner Serverfehler ist aufgetreten.';
@@ -127,6 +153,11 @@ export async function POST(request: NextRequest) {
             console.error(`[${errorTimestamp}] Unknown error object during login:`, error);
         }
         return NextResponse.json({ error: errorMessage, details: errorDetails }, { status: statusCode });
+   
+   
+   
+   
+   
     } finally {
         if (client) {
             client.release();

@@ -23,6 +23,12 @@ interface LobData extends QueryResultRow {
     bearbeiter_name?: string | null;
 }
 
+
+
+
+
+
+
 export async function GET(request: NextRequest) {
     const requestTimestamp = new Date().toISOString();
     if (!JWT_SECRET) {
@@ -71,7 +77,19 @@ export async function GET(request: NextRequest) {
     }
 }
 
+
+
+
+
+
+
+
+
+
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
+   
+   
+   
     const requestTimestamp = new Date().toISOString();
     console.log(`[${requestTimestamp}] API PATCH /api/like: Verarbeitungsversuch gestartet.`);
 
@@ -93,6 +111,11 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         console.error(`[${requestTimestamp}] PATCH /api/like: Ungültiges Token. Fehler: ${error instanceof Error ? error.message : String(error)}`);
         return NextResponse.json({ error: 'Ungültiges oder abgelaufenes Token.' }, { status: 401 });
     }
+
+
+
+
+
 
     let requestBody;
     let itemId: number;
@@ -116,6 +139,12 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({ error: 'Ungültiger JSON-Body oder fehlerhafte Datenstruktur.' }, { status: 400 });
     }
 
+
+
+
+
+
+
     console.log(`[${requestTimestamp}] PATCH /api/like: Verarbeite Lob ID ${itemId} - Neuer Status: "${newStatus}", Bearbeiter zuweisen: ${assignMeAsBearbeiter}`);
 
     let client: PoolClient | undefined;
@@ -133,13 +162,20 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             await client.query('ROLLBACK');
             return NextResponse.json({ error: 'Lob-Eintrag nicht gefunden.' }, { status: 404 });
         }
-        const currentItemDbState = currentItemResult.rows[0];
 
+
+
+
+        const currentItemDbState = currentItemResult.rows[0];
         const setClauses: string[] = [];
         const updateQueryParams: (string | number | boolean | null)[] = []; // Specific type
         let paramIndex = 1;
         const actionResponsePayload: { action_required?: "relock_ui" } = {}; // Declared with const
         
+
+
+
+
         if (assignMeAsBearbeiter && currentItemDbState.bearbeiter_id === null && decodedTokenInfo.userId) {
             setClauses.push(`bearbeiter_id = $${paramIndex++}`);
             updateQueryParams.push(decodedTokenInfo.userId);
@@ -159,6 +195,9 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             }
         }
         
+
+
+
         // itemToSend is declared with let because it's reassigned later
         let itemToSend: LobData & { action_required?: "relock_ui" } = {
             ...currentItemDbState,
@@ -177,13 +216,27 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             }
         }
         
+
+
+
+
+
         const finalSelectQuery = `
             SELECT l.*, u.name || ' ' || u.nachname AS bearbeiter_name
             FROM lob l
             LEFT JOIN users u ON l.bearbeiter_id = u.id
             WHERE l.id = $1;
         `;
+
+
+
+
         const finalItemResult = await client.query<LobData>(finalSelectQuery, [itemId]);
+
+
+
+
+
 
         if (finalItemResult.rows.length === 0) {
             await client.query('ROLLBACK');
@@ -197,12 +250,19 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         console.log(`[${requestTimestamp}] PATCH /api/like (Lob): Lob ID ${itemId} erfolgreich verarbeitet. Antwort: ${JSON.stringify(itemToSend)}`);
         return NextResponse.json(itemToSend, { status: 200 });
 
+
+
+
+
     } catch (error) {
         if (client) { try { await client.query('ROLLBACK'); } catch (rbError) { console.error('Fehler beim Rollback (Lob):', rbError); } }
         console.error(`[${requestTimestamp}] PATCH /api/like (Lob) Fehler für ID ${itemId}:`, error);
         const errorMessage = error instanceof Error ? error.message : 'Interner Serverfehler';
         const errorDetails = error instanceof Error ? error.message : 'Unbekannter Fehler';
         return NextResponse.json({ error: errorMessage, details: errorDetails }, { status: 500 });
+  
+  
+  
     } finally {
         if (client) client.release();
     }

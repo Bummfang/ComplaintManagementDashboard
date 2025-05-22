@@ -18,11 +18,10 @@ export interface BeschwerdeDbRow extends QueryResultRow {
     haltestelle?: string | null;
     linie?: string | null;
     erstelltam: string;
-    status?: AllowedBeschwerdeStatus | null; // Status kann null aus der DB kommen
+    status?: AllowedBeschwerdeStatus | null; 
     abgeschlossenam?: string | null;
     bearbeiter_id?: number | null;
     bearbeiter_name?: string | null;
-
     interne_notizen?: string | null;
     interne_klaerungsart?: 'schriftlich' | 'telefonisch' | null;
     interne_teamleiter_informiert?: boolean | null;
@@ -31,11 +30,12 @@ export interface BeschwerdeDbRow extends QueryResultRow {
     interne_an_versicherung_weitergeleitet?: boolean | null;
     interne_geld_erstattet?: boolean | null;
     interne_erstattungsbetrag?: string | null;
-
     attachment_filename?: string | null;
     attachment_mimetype?: string | null;
-    attachment_data?: Buffer | null; // Wird in der API Response typischerweise nicht gesendet
+    attachment_data?: Buffer | null; 
 }
+
+
 
 // Das finale Objekt, das an das Frontend gesendet wird
 // MODIFIZIERT: 'status' aus Omit entfernt und explizit als non-nullable hinzugefügt
@@ -56,7 +56,15 @@ export interface BeschwerdeApiResponse extends Omit<BeschwerdeDbRow,
     status: AllowedBeschwerdeStatus; // Status ist hier immer ein gültiger String
 }
 
+
+
+
+
 export const allowedStatusesList: AllowedBeschwerdeStatus[] = ["Offen", "In Bearbeitung", "Gelöst", "Abgelehnt"];
+
+
+
+
 
 export function mapDbRowToApiResponse(row: BeschwerdeDbRow): BeschwerdeApiResponse {
     const {
@@ -71,7 +79,7 @@ export function mapDbRowToApiResponse(row: BeschwerdeDbRow): BeschwerdeApiRespon
         interne_erstattungsbetrag,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         attachment_data,    // Wird nicht in die API-Response übernommen
-        status: dbStatus,   // Status aus der Datenbank (kann null sein)
+        status: dbStatus,   // Status aus der Datenbank (kann null sein) -> kann nicht mehr null sein durch db constrain
         // Alle anderen Felder aus row werden in apiRelevantFields gesammelt
         ...apiRelevantFields 
     } = row;

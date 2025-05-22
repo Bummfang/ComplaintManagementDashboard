@@ -7,10 +7,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { formatLastUpdateTime } from '../utils';
 import { useAuth } from '../contexts/AuthContext';
 
+
+
+
 interface StatusBarProps {
     isDbConnected: boolean;
     lastDataUpdateTimestamp: Date | null;
 }
+
+
+
+
 
 export default function StatusBar({
     isDbConnected,
@@ -19,7 +26,6 @@ export default function StatusBar({
     const { isAuthenticated, user, logout } = useAuth();
     const [currentTime, setCurrentTime] = useState<string>("--:--:--");
     const [currentDate, setCurrentDate] = useState<string>("--.--.----");
-
     useEffect(() => {
         const updateDateTime = () => {
             const now = new Date();
@@ -31,6 +37,9 @@ export default function StatusBar({
         return () => clearInterval(timerId);
     }, []);
 
+
+
+
     const statusBarVariants = { hidden: { y: -80, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: 'spring', stiffness: 120, damping: 20, duration: 0.5 }, } };
     const sectionItemVariants = { hidden: { opacity: 0, y: -10 }, visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100, damping: 15 } }, };
     const powerIconWrapperVariants = {
@@ -40,6 +49,10 @@ export default function StatusBar({
         transition: { duration: 0.2, ease: "easeInOut" }
     };
 
+
+
+
+    
     return (
         <motion.div
             className="fixed top-0 left-0 right-0 z-50 h-16 text-sm px-4 sm:px-6 flex justify-between items-center

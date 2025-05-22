@@ -2,14 +2,17 @@
 "use client";
 
 import { useMemo } from 'react';
-// Importiere AnyItemStatus aus deinen Typen. Wir nennen es hier intern StrictStatus,
-// da es kein null/undefined beinhaltet. item.status kann aber undefined sein.
 import { CardSpecificDataItem, ViewType, AnyItemStatus as StrictStatus } from '@/app/types'; 
-import { formatDateTime } from '@/app/utils'; // Stelle sicher, dass der Pfad zu deinen Utils korrekt ist
+import { formatDateTime } from '@/app/utils'; 
 
 // Hilfstyp für die Parameter der Utility-Funktionen, um null/undefined explizit zu erlauben,
 // da effectiveStatus auch undefined sein kann.
 type UtilityStatusParam = StrictStatus | null | undefined;
+
+
+
+
+
 
 /**
  * Utility function to get the text color class based on item status.
@@ -25,6 +28,11 @@ export const getStatusTextColorClass = (status?: UtilityStatusParam): string => 
         default: return "text-slate-200"; // Default for null, undefined, or unknown status
     }
 };
+
+
+
+
+
 
 /**
  * Utility function to get background accent classes for the card based on item status.
@@ -42,10 +50,20 @@ export const getCardBackgroundAccentClasses = (status?: UtilityStatusParam): str
     }
 };
 
+
+
+
+
+
 interface UseStatusLogicProps {
     item: CardSpecificDataItem;
     currentView: ViewType;
 }
+
+
+
+
+
 
 // Stelle sicher, dass diese Funktion korrekt exportiert wird.
 export function useStatusLogic({ item, currentView }: UseStatusLogicProps) {
