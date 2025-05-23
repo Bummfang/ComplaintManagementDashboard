@@ -1,47 +1,12 @@
 "use client";
 
 import { useState, FormEvent } from 'react';
-import { motion, Transition as MotionTransition, MotionProps, AnimatePresence } from 'framer-motion';
+import { motion,  AnimatePresence } from 'framer-motion';
 import { UserIcon, LockClosedIcon, ArrowRightOnRectangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import Image from 'next/image';
 import { useAuth } from '../contexts/AuthContext';
 import { LOGIN_APP_NAME, COMPANY_NAME, COMPANY_SUBTITLE, API_ENDPOINTS } from '../constants';
 
-
-
-
-
-
-interface BackgroundBlobProps {
-    className: string;
-    animateProps: MotionProps['animate'];
-    transitionProps: MotionTransition;
-}
-
-
-
-
-
-
-
-type AnimatableXYProperties = {
-    x?: string | number | string[] | number[];
-    y?: string | number | string[] | number[];
-};
-
-
-
-
-
-const BackgroundBlob = ({ className, animateProps, transitionProps }: BackgroundBlobProps) => {
-    const initialMotionValues: MotionProps['initial'] = { scale: 0.8, opacity: 0, };
-    if (typeof animateProps === 'object' && animateProps !== null && !Array.isArray(animateProps)) {
-        const target = animateProps as AnimatableXYProperties;
-        if (target.x && Array.isArray(target.x) && typeof target.x[0] === 'number') { initialMotionValues.x = target.x[0]; }
-        if (target.y && Array.isArray(target.y) && typeof target.y[0] === 'number') { initialMotionValues.y = target.y[0]; }
-    }
-    return ( <motion.div className={`absolute rounded-full filter blur-3xl opacity-30 pointer-events-none ${className}`} initial={initialMotionValues} animate={animateProps} transition={transitionProps} /> );
-};
 
 
 
@@ -122,6 +87,7 @@ export default function LoginScreen() {
 
 
     
+    
     const keyIconEntryDelay = (cardVariants.visible.transition.staggerChildren || 0) + 0.1;
 
 
@@ -132,21 +98,7 @@ export default function LoginScreen() {
 
     return (
         <div className="min-h-screen w-full bg-gradient-to-br from-[#0D0D12] via-[#111318] to-[#0a0a0f] text-white font-sans flex flex-col items-center justify-center p-4 overflow-hidden relative">
-            <BackgroundBlob
-                className="w-[500px] h-[500px] bg-purple-600 -top-40 -left-40"
-                animateProps={{ x: [-100, 50, -100], y: [-80, 30, -80], rotate: [0, 120, 0], scale: [0.9, 1.1, 0.9], opacity: [0.15, 0.35, 0.15]}}
-                transitionProps={{ duration: 25, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
-            />
-            <BackgroundBlob
-                className="w-[450px] h-[450px] bg-sky-600 -bottom-32 -right-32"
-                animateProps={{ x: [80, -60, 80], y: [60, -40, 60], rotate: [0, -150, 0], scale: [1, 1.2, 1], opacity: [0.2, 0.4, 0.2]}}
-                transitionProps={{ duration: 30, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
-            />
-            <BackgroundBlob
-                className="w-[400px] h-[400px] bg-emerald-500 top-1/4 left-1/2 transform -translate-x-1/3 -translate-y-1/3"
-                animateProps={{ x: [0, 30, -20, 0], y: [0, -30, 20, 0], scale: [1, 1.15, 0.95, 1], opacity: [0.1, 0.25, 0.1]}}
-                transitionProps={{ duration: 28, repeat: Infinity, repeatType: "mirror", ease: "linear" }}
-            />
+           
 
             <motion.div
                 variants={cardVariants} initial="hidden" animate="visible" exit="exit"
