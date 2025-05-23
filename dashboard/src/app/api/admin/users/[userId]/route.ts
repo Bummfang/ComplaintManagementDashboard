@@ -11,13 +11,9 @@ interface DecodedToken extends JwtPayload {
     isAdmin: boolean;
 }
 
-interface RouteContext {
-    params: {
-        userId: string; // Die ID des Benutzers, der gelöscht werden soll (aus der URL)
-    }
-}
 
-export async function DELETE(request: NextRequest, context: RouteContext) {
+
+export async function DELETE(request: NextRequest,  context: { params: { userId: string }}) {
     const requestTimestamp = new Date().toISOString();
 
     if (!JWT_SECRET) {
