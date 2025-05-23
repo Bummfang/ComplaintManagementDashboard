@@ -1,184 +1,165 @@
 // src/app/contexts/AuthContext.tsx
-"use client"; // Diese Direktive ist wichtig für Client-Komponenten in Next.js App Router
+"use client"; 
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-// useRouter kann nützlich sein für Redirects, z.B. nach dem Logout.
-// import { useRouter } from 'next/navigation';
-
-/**
- * Definiert die Struktur der Benutzerdaten, die im Context gespeichert werden.
- * Diese Struktur sollte den Daten entsprechen, die von deinen API-Endpunkten
- * /api/login (in der Antwort) und /api/verify-token (im 'user'-Objekt der Antwort) zurückgegeben werden.
- */
-
-
-
 
 export interface User {
-  userId: number;
-  username: string;
-  isAdmin: boolean;
-  name?: string;      // Optional, falls vom Login-Endpunkt geliefert
-  nachname?: string;  // Optional, falls vom Login-Endpunkt geliefert
+    userId: number;
+    username: string;
+    isAdmin: boolean;
+    name?: string;
+    nachname?: string;
 }
-
-/**
- * Definiert den Typ für den Wert, den der AuthContext bereitstellt.
- */
-
-
-
-
 
 interface AuthContextType {
-  isAuthenticated: boolean;    // Ist der Benutzer aktuell authentifiziert?
-  user: User | null;           // Die Daten des angemeldeten Benutzers oder null.
-  token: string | null;        // Das JWT oder null.
-  isLoadingAuth: boolean;      // Zeigt an, ob der initiale Auth-Status noch geladen/geprüft wird.
-  login: (responseDataFromLoginApi: { userId: number; username: string; name?: string; nachname?: string; isAdmin: boolean; token: string }) => void; // Funktion zum Anmelden.
-  logout: () => void;          // Funktion zum Abmelden.
-  isScreenLocked: boolean;
-  setIsScreenLocked: (locked: boolean) => void;
+    isAuthenticated: boolean;
+    user: User | null;
+    token: string | null;
+    isLoadingAuth: boolean;
+    login: (responseDataFromLoginApi: { userId: number; username: string; name?: string; nachname?: string; isAdmin: boolean; token: string }) => void;
+    logout: () => void;
+    isScreenLocked: boolean;
+    setIsScreenLocked: (locked: boolean) => void;
 }
-
-
-
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const AUTH_TOKEN_KEY = 'authToken'; // Schlüssel für das Auth-Token im localStorage
+const SCREEN_LOCKED_KEY = 'screenLocked'; // Schlüssel für den Sperrstatus im localStorage
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [isScreenLocked, setIsScreenLockedState] = useState<boolean>(false);
-
-  const performLogout = useCallback(() => {
-    localStorage.removeItem('authToken');
-    setUser(null);
-    setToken(null);
-    setIsAuthenticated(false);
-    setIsScreenLockedState(false);
-    setIsLoadingAuth(false);
-    console.log("AuthContext: User logged out, token removed from localStorage.");
-
-  }, [/* router */]);
-
-  /**
-   * Prüft beim ersten Laden der Anwendung, ob ein gültiges Token im localStorage vorhanden ist.
-   */
-
-
-
-  const verifyTokenAndInitializeAuth = useCallback(async () => {
-    console.log("AuthContext: Initializing auth - attempting to verify token from localStorage...");
-    setIsLoadingAuth(true);
-    const storedToken = localStorage.getItem('authToken');
-
-    if (storedToken) {
-      try {
-        // Sende das Token an deinen Verifizierungs-Endpunkt (/api/verify-token)
-        const response = await fetch('/api/verify-token', {
-          method: 'POST', // Muss zur Methode deines Endpunkts passen
-          headers: {
-            'Authorization': `Bearer ${storedToken}`, // Token im Header senden
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json(); // Erwartet { isValid: true, user: User }
-          if (data.isValid && data.user) {
-            // Token ist gültig, Benutzerdaten und Authentifizierungsstatus setzen
-            setUser(data.user);
-            setToken(storedToken);
-            setIsAuthenticated(true);
-            console.log("AuthContext: Token successfully verified. User authenticated:", data.user);
-          } else {
-            // Server meldet Token als ungültig oder liefert keine Benutzerdaten
-            console.log("AuthContext: Token verification response indicates invalid token or no user data. Performing logout.");
-            performLogout(); // Token entfernen und Status zurücksetzen
-          }
-        } else {
-          // Anfrage an /api/verify-token fehlgeschlagen (z.B. 401 bei abgelaufenem Token)
-          console.log(`AuthContext: Token verification request failed with status: ${response.status}. Performing logout.`);
-          performLogout(); // Token entfernen und Status zurücksetzen
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [user, setUser] = useState<User | null>(null);
+    const [token, setToken] = useState<string | null>(null);
+    const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+    
+    // Initialen Sperrzustand aus localStorage lesen, aber nur wenn auch ein Token da war/ist.
+    const [isScreenLocked, setIsScreenLockedState] = useState<boolean>(() => {
+        if (typeof window !== 'undefined') {
+            const storedToken = localStorage.getItem(AUTH_TOKEN_KEY);
+            const storedLockState = localStorage.getItem(SCREEN_LOCKED_KEY);
+            // Der Bildschirm ist nur dann initial gesperrt, wenn ein Token existiert
+            // UND der Sperrstatus explizit auf 'true' gesetzt war.
+            return !!storedToken && storedLockState === 'true';
         }
-      } catch (error) {
-        // Netzwerkfehler oder anderer Fehler bei der Anfrage
-        console.error("AuthContext: Error during token verification request:", error);
-        performLogout(); // Bei Fehlern ebenfalls ausloggen
-      }
-    } else {
-      // Kein Token im localStorage gefunden
-      console.log("AuthContext: No token found in localStorage. User is not authenticated.");
-      // Kein Logout nötig, da nicht eingeloggt. Ladevorgang ist aber abgeschlossen.
-    }
-    setIsLoadingAuth(false); // Auth-Prüfung ist abgeschlossen
-  }, [performLogout]); // performLogout als Abhängigkeit
+        return false;
+    });
 
+    const performLogout = useCallback(() => {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        localStorage.removeItem(SCREEN_LOCKED_KEY); // Sperrstatus beim Logout entfernen
+        setUser(null);
+        setToken(null);
+        setIsAuthenticated(false);
+        setIsScreenLockedState(false); // Bildschirm beim Logout entsperren
+        setIsLoadingAuth(false); // Auth-Prozess ist hier beendet
+        // console.log("AuthContext: User logged out, token & lock state removed.");
+    }, []);
 
-  // useEffect-Hook, um verifyTokenAndInitializeAuth beim ersten Mounten der Komponente aufzurufen.
-  useEffect(() => {
-    verifyTokenAndInitializeAuth();
-  }, [verifyTokenAndInitializeAuth]); // Die Abhängigkeit stellt sicher, dass es nur einmal korrekt initialisiert wird.
+    const verifyTokenAndInitializeAuth = useCallback(async () => {
+        // console.log("AuthContext: Initializing auth...");
+        setIsLoadingAuth(true); // Am Anfang des Initialisierungsprozesses
+        const storedToken = typeof window !== 'undefined' ? localStorage.getItem(AUTH_TOKEN_KEY) : null;
+        const storedLockState = typeof window !== 'undefined' ? localStorage.getItem(SCREEN_LOCKED_KEY) : null;
 
-  /**
-   * Funktion zum Anmelden des Benutzers nach erfolgreicher API-Antwort vom Login.
-   * Speichert das Token und die Benutzerdaten.
-   * @param responseDataFromLoginApi Die Daten, die vom /api/login Endpunkt zurückgegeben wurden (inkl. Token).
-   */
-  const login = (responseDataFromLoginApi: { userId: number; username: string; name?: string; nachname?: string; isAdmin: boolean; token: string }) => {
-    localStorage.setItem('authToken', responseDataFromLoginApi.token); // Token im Browser-Speicher sichern
+        if (storedToken) {
+            try {
+                const response = await fetch('/api/verify-token', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${storedToken}` }
+                });
 
-    // Benutzerobjekt für den Context-State erstellen
-    const contextUser: User = {
-      userId: responseDataFromLoginApi.userId,
-      username: responseDataFromLoginApi.username,
-      isAdmin: responseDataFromLoginApi.isAdmin,
-      name: responseDataFromLoginApi.name,
-      nachname: responseDataFromLoginApi.nachname,
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.isValid && data.user) {
+                        setUser(data.user);
+                        setToken(storedToken);
+                        setIsAuthenticated(true);
+                        // Wichtig: Sperrstatus basierend auf localStorage setzen, NACHDEM Token als gültig bestätigt wurde.
+                        setIsScreenLockedState(storedLockState === 'true'); 
+                        // console.log("AuthContext: Token verified. User authenticated. Screen initially locked:", storedLockState === 'true');
+                    } else {
+                        // console.log("AuthContext: Token verification response indicates invalid token or no user data.");
+                        performLogout(); 
+                    }
+                } else {
+                    // console.log(`AuthContext: Token verification request failed with status: ${response.status}.`);
+                    performLogout(); 
+                }
+            } catch (error) {
+                // console.error("AuthContext: Error during token verification request:", error);
+                performLogout(); 
+            }
+        } else {
+            // Kein Token gefunden, daher nicht eingeloggt und Bildschirm nicht gesperrt.
+            setIsScreenLockedState(false); 
+            // console.log("AuthContext: No token found. User not authenticated.");
+        }
+        setIsLoadingAuth(false); // Auth-Prüfung in allen Fällen hier abschließen
+    }, [performLogout]);
+
+    useEffect(() => {
+        verifyTokenAndInitializeAuth();
+    }, [verifyTokenAndInitializeAuth]);
+
+    const login = (responseDataFromLoginApi: { userId: number; username: string; name?: string; nachname?: string; isAdmin: boolean; token: string }) => {
+        localStorage.setItem(AUTH_TOKEN_KEY, responseDataFromLoginApi.token);
+        // Nach einem frischen Login ist der Bildschirm nicht gesperrt.
+        localStorage.removeItem(SCREEN_LOCKED_KEY); 
+        
+        const contextUser: User = {
+            userId: responseDataFromLoginApi.userId,
+            username: responseDataFromLoginApi.username,
+            isAdmin: responseDataFromLoginApi.isAdmin,
+            name: responseDataFromLoginApi.name,
+            nachname: responseDataFromLoginApi.nachname,
+        };
+        setUser(contextUser);
+        setToken(responseDataFromLoginApi.token);
+        setIsAuthenticated(true);
+        setIsScreenLockedState(false); // Explizit auf false setzen
+        setIsLoadingAuth(false);
+        // console.log("AuthContext: User logged in. Screen unlocked.");
     };
-    setUser(contextUser);
-    setToken(responseDataFromLoginApi.token);
-    setIsAuthenticated(true);
-    setIsScreenLockedState(false);
-    setIsLoadingAuth(false); // Nach einem expliziten Login ist der Ladezustand definitiv abgeschlossen.
-    console.log("AuthContext: User logged in. Token stored in localStorage. User data:", contextUser);
-  };
 
-  const setIsScreenLocked = useCallback((locked: boolean) => {
-    console.log("[AuthContext] setIsScreenLocked CALLED with:", locked);
-    setIsScreenLockedState(locked);
-  }, []);
+    const setIsScreenLocked = useCallback((locked: boolean) => {
+        // console.log("[AuthContext] setIsScreenLocked CALLED with:", locked);
+        setIsScreenLockedState(locked);
+        if (typeof window !== 'undefined') {
+            if (locked) {
+                localStorage.setItem(SCREEN_LOCKED_KEY, 'true');
+                // console.log("[AuthContext] Screen locked, localStorage set.");
+            } else {
+                localStorage.removeItem(SCREEN_LOCKED_KEY);
+                // console.log("[AuthContext] Screen unlocked, localStorage cleared.");
+            }
+        }
+    }, []); // Leeres Dependency Array, da setIsScreenLockedState stabil ist
 
-  useEffect(() => {
-    console.log("[AuthContext] isScreenLocked state CHANGED TO:", isScreenLocked);
-  }, [isScreenLocked]);
+    // useEffect(() => {
+    //     // console.log("[AuthContext] isScreenLocked state CHANGED TO:", isScreenLocked);
+    // }, [isScreenLocked]); // Dieser Log kann zum Debuggen nützlich sein
 
-  // Stellt den Context-Wert (Zustände und Funktionen) für alle Kind-Komponenten bereit.
-  return (
-    <AuthContext.Provider value={{ isAuthenticated, user, token, isLoadingAuth, login, logout: performLogout, isScreenLocked, setIsScreenLocked }}>
-      {children}
-    </AuthContext.Provider>
-  );
+    return (
+        <AuthContext.Provider value={{ 
+            isAuthenticated, 
+            user, 
+            token, 
+            isLoadingAuth, 
+            login, 
+            logout: performLogout, 
+            isScreenLocked, 
+            setIsScreenLocked 
+        }}>
+            {children}
+        </AuthContext.Provider>
+    );
 };
 
-
-
-
-
-/**
- * Ein benutzerdefinierter Hook, um den AuthContext einfacher in Komponenten verwenden zu können.
- * Stellt sicher, dass der Hook innerhalb eines AuthProviders verwendet wird.
- */
-
-
-
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider. Make sure to wrap your component tree with <AuthProvider>.');
-  }
-  return context;
+    const context = useContext(AuthContext);
+    if (context === undefined) {
+        throw new Error('useAuth must be used within an AuthProvider. Make sure to wrap your component tree with <AuthProvider>.');
+    }
+    return context;
 };

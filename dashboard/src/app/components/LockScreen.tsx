@@ -3,12 +3,12 @@
 
 import React, { useState, FormEvent, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, Transition as MotionTransition, MotionProps } from 'framer-motion';
-import { LockClosedIcon as PasswordIcon, KeyIcon as UnlockIcon } from '@heroicons/react/24/solid'; 
+import { LockClosedIcon as PasswordIcon, PowerIcon, KeyIcon as UnlockIcon } from '@heroicons/react/24/solid';
 import Image from 'next/image';
 import { useAuth } from '../contexts/AuthContext';
-import { COMPANY_NAME } from '../constants'; // LOGIN_APP_NAME wird hier nicht direkt verwendet
+import { COMPANY_NAME } from '../constants';
 
-// BackgroundBlob-Komponente (wie zuvor definiert)
+// BackgroundBlob-Komponente (wie von dir bereitgestellt)
 interface BackgroundBlobProps {
     className: string;
     animateProps: MotionProps['animate'];
@@ -25,30 +25,29 @@ const BackgroundBlob = ({ className, animateProps, transitionProps }: Background
         if (target.x && Array.isArray(target.x) && typeof target.x[0] === 'number') { initialMotionValues.x = target.x[0]; }
         if (target.y && Array.isArray(target.y) && typeof target.y[0] === 'number') { initialMotionValues.y = target.y[0]; }
     }
-    return ( <motion.div className={`absolute rounded-full filter blur-3xl opacity-10 md:opacity-15 pointer-events-none ${className}`} initial={initialMotionValues} animate={animateProps} transition={transitionProps} /> );
+    return (<motion.div className={`absolute rounded-full filter blur-3xl opacity-10 md:opacity-15 pointer-events-none ${className}`} initial={initialMotionValues} animate={animateProps} transition={transitionProps} />);
 };
 
 
 export default function LockScreen() {
     // console.log("[LockScreen] Component RENDER ATTEMPT.");
-    const { user, setIsScreenLocked, token } = useAuth(); // token für echten Unlock später
+    const { user, setIsScreenLocked, token, logout } = useAuth(); // token wird für den API-Aufruf benötigt
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
-    const [isUnlocking, setIsUnlocking] = useState(false); // Für den Zustand während der (simulierten) Prüfung
-    const [unlockSuccessAnim, setUnlockSuccessAnim] = useState(false); // Für die Erfolgsanimation des Schlüssels
+    const [isUnlocking, setIsUnlocking] = useState(false);
+    const [unlockSuccessAnim, setUnlockSuccessAnim] = useState(false);
 
     const passwordInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        // Fokus auf das Passwortfeld setzen, wenn der LockScreen erscheint und die Erfolgsanimation nicht läuft.
         if (passwordInputRef.current && !unlockSuccessAnim) {
             passwordInputRef.current.focus();
         }
-    }, [unlockSuccessAnim]); // Reagiert, wenn die Erfolgsanimation startet/endet
+    }, [unlockSuccessAnim]);
 
     const handleSubmit = async (event: FormEvent) => {
         event.preventDefault();
-        if (unlockSuccessAnim || isUnlocking) return; // Verhindere Submit während Animation/Prüfung
+        if (unlockSuccessAnim || isUnlocking) return;
 
         if (!password.trim()) {
             setError("Bitte geben Sie Ihr Passwort ein.");
@@ -57,46 +56,83 @@ export default function LockScreen() {
         setIsUnlocking(true); // Beginnt den Entsperr-Vorgang (Button-Spinner etc.)
         setError(null);
 
-        // console.log("[LockScreen] Attempting unlock with password (DEMO):", password);
-        await new Promise(resolve => setTimeout(resolve, 600)); // Simuliere Backend-Prüfungs Latenz
+        console.log("[LockScreen] Attempting unlock. Calling API /api/auth/verify-password");
 
-        // Ersetze "test" durch das tatsächliche Passwort oder deine echte Prüflogik
-        if (password === "test") { 
-            // console.log("[LockScreen] Demo password correct. Starting success animation.");
-            setUnlockSuccessAnim(true); // Starte die Schlüssel-Erfolgsanimation
+        try {
+            // ECHTER API-AUFRUF
+            const response = await fetch('/api/auth/verify-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`, // Token aus useAuth()
+                },
+                body: JSON.stringify({ password: password }), // Das eingegebene Passwort senden
+            });
 
-            // Warte, bis die Schlüssel-Animation abgespielt wurde, dann entsperre den Bildschirm
-            setTimeout(() => {
-                setIsScreenLocked(false);
-                // Die folgenden Resets sind optional, da die Komponente beim Entsperren unmountet
-                // und beim nächsten Anzeigen sowieso mit initialen Werten startet.
-                // setPassword(''); 
-                // setUnlockSuccessAnim(false);
-                // setIsUnlocking(false);
-            }, 800); // Diese Dauer sollte zur Erfolgsanimation passen (z.B. 0.8s)
-        } else {
-            // console.log("[LockScreen] Demo password incorrect.");
-            setError("Das eingegebene Passwort ist nicht korrekt (Demo).");
-            setPassword(''); // Passwortfeld leeren für erneute Eingabe
-            setIsUnlocking(false); // Entsperr-Vorgang beenden (Spinner weg)
+            const responseData = await response.json();
+
+            if (response.ok && responseData.success) {
+                console.log("[LockScreen] Password verified successfully by API. Starting success animation.");
+                setUnlockSuccessAnim(true); // Starte die Schlüssel-Erfolgsanimation
+
+                // Warte, bis die Schlüssel-Animation abgespielt wurde, dann entsperre den Bildschirm
+                setTimeout(() => {
+                    setIsScreenLocked(false);
+                }, 800); // Diese Dauer sollte zur Erfolgsanimation passen (z.B. 0.8s)
+            } else {
+                console.error("[LockScreen] Password verification failed. API response:", responseData);
+                setError(responseData.error || "Das eingegebene Passwort ist nicht korrekt oder ein Fehler ist aufgetreten.");
+                setPassword('');
+                setIsUnlocking(false); // Entsperr-Vorgang beenden (Spinner weg)
+                if (passwordInputRef.current) {
+                    passwordInputRef.current.focus(); // Fokus zurück aufs Feld
+                }
+            }
+        } catch (err) {
+            console.error("[LockScreen] Network or other error during password verification:", err);
+            setError("Ein Netzwerkfehler oder ein anderer Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
+            setPassword('');
+            setIsUnlocking(false);
             if (passwordInputRef.current) {
-                passwordInputRef.current.focus(); // Fokus zurück aufs Feld
+                passwordInputRef.current.focus();
             }
         }
-        // setIsUnlocking(false) wird jetzt gezielt im Erfolgs-Timeout oder im Fehlerfall gesetzt.
+        // setIsUnlocking wird jetzt explizit im Erfolgsfall (durch unmount oder timeout) oder im Fehlerfall gehandhabt
     };
 
     const screenVariants = {
         hidden: { opacity: 0, backdropFilter: 'blur(0px)' },
         visible: { opacity: 1, backdropFilter: 'blur(16px)', transition: { duration: 0.4, ease: "circOut" } },
-        exit: { opacity: 0, backdropFilter: 'blur(0px)', transition: { duration: 0.3, ease: "circIn", delay: unlockSuccessAnim ? 0.5 : 0 } } // Verzögere Exit bei Erfolgsanimation
+        exit: {
+            opacity: 0,
+            backdropFilter: 'blur(0px)',
+            transition: { duration: 0.3, ease: "circIn", delay: unlockSuccessAnim ? 0.7 : 0 } // Längere Verzögerung, damit Schlüsselanimation fertig ist
+        }
     };
-    
+
     const cardVariants = {
         hidden: { opacity: 0, y: 40, scale: 0.9 },
         visible: { opacity: 1, y: 0, scale: 1, transition: { delay: 0.15, duration: 0.5, ease: "easeOut" } },
     };
 
+    const keyIconAnimateProps = unlockSuccessAnim
+        ? { scale: [1, 1.25, 1], rotate: 360, opacity: 1 }
+        : { scale: [1, 1.08, 1], rotate: [0, 4, -4, 0], opacity: 1 };
+
+
+    const keyIconTransitionProps = unlockSuccessAnim
+        ? { duration: 0.8, ease: 'circOut', delay: 0.1 } // Angepasste Erfolgs-Transition
+        : {
+            scale: { duration: 2.2, ease: "easeInOut", repeat: Infinity, repeatType: "mirror", delay: 0.2 },
+            rotate: { duration: 2.2, ease: "easeInOut", repeat: Infinity, repeatType: "mirror", delay: 0.2 }
+        };
+
+
+    const handleLogoutFromLockScreen = () => {
+        console.log("[LockScreen] Logout button clicked.");
+        logout(); // Ruft die logout-Funktion vom AuthContext auf
+        // Diese sollte isScreenLocked bereits auf false setzen und den User ausloggen.
+    };
     return (
         <motion.div
             key="lockscreen-overlay-main"
@@ -106,8 +142,8 @@ export default function LockScreen() {
             exit="exit"
             className="fixed inset-0 bg-slate-900/75 flex flex-col items-center justify-center z-[1000] p-4"
         >
-            <BackgroundBlob className="w-[600px] h-[600px] bg-sky-700/80 -top-1/3 -left-1/3" animateProps={{ x: [-150, 70, -150], y: [-100, 50, -100], rotate: [0, -100, 0], scale: [0.9, 1.2, 0.9]}} transitionProps={{ duration: 40, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }} />
-            <BackgroundBlob className="w-[550px] h-[550px] bg-purple-600/80 -bottom-1/3 -right-1/3" animateProps={{ x: [100, -70, 100], y: [80, -50, 80], rotate: [0, 130, 0], scale: [1, 1.1, 1]}} transitionProps={{ duration: 35, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}/>
+            <BackgroundBlob className="w-[600px] h-[600px] bg-sky-700/80 -top-1/3 -left-1/3" animateProps={{ x: [-150, 70, -150], y: [-100, 50, -100], rotate: [0, -100, 0], scale: [0.9, 1.2, 0.9] }} transitionProps={{ duration: 40, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }} />
+            <BackgroundBlob className="w-[550px] h-[550px] bg-purple-600/80 -bottom-1/3 -right-1/3" animateProps={{ x: [100, -70, 100], y: [80, -50, 80], rotate: [0, 130, 0], scale: [1, 1.1, 1] }} transitionProps={{ duration: 35, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }} />
 
             <motion.div
                 variants={cardVariants}
@@ -115,27 +151,17 @@ export default function LockScreen() {
             >
                 <div className="flex flex-col items-center mb-6 md:mb-8">
                     <motion.div
-                        className={`p-3 rounded-full mb-4 w-20 h-20 flex justify-center items-center shadow-inner transition-colors ease-out ${
-                            unlockSuccessAnim 
-                                ? 'bg-green-500/40 shadow-lg shadow-green-500/60 duration-300' 
-                                : 'bg-sky-500/20 duration-1000' // Langsamere Transition für den Idle-Farbwechsel
-                        }`}
-                        animate={unlockSuccessAnim
-                            ? { scale: [1, 1.35, 1.05], rotate: 360 } // Erfolgsanimation für Schlüssel-Container
-                            : { scale: [1, 1.08, 1], rotate: [0, 4, -4, 0] } // Subtilere Idle Animation
-                        }
-                        transition={unlockSuccessAnim
-                            ? { duration: 0.7, ease: [0.34, 1.56, 0.64, 1] } // Federnde Erfolgsanimation
-                            : { 
-                                scale: { duration: 2.2, ease: "easeInOut", repeat: Infinity, repeatType: "mirror", delay: 0.1 }, 
-                                rotate: { duration: 2.2, ease: "easeInOut", repeat: Infinity, repeatType: "mirror", delay: 0.1 }
-                              }
-                        }
+                        className={`p-3 rounded-full mb-4 w-20 h-20 flex justify-center items-center shadow-inner transition-colors ease-out ${unlockSuccessAnim
+                            ? 'bg-green-500/40 shadow-lg shadow-green-500/60 duration-300'
+                            : 'bg-sky-500/20 duration-1000'
+                            }`}
+                        animate={keyIconAnimateProps}
+                        transition={keyIconTransitionProps}
                     >
-                        <Image 
-                            src={'/key-solid.svg'} 
-                            alt='Sperr-Icon' 
-                            width={48} height={48} 
+                        <Image
+                            src={'/key-solid.svg'}
+                            alt='Sperr-Icon'
+                            width={48} height={48}
                             className={`transition-colors duration-300 ${unlockSuccessAnim ? 'text-green-300' : 'text-sky-300'}`}
                         />
                     </motion.div>
@@ -150,10 +176,10 @@ export default function LockScreen() {
                 </div>
 
                 <AnimatePresence>
-                    {error && !unlockSuccessAnim && ( // Fehlermeldung nur zeigen, wenn keine Erfolgsanimation läuft
-                        <motion.div 
+                    {error && !unlockSuccessAnim && (
+                        <motion.div
                             key="lock-error"
-                            initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0}} exit={{ opacity: 0, y: -5 }}
+                            initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
                             className="mb-4 p-3 bg-red-600/40 text-red-200 border border-red-500/70 rounded-lg text-sm text-center"
                         >
                             {error}
@@ -163,13 +189,13 @@ export default function LockScreen() {
 
                 <AnimatePresence mode="wait">
                     {!unlockSuccessAnim ? (
-                        <motion.form 
+                        <motion.form
                             key="lock-input-form"
-                            onSubmit={handleSubmit} 
+                            onSubmit={handleSubmit}
                             className="space-y-6"
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0, transition: { delay: 0.2, duration: 0.3 } }}
-                            exit={{ opacity: 0, y: -10, transition: {duration: 0.2} }}
+                            exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
                         >
                             <div>
                                 <label htmlFor="lockscreen_password_input" className="block text-xs sm:text-sm font-medium text-neutral-300 mb-1.5">
@@ -186,7 +212,7 @@ export default function LockScreen() {
                                         type="password"
                                         required
                                         value={password}
-                                        onChange={(e) => {setPassword(e.target.value); if(error) setError(null);}}
+                                        onChange={(e) => { setPassword(e.target.value); if (error) setError(null); }}
                                         disabled={isUnlocking}
                                         className="block w-full rounded-lg border-0 bg-slate-700/50 py-3 pl-11 pr-3 text-neutral-100 shadow-sm ring-1 ring-inset ring-slate-600/80 placeholder:text-neutral-400 focus:bg-slate-700/70 focus:ring-2 focus:ring-inset focus:ring-sky-500 sm:text-sm transition-all"
                                         placeholder="Ihr Passwort"
@@ -202,26 +228,43 @@ export default function LockScreen() {
                                     whileHover={{ scale: isUnlocking ? 1 : 1.03 }}
                                     whileTap={{ scale: isUnlocking ? 1 : 0.98 }}
                                 >
-                                    {isUnlocking ? (
+                                    {isUnlocking && !unlockSuccessAnim ? (
                                         <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                     ) : (
                                         <UnlockIcon className="h-5 w-5 mr-2 transform transition-transform group-hover:scale-110" />
                                     )}
-                                    {isUnlocking ? 'Prüfe...' : 'Entsperren'}
+                                    {isUnlocking && !unlockSuccessAnim ? 'Prüfe...' : 'Entsperren'}
+                                </motion.button>
+                            </div>
+                            <div>
+                                <motion.button
+                                    type="button" // Wichtig: type="button", damit das Formular nicht gesendet wird
+                                    onClick={handleLogoutFromLockScreen}
+                                    disabled={isUnlocking} // Auch deaktivieren, während eine Entsperraktion läuft
+                                    className="flex w-full justify-center items-center rounded-lg bg-slate-600/70 hover:bg-slate-500/90 px-3 py-2.5 text-xs font-medium text-slate-200 shadow-sm hover:shadow transition-all group disabled:opacity-60"
+                                    whileHover={{ scale: isUnlocking ? 1 : 1.02 }}
+                                    whileTap={{ scale: isUnlocking ? 1 : 0.98 }}
+                                >
+                                    <PowerIcon className="h-4 w-4 mr-2 opacity-80 group-hover:opacity-100 transition-opacity" />
+                                    Abmelden
                                 </motion.button>
                             </div>
                         </motion.form>
                     ) : (
-                        <motion.div 
-                            key="unlock-success-placeholder" // Nur ein Platzhalter, damit AnimatePresence den Wechsel erkennt
-                            className="h-[136px]" // Höhe des Formulars, um Layout-Sprung zu vermeiden
+                        <motion.div
+                            key="unlock-success-placeholder"
+                            className="h-[136px]"
                         />
                     )}
                 </AnimatePresence>
-                 <p className="mt-8 text-center text-xs text-neutral-500">
+                <p className="mt-8 text-center text-xs text-neutral-500">
                     &copy; {new Date().getFullYear()} {COMPANY_NAME}
                 </p>
             </motion.div>
         </motion.div>
     );
+}
+
+function logout() {
+    throw new Error('Function not implemented.');
 }
