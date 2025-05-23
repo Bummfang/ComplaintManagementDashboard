@@ -236,7 +236,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         await client.query('BEGIN');
 
         const currentItemResult = await client.query<LobDbData>( // Verwende LobDbData
-            'SELECT id, status, bearbeiter_id, FROM lob WHERE id = $1 FOR UPDATE', // bearbeiter_name mitladen
+            'SELECT id, status, bearbeiter_id FROM lob WHERE id = $1 FOR UPDATE', // bearbeiter_name mitladen
             [itemId]
         );
 

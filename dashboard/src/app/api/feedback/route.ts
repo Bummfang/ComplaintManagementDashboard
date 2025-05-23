@@ -244,7 +244,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         await client.query('BEGIN');
 
         const currentItemResult = await client.query<AnregungDbData>( // Verwende AnregungDbData
-            'SELECT id, status, bearbeiter_id, FROM anregung WHERE id = $1 FOR UPDATE', // bearbeiter_name ggf. mitladen
+            'SELECT id, status, bearbeiter_id FROM anregung WHERE id = $1 FOR UPDATE', // bearbeiter_name ggf. mitladen
             [itemId]
         );
 
