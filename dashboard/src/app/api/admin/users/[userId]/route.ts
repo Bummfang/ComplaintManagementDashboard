@@ -13,8 +13,9 @@ interface DecodedToken extends JwtPayload {
 
 
 export async function DELETE(
-    request: NextRequest, 
-    { params }: { params: { userId: string } }
+    request: NextRequest,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    context: any
 ) {
     const requestTimestamp = new Date().toISOString();
 
@@ -42,7 +43,17 @@ export async function DELETE(
         return NextResponse.json({ success: false, error: 'Ungültiges oder abgelaufenes Token.' }, { status: 401 });
     }
 
-    const userIdToDeleteStr = params.userId;
+
+    let userIdToDeleteStr: string | undefined;
+    if (context && context.params && typeof context.params.userId === 'string') {
+        userIdToDeleteStr = context.params.userId;
+    }
+
+    if (userIdToDeleteStr === undefined) { // Prüfen, ob der String extrahiert werden konnte
+        console.error(`[${requestTimestamp}] DELETE /api/admin/users/[userId]: userId nicht im context.params gefunden oder kein String.`);
+        return NextResponse.json({ success: false, error: 'Ungültige Anfrage: Benutzer-ID fehlt im Pfad oder ist ungültig.' }, { status: 400 });
+    }
+
     const userIdToDelete = parseInt(userIdToDeleteStr, 10);
 
     if (isNaN(userIdToDelete)) {
@@ -69,7 +80,7 @@ export async function DELETE(
         const targetUserResult = await client.query(targetUserIsAdminQuery, [userIdToDelete]);
 
         if (targetUserResult.rows.length === 0) {
-             await client.query('ROLLBACK');
+            await client.query('ROLLBACK');
             return NextResponse.json({ success: false, error: 'Zu löschender Benutzer nicht gefunden.' }, { status: 404 });
         }
 
