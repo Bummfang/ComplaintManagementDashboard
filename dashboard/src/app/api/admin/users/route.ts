@@ -17,8 +17,11 @@ interface UserListData {
 }
 
 interface DecodedToken extends JwtPayload {
+    userId: number;
+    username: string;
     isAdmin: boolean;
-    // ... weitere Felder aus deinem Token
+    name?: string;     
+    nachname?: string;
 }
 
 export async function GET(request: NextRequest) {

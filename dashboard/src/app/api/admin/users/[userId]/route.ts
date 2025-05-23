@@ -12,8 +12,10 @@ interface DecodedToken extends JwtPayload {
 }
 
 
-
-export async function DELETE(request: NextRequest,  context: { params: { userId: string }}) {
+export async function DELETE(
+    request: NextRequest, 
+    { params }: { params: { userId: string } }
+) {
     const requestTimestamp = new Date().toISOString();
 
     if (!JWT_SECRET) {
@@ -40,7 +42,7 @@ export async function DELETE(request: NextRequest,  context: { params: { userId:
         return NextResponse.json({ success: false, error: 'Ungültiges oder abgelaufenes Token.' }, { status: 401 });
     }
 
-    const userIdToDeleteStr = context.params.userId;
+    const userIdToDeleteStr = params.userId;
     const userIdToDelete = parseInt(userIdToDeleteStr, 10);
 
     if (isNaN(userIdToDelete)) {
