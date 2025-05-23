@@ -178,7 +178,7 @@ export function useDataFetching({
         if (isAuthenticated && token && currentView !== "statistik" && currentView !== "admin") {
             intervalId = setInterval(() => {
                 fetchDataInternal(currentView, currentPage, itemsPerPage, filters, true);
-            }, 30000);
+            }, 60000);
         }
         return () => {
             if (intervalId) clearInterval(intervalId);
