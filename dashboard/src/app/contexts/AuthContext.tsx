@@ -37,6 +37,8 @@ interface AuthContextType {
   isLoadingAuth: boolean;      // Zeigt an, ob der initiale Auth-Status noch geladen/geprüft wird.
   login: (responseDataFromLoginApi: { userId: number; username: string; name?: string; nachname?: string; isAdmin: boolean; token: string }) => void; // Funktion zum Anmelden.
   logout: () => void;          // Funktion zum Abmelden.
+  isScreenLocked: boolean;
+  setIsScreenLocked: (locked: boolean) => void;
 }
 
 
@@ -49,15 +51,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true); 
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [isScreenLocked, setIsScreenLockedState] = useState<boolean>(false);
+
   const performLogout = useCallback(() => {
-    localStorage.removeItem('authToken'); 
+    localStorage.removeItem('authToken');
     setUser(null);
     setToken(null);
     setIsAuthenticated(false);
-    setIsLoadingAuth(false); 
+    setIsScreenLockedState(false);
+    setIsLoadingAuth(false);
     console.log("AuthContext: User logged out, token removed from localStorage.");
-   
+
   }, [/* router */]);
 
   /**
@@ -75,29 +80,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         // Sende das Token an deinen Verifizierungs-Endpunkt (/api/verify-token)
         const response = await fetch('/api/verify-token', {
-            method: 'POST', // Muss zur Methode deines Endpunkts passen
-            headers: {
-                'Authorization': `Bearer ${storedToken}`, // Token im Header senden
-            }
+          method: 'POST', // Muss zur Methode deines Endpunkts passen
+          headers: {
+            'Authorization': `Bearer ${storedToken}`, // Token im Header senden
+          }
         });
 
         if (response.ok) {
-            const data = await response.json(); // Erwartet { isValid: true, user: User }
-            if (data.isValid && data.user) {
-                // Token ist gültig, Benutzerdaten und Authentifizierungsstatus setzen
-                setUser(data.user);
-                setToken(storedToken);
-                setIsAuthenticated(true);
-                console.log("AuthContext: Token successfully verified. User authenticated:", data.user);
-            } else {
-                // Server meldet Token als ungültig oder liefert keine Benutzerdaten
-                console.log("AuthContext: Token verification response indicates invalid token or no user data. Performing logout.");
-                performLogout(); // Token entfernen und Status zurücksetzen
-            }
-        } else {
-            // Anfrage an /api/verify-token fehlgeschlagen (z.B. 401 bei abgelaufenem Token)
-            console.log(`AuthContext: Token verification request failed with status: ${response.status}. Performing logout.`);
+          const data = await response.json(); // Erwartet { isValid: true, user: User }
+          if (data.isValid && data.user) {
+            // Token ist gültig, Benutzerdaten und Authentifizierungsstatus setzen
+            setUser(data.user);
+            setToken(storedToken);
+            setIsAuthenticated(true);
+            console.log("AuthContext: Token successfully verified. User authenticated:", data.user);
+          } else {
+            // Server meldet Token als ungültig oder liefert keine Benutzerdaten
+            console.log("AuthContext: Token verification response indicates invalid token or no user data. Performing logout.");
             performLogout(); // Token entfernen und Status zurücksetzen
+          }
+        } else {
+          // Anfrage an /api/verify-token fehlgeschlagen (z.B. 401 bei abgelaufenem Token)
+          console.log(`AuthContext: Token verification request failed with status: ${response.status}. Performing logout.`);
+          performLogout(); // Token entfernen und Status zurücksetzen
         }
       } catch (error) {
         // Netzwerkfehler oder anderer Fehler bei der Anfrage
@@ -105,9 +110,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         performLogout(); // Bei Fehlern ebenfalls ausloggen
       }
     } else {
-        // Kein Token im localStorage gefunden
-        console.log("AuthContext: No token found in localStorage. User is not authenticated.");
-        // Kein Logout nötig, da nicht eingeloggt. Ladevorgang ist aber abgeschlossen.
+      // Kein Token im localStorage gefunden
+      console.log("AuthContext: No token found in localStorage. User is not authenticated.");
+      // Kein Logout nötig, da nicht eingeloggt. Ladevorgang ist aber abgeschlossen.
     }
     setIsLoadingAuth(false); // Auth-Prüfung ist abgeschlossen
   }, [performLogout]); // performLogout als Abhängigkeit
@@ -128,25 +133,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Benutzerobjekt für den Context-State erstellen
     const contextUser: User = {
-        userId: responseDataFromLoginApi.userId,
-        username: responseDataFromLoginApi.username,
-        isAdmin: responseDataFromLoginApi.isAdmin,
-        name: responseDataFromLoginApi.name,
-        nachname: responseDataFromLoginApi.nachname,
+      userId: responseDataFromLoginApi.userId,
+      username: responseDataFromLoginApi.username,
+      isAdmin: responseDataFromLoginApi.isAdmin,
+      name: responseDataFromLoginApi.name,
+      nachname: responseDataFromLoginApi.nachname,
     };
     setUser(contextUser);
     setToken(responseDataFromLoginApi.token);
     setIsAuthenticated(true);
+    setIsScreenLockedState(false);
     setIsLoadingAuth(false); // Nach einem expliziten Login ist der Ladezustand definitiv abgeschlossen.
     console.log("AuthContext: User logged in. Token stored in localStorage. User data:", contextUser);
   };
 
+  const setIsScreenLocked = useCallback((locked: boolean) => {
+    console.log("[AuthContext] setIsScreenLocked CALLED with:", locked);
+    setIsScreenLockedState(locked);
+  }, []);
 
-
+  useEffect(() => {
+    console.log("[AuthContext] isScreenLocked state CHANGED TO:", isScreenLocked);
+  }, [isScreenLocked]);
 
   // Stellt den Context-Wert (Zustände und Funktionen) für alle Kind-Komponenten bereit.
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, token, isLoadingAuth, login, logout: performLogout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, token, isLoadingAuth, login, logout: performLogout, isScreenLocked, setIsScreenLocked }}>
       {children}
     </AuthContext.Provider>
   );
