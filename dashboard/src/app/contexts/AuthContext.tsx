@@ -24,44 +24,33 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AUTH_TOKEN_KEY = 'authToken'; // Schlüssel für das Auth-Token im localStorage
-const SCREEN_LOCKED_KEY = 'screenLocked'; // Schlüssel für den Sperrstatus im localStorage
+const AUTH_TOKEN_KEY = 'authToken';
+const SCREEN_LOCKED_KEY = 'screenLocked';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-    
-    // Initialen Sperrzustand aus localStorage lesen, aber nur wenn auch ein Token da war/ist.
-    const [isScreenLocked, setIsScreenLockedState] = useState<boolean>(() => {
-        if (typeof window !== 'undefined') {
-            const storedToken = localStorage.getItem(AUTH_TOKEN_KEY);
-            const storedLockState = localStorage.getItem(SCREEN_LOCKED_KEY);
-            // Der Bildschirm ist nur dann initial gesperrt, wenn ein Token existiert
-            // UND der Sperrstatus explizit auf 'true' gesetzt war.
-            return !!storedToken && storedLockState === 'true';
-        }
-        return false;
-    });
+    // Initialisiere isScreenLocked IMMER mit false für SSR-Konsistenz
+    const [isScreenLocked, setIsScreenLockedState] = useState<boolean>(false); 
 
     const performLogout = useCallback(() => {
         localStorage.removeItem(AUTH_TOKEN_KEY);
-        localStorage.removeItem(SCREEN_LOCKED_KEY); // Sperrstatus beim Logout entfernen
+        localStorage.removeItem(SCREEN_LOCKED_KEY);
         setUser(null);
         setToken(null);
         setIsAuthenticated(false);
-        setIsScreenLockedState(false); // Bildschirm beim Logout entsperren
-        setIsLoadingAuth(false); // Auth-Prozess ist hier beendet
+        setIsScreenLockedState(false);
+        setIsLoadingAuth(false);
         // console.log("AuthContext: User logged out, token & lock state removed.");
     }, []);
 
     const verifyTokenAndInitializeAuth = useCallback(async () => {
         // console.log("AuthContext: Initializing auth...");
-        setIsLoadingAuth(true); // Am Anfang des Initialisierungsprozesses
+        setIsLoadingAuth(true);
         const storedToken = typeof window !== 'undefined' ? localStorage.getItem(AUTH_TOKEN_KEY) : null;
-        const storedLockState = typeof window !== 'undefined' ? localStorage.getItem(SCREEN_LOCKED_KEY) : null;
-
+        
         if (storedToken) {
             try {
                 const response = await fetch('/api/verify-token', {
@@ -75,37 +64,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                         setUser(data.user);
                         setToken(storedToken);
                         setIsAuthenticated(true);
-                        // Wichtig: Sperrstatus basierend auf localStorage setzen, NACHDEM Token als gültig bestätigt wurde.
-                        setIsScreenLockedState(storedLockState === 'true'); 
-                        // console.log("AuthContext: Token verified. User authenticated. Screen initially locked:", storedLockState === 'true');
+                        // WICHTIG: Initiales Setzen von isScreenLockedState basierend auf localStorage
+                        // erfolgt jetzt in einem separaten useEffect, um Hydrierungsfehler zu vermeiden.
+                        // console.log("AuthContext: Token verified. User authenticated.");
                     } else {
-                        // console.log("AuthContext: Token verification response indicates invalid token or no user data.");
                         performLogout(); 
                     }
                 } else {
-                    // console.log(`AuthContext: Token verification request failed with status: ${response.status}.`);
                     performLogout(); 
                 }
             } catch (error) {
                 console.error("AuthContext: Error during token verification request:", error);
                 performLogout(); 
             }
-        } else {
-            // Kein Token gefunden, daher nicht eingeloggt und Bildschirm nicht gesperrt.
-            setIsScreenLockedState(false); 
-            // console.log("AuthContext: No token found. User not authenticated.");
         }
-        setIsLoadingAuth(false); // Auth-Prüfung in allen Fällen hier abschließen
+        // else: Kein Token gefunden, Auth-Status bleibt initial false (oder wird durch performLogout gesetzt)
+        setIsLoadingAuth(false); 
     }, [performLogout]);
 
     useEffect(() => {
         verifyTokenAndInitializeAuth();
     }, [verifyTokenAndInitializeAuth]);
 
+    // NEUER useEffect: Setzt den Sperrstatus clientseitig nach der initialen Auth-Prüfung
+    useEffect(() => {
+        // Dieser Effekt läuft nur auf dem Client und erst, wenn isLoadingAuth abgeschlossen ist.
+        if (!isLoadingAuth && isAuthenticated && typeof window !== 'undefined') { 
+            const storedLockState = localStorage.getItem(SCREEN_LOCKED_KEY);
+            if (storedLockState === 'true') {
+                // console.log("[AuthContext] Client-side effect: Setting screen to locked based on localStorage.");
+                setIsScreenLockedState(true);
+            } else {
+                // Sicherstellen, dass es false ist, falls localStorage nichts enthält oder ungültig ist
+                 setIsScreenLockedState(false);
+            }
+        } else if (!isLoadingAuth && !isAuthenticated && typeof window !== 'undefined') {
+            // Wenn nicht authentifiziert, sicherstellen, dass der Sperrstatus entfernt und im State false ist
+            localStorage.removeItem(SCREEN_LOCKED_KEY);
+            setIsScreenLockedState(false);
+        }
+    }, [isLoadingAuth, isAuthenticated]); // Abhängig von isLoadingAuth und isAuthenticated
+
     const login = (responseDataFromLoginApi: { userId: number; username: string; name?: string; nachname?: string; isAdmin: boolean; token: string }) => {
         localStorage.setItem(AUTH_TOKEN_KEY, responseDataFromLoginApi.token);
-        // Nach einem frischen Login ist der Bildschirm nicht gesperrt.
-        localStorage.removeItem(SCREEN_LOCKED_KEY); 
+        localStorage.removeItem(SCREEN_LOCKED_KEY); // Nach Login ist Bildschirm nicht gesperrt
         
         const contextUser: User = {
             userId: responseDataFromLoginApi.userId,
@@ -117,7 +119,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(contextUser);
         setToken(responseDataFromLoginApi.token);
         setIsAuthenticated(true);
-        setIsScreenLockedState(false); // Explizit auf false setzen
+        setIsScreenLockedState(false); 
         setIsLoadingAuth(false);
         // console.log("AuthContext: User logged in. Screen unlocked.");
     };
@@ -128,17 +130,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (typeof window !== 'undefined') {
             if (locked) {
                 localStorage.setItem(SCREEN_LOCKED_KEY, 'true');
-                // console.log("[AuthContext] Screen locked, localStorage set.");
             } else {
                 localStorage.removeItem(SCREEN_LOCKED_KEY);
-                // console.log("[AuthContext] Screen unlocked, localStorage cleared.");
             }
         }
-    }, []); // Leeres Dependency Array, da setIsScreenLockedState stabil ist
+    }, []);
 
     // useEffect(() => {
     //     // console.log("[AuthContext] isScreenLocked state CHANGED TO:", isScreenLocked);
-    // }, [isScreenLocked]); // Dieser Log kann zum Debuggen nützlich sein
+    // }, [isScreenLocked]);
 
     return (
         <AuthContext.Provider value={{ 
