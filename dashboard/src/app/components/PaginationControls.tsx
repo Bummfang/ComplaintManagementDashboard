@@ -66,7 +66,7 @@ export default function PaginationControls({
                     style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none' }}
                     title="Einträge pro Seite"
                 >
-                    {[8, 16, 20, 30, 50].sort((a,b) => a-b).map(size => (
+                    {[4, 8, 16, 20, 30, 50].sort((a,b) => a-b).map(size => (
                         <option key={size} value={size}>{size}</option>
                     ))}
                 </select>
