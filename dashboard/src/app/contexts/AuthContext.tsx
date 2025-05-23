@@ -87,7 +87,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     performLogout(); 
                 }
             } catch (error) {
-                // console.error("AuthContext: Error during token verification request:", error);
+                console.error("AuthContext: Error during token verification request:", error);
                 performLogout(); 
             }
         } else {

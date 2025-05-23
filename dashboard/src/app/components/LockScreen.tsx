@@ -129,9 +129,7 @@ export default function LockScreen() {
 
 
     const handleLogoutFromLockScreen = () => {
-        console.log("[LockScreen] Logout button clicked.");
-        logout(); // Ruft die logout-Funktion vom AuthContext auf
-        // Diese sollte isScreenLocked bereits auf false setzen und den User ausloggen.
+        logout(); 
     };
     return (
         <motion.div
@@ -265,6 +263,4 @@ export default function LockScreen() {
     );
 }
 
-function logout() {
-    throw new Error('Function not implemented.');
-}
+
