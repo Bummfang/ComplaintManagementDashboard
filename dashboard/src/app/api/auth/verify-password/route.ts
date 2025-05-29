@@ -68,7 +68,6 @@ export async function POST(request: NextRequest) {
         client = await getDbPool().connect();
         
         // Hole den gehashten Passwort-String des Benutzers aus der Datenbank
-        // Annahme: Deine Passwortspalte in der 'users'-Tabelle heißt 'password'
         const userQuery = 'SELECT password FROM users WHERE id = $1';
         const userResult = await client.query<UserRecord>(userQuery, [decodedTokenInfo.userId]);
 
@@ -79,7 +78,7 @@ export async function POST(request: NextRequest) {
         }
 
         const userRecord = userResult.rows[0];
-        if (!userRecord.password) { // Oder wie auch immer deine Spalte heißt
+        if (!userRecord.password) { 
              console.error(`[${requestTimestamp}] /api/auth/verify-password: Kein Passwort-Hash für User ID ${decodedTokenInfo.userId} in DB gefunden.`);
              return NextResponse.json({ success: false, error: 'Serverfehler bei Benutzerdaten.' }, { status: 500 });
         }

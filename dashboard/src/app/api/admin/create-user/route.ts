@@ -120,7 +120,6 @@ export async function POST(request: NextRequest) {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(plainPassword, saltRounds);
 
-    // `username` wird von der DB generiert (Annahme basierend auf vorherigem DB-Fehler)
     const insertUserQuery = `
       INSERT INTO users (name, nachname, password, ist_admin)
       VALUES ($1, $2, $3, $4)

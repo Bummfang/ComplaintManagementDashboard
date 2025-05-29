@@ -13,7 +13,6 @@ interface UserListData {
     nachname: string;
     username: string;
     ist_admin: boolean;
-    // erstelltam?: string; // Falls du das in deiner users-Tabelle hast und anzeigen willst
 }
 
 interface DecodedToken extends JwtPayload {

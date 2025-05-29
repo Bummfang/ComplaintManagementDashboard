@@ -49,9 +49,7 @@ export async function POST(request: NextRequest) {
         // Überprüfen, ob die erwarteten Felder im dekodierten Token vorhanden sind
         if (typeof decoded.name === 'undefined' || typeof decoded.nachname === 'undefined') {
              console.warn(`[${new Date().toISOString()}] Token verification for /api/verify-token: Token for user ${decoded.username} (ID: ${decoded.userId}) is missing name or nachname.`);
-             // Optional: Hier könnte man einen Fehler zurückgeben oder den User ohne Namen/Nachnamen als gültig betrachten,
-             // aber für die Begrüßung ist es besser, wenn sie da sind.
-             // Für jetzt geben wir den User trotzdem zurück, aber loggen den Warnhinweis.
+
         }
 
         // console.log(`[${new Date().toISOString()}] Token verified successfully for /api/verify-token. User: ${decoded.username}, Admin: ${decoded.isAdmin}`);
