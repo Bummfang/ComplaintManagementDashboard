@@ -13,8 +13,7 @@ import { formatDate } from '../utils';
 
 
 // --- Typdefinitionen ---
-// Diese bleiben wie von dir bereitgestellt, da sie die API-Antwort widerspiegeln.
-// Wichtig ist, wie wir im Frontend damit umgehen.
+
 export type ChartComplaintStatusType = "Offen" | "In Bearbeitung" | "Gelöst" | "Abgelehnt" | "Unbekannt";
 interface ComplaintByStatus { status: ChartComplaintStatusType; count: number; }
 interface ComplaintOverTime { date: string; count: number; }
@@ -22,11 +21,6 @@ interface ComplaintReason { reason: string; count: number; }
 interface ComplaintHotspot { name: string; count: number; }
 
 
-
-
-// Die Struktur, die von der API erwartet wird (StatisticsApiResponse in deiner route.ts)
-// und wie wir sie im Frontend-State halten (StatisticsData).
-// Wir machen die Array-Felder im State nicht-optional, da wir sie bei Bedarf mit `[]` initialisieren.
 export interface StatisticsData {
   totalComplaints: number;
   totalPraises: number;
@@ -328,7 +322,7 @@ export default function StatisticsView() {
 
 
 
-  
+
 
 
 

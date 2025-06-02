@@ -40,7 +40,7 @@ interface CardBackProps {
     validationError: string | null;
     cardKey: string;
     isSubmitting?: boolean;
-    isFinalized?: boolean; // <--- NEUE PROP DEFINIEREN
+    isFinalized?: boolean; 
 }
 
 

@@ -38,7 +38,6 @@ export default function PaginationControls({
     // Oder wenn totalPages 0 ist (was bei 0 Items der Fall sein sollte).
     if (totalItems === 0 && totalPages === 0) { 
         // Optional: Eine Meldung wie "Keine Daten vorhanden" oder einfach nichts.
-        // return <div className="mt-10 text-sm text-slate-500 text-center">Keine Einträge vorhanden.</div>;
         return null;
     }
 
