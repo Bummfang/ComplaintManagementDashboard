@@ -41,6 +41,13 @@ function isBeschwerdeAndHasAttachment(
 
 
 
+
+
+
+
+
+
+
 interface CardFrontProps {
     item: CardSpecificDataItem;
     currentView: ViewType;
@@ -67,6 +74,10 @@ interface CardFrontProps {
 
 
 
+
+
+
+
 const CardFront: React.FC<CardFrontProps> = ({
     item,
     currentView,
@@ -87,16 +98,14 @@ const CardFront: React.FC<CardFrontProps> = ({
     isFinalized = false,
     token,
 }) => {
+
+
+
     const cardKey = `card-${currentView}-${item.id}`;
     const [isDownloading, setIsDownloading] = useState(false);
-
     const isBeschwerdeTypeCheck = (dataItem: CardSpecificDataItem): dataItem is BeschwerdeItem => {
         return currentView === 'beschwerden' && 'beschwerdegrund' in dataItem;
     };
-
-
-
-
     const beschwerdeItemData = isBeschwerdeTypeCheck(item) ? item : null;
     const disableFileModificationActions = isLocked || isProcessingFile || isFinalized;
     const handleLocalFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,12 +125,24 @@ const CardFront: React.FC<CardFrontProps> = ({
 
 
 
+
+
+
+
+
     const removeSelectedLocalFile = () => {
         if (disableFileModificationActions) return;
         onFileSelect(null);
         const fileInput = document.getElementById(fileInputId) as HTMLInputElement;
         if (fileInput) fileInput.value = "";
     };
+
+
+
+
+
+
+
 
 
 
@@ -132,8 +153,22 @@ const CardFront: React.FC<CardFrontProps> = ({
     };
 
 
+
+
+
+
+
+
+
     let downloadUrlApi: string | undefined = undefined;
     let dbAttachmentFilename: string | null = null;
+
+
+
+
+
+
+
 
 
     if (isBeschwerdeAndHasAttachment(item, currentView)) {
@@ -143,6 +178,12 @@ const CardFront: React.FC<CardFrontProps> = ({
             downloadUrlApi = `${beschwerdenApiBase}/${item.id}/attachment`;
         }
     }
+
+
+
+
+
+
 
     const showUploadButtonForSelectedFile = selectedFile && typeof onUploadSelectedFile === 'function' && !disableFileModificationActions;
     const handleDownloadAttachment = async () => {
@@ -182,6 +223,11 @@ const CardFront: React.FC<CardFrontProps> = ({
             setIsDownloading(false);
         }
     };
+
+    
+
+
+
 
 
 
@@ -300,5 +346,6 @@ const CardFront: React.FC<CardFrontProps> = ({
         </div>
     );
 };
+
 
 export default CardFront;

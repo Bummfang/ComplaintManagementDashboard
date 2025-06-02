@@ -27,6 +27,10 @@ interface ExpectedRouteContext {
 
 
 
+
+
+
+
 async function preProcessRequest(
     request: NextRequest,
     resolvedParams: ResolvedParamsType,
@@ -53,14 +57,17 @@ async function preProcessRequest(
     }
 
 
+
+
+
     const itemIdStr = resolvedParams.id;
     const itemId = parseInt(itemIdStr, 10);
-
-
 
     if (isNaN(itemId)) {
         return { errorResponse: NextResponse.json({ error: 'Ungültige Beschwerde-ID im Pfad.' }, { status: 400 }) };
     }
+
+
 
 
 
@@ -71,14 +78,21 @@ async function preProcessRequest(
 
 
 
+
+
+
+
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return { errorResponse: NextResponse.json({ error: 'Authentifizierungstoken fehlt oder ist ungültig.' }, { status: 401 }) };
     }
+
+
+
+
+    
+
     const token = authHeader.split(' ')[1];
-
-
-
 
     try {
         jwt.verify(token, JWT_SECRET);

@@ -29,7 +29,7 @@ export const API_ENDPOINTS: AllApiEndpoints = {
     lob: '/api/like',
     anregungen: '/api/feedback',
     statistik: '/api/statistics',
-    admin: '', // oder weglassen, falls im AllApiEndpoints Interface als optional definiert
+    admin: '', 
     login: '/api/login',
     verifyToken: '/api/verify-token',
     createUser: '/api/admin/create-user',

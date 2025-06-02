@@ -6,6 +6,12 @@ import jwt, { type JwtPayload } from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+
+
+
+
+
+
 // Typ für die Benutzerdaten, die wir senden (ohne Passwort)
 interface UserListData {
     id: number;
@@ -16,6 +22,12 @@ interface UserListData {
     // erstelltam?: string; // Falls du das in deiner users-Tabelle hast und anzeigen willst
 }
 
+
+
+
+
+
+
 interface DecodedToken extends JwtPayload {
     userId: number;
     username: string;
@@ -24,18 +36,32 @@ interface DecodedToken extends JwtPayload {
     nachname?: string;
 }
 
+
+
+
+
+
+
 export async function GET(request: NextRequest) {
     const requestTimestamp = new Date().toISOString();
+
+
 
     if (!JWT_SECRET) {
         console.error(`[${requestTimestamp}] GET /api/admin/users: JWT_SECRET nicht definiert.`);
         return NextResponse.json({ error: 'Serverkonfigurationsfehler.' }, { status: 500 });
     }
 
+
+
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return NextResponse.json({ error: 'Authentifizierungstoken fehlt oder ist ungültig.' }, { status: 401 });
     }
+
+
+
+
     const token = authHeader.split(' ')[1];
 
     try {
@@ -49,6 +75,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Ungültiges oder abgelaufenes Token.' }, { status: 401 });
     }
 
+
+    
     let client: PoolClient | undefined;
     try {
         client = await getDbPool().connect();

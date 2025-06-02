@@ -22,6 +22,10 @@ const buttonHoverSpring = { type: "spring", stiffness: 400, damping: 15 };
 
 
 
+
+
+
+
 interface CardActionsProps {
     status?: StrictStatus;
     isLockedByHook: boolean;
@@ -40,6 +44,9 @@ interface CardActionsProps {
 
 
 
+
+
+
 const CardActions: React.FC<CardActionsProps> = ({
     status,
     isLockedByHook,
@@ -54,18 +61,16 @@ const CardActions: React.FC<CardActionsProps> = ({
     isClarificationMissingInSavedDetails,
     currentView,
 }) => {
+
+
+
+
     const [animateSettingsIcon, setAnimateSettingsIcon] = useState(false);
     const [isSettingsIconHovered, setIsSettingsIconHovered] = useState(false);
     const [animateLockIconWhenActionDisabled, setAnimateLockIconWhenActionDisabled] = useState(false);
     const [isLockIconHovered, setIsLockIconHovered] = useState(false);
-
-
-
-
-
     const generalActionsDisabled = isLockedByHook || isAssigning || isProcessingFile;
     const disableResolveActions = generalActionsDisabled || (isClarificationMissingInSavedDetails && status === "In Bearbeitung" && currentView === 'beschwerden');
-    
     
     const settingsButtonDisabled = useMemo(() => {
         if (!canFlip) return true; 
@@ -75,6 +80,9 @@ const CardActions: React.FC<CardActionsProps> = ({
     }, [canFlip, isAssigning, isProcessingFile, isFinalized, isLockedByHook]);
 
    
+
+
+
    
     const settingsButtonTitle = useMemo(() => {
         if (!canFlip) return ""; 
@@ -89,6 +97,9 @@ const CardActions: React.FC<CardActionsProps> = ({
         if (isFinalized) return "Interne Details ansehen";
         return "Interne Details bearbeiten";
     }, [canFlip, settingsButtonDisabled, isFinalized, isLockedByHook, isAssigning, isProcessingFile]);
+
+
+
 
 
 
@@ -110,6 +121,11 @@ const CardActions: React.FC<CardActionsProps> = ({
             setAnimateLockIconWhenActionDisabled(isHovering);
         }
     };
+
+
+
+
+
 
 
 
@@ -217,6 +233,10 @@ const CardActions: React.FC<CardActionsProps> = ({
 
 
 
+
+
+
+    
 
     
     if (!status) return null;

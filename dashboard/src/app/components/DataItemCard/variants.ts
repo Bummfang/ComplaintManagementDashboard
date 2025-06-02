@@ -6,6 +6,10 @@ import { Variants } from 'framer-motion';
 
 
 
+
+
+
+
 /**
  * Variants for the main card container.
  * Controls the initial appearance, animation into view, and exit animation.
@@ -36,6 +40,10 @@ export const cardContainerVariants: Variants = {
 
 
 
+
+
+
+
 /**
  * Variants for individual content items within the card (e.g., text fields, sections).
  * Controls how each item animates into view.
@@ -49,6 +57,10 @@ export const contentItemVariants: Variants = {
         transition: { type: "spring", stiffness: 180, damping: 22 }
     }
 };
+
+
+
+
 
 
 
@@ -76,6 +88,10 @@ export const flipCardVariants: Variants = {
 
 
 
+
+
+
+
 /**
  * Variants for the content within a flipping card (e.g., front face, back face).
  * This ensures that the content correctly appears/disappears during the flip.
@@ -92,11 +108,27 @@ export const flipContentVariantsFront: Variants = {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
 export const flipContentVariantsBack: Variants = {
     initial: { opacity: 0, rotateY: 90 }, // Start rotated and hidden
     animate: { opacity: 1, rotateY: 0, transition: { duration: 0.25, ease: "easeOut", delay: 0.25 } }, // Rotate in
     exit: { opacity: 0, rotateY: 90, transition: { duration: 0.25, ease: "easeIn" } }, // Rotate out further
 };
+
+
+
+
+
 
 
 
@@ -115,6 +147,10 @@ export const feedbackMessageVariants: Variants = {
 
 
 
+
+
+
+
 /**
  * Hover and tap animations for interactive elements like buttons.
  */
@@ -122,6 +158,10 @@ export const buttonHoverTapVariants = {
     hover: { scale: 1.05, y: -2, transition: { type: "spring", stiffness: 400, damping: 15 } },
     tap: { scale: 0.97, y: 0 }
 };
+
+
+
+
 
 
 

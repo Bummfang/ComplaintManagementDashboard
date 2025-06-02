@@ -27,6 +27,11 @@ const contentItemVariants = {
 
 
 
+
+
+
+
+
 interface CardBackProps {
     internalDetails: InternalCardData;
     onDetailChange: <K extends keyof InternalCardData>(key: K, value: InternalCardData[K]) => void;
@@ -37,6 +42,10 @@ interface CardBackProps {
     isSubmitting?: boolean;
     isFinalized?: boolean; // <--- NEUE PROP DEFINIEREN
 }
+
+
+
+
 
 
 
@@ -88,10 +97,17 @@ const CardBack: React.FC<CardBackProps> = ({
 
 
 
+
+
+
+
     const clarificationTypes = [
         { value: 'schriftlich', label: 'Schriftlich', icon: MailIcon },
         { value: 'telefonisch', label: 'Telefonisch', icon: PhoneIcon }
     ] as const;
+
+
+
 
 
 
@@ -106,10 +122,18 @@ const CardBack: React.FC<CardBackProps> = ({
 
 
 
+
+
+
     const baseButtonClass = "px-6 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 ease-out flex items-center justify-center shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800/90 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-md disabled:hover:y-0 disabled:hover:scale-100";
     const primaryButtonClass = `${baseButtonClass} bg-sky-600 hover:bg-sky-500 text-white focus-visible:ring-sky-400 shadow-sky-500/30 hover:shadow-sky-500/40`;
     const secondaryButtonClass = `${baseButtonClass} bg-slate-600 hover:bg-slate-500 text-slate-100 focus-visible:ring-slate-400 shadow-slate-500/20 hover:shadow-slate-500/30`;
     const effectiveDisabled = isSubmitting || isFinalized;
+
+
+
+
+
 
 
 
@@ -235,6 +259,12 @@ const CardBack: React.FC<CardBackProps> = ({
                     </AnimatePresence>
                 </FormSection>
             </div>
+
+
+
+
+
+
 
 
 

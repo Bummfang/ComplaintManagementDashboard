@@ -65,6 +65,10 @@ interface UseStatusLogicProps {
 
 
 
+
+
+
+
 // Stelle sicher, dass diese Funktion korrekt exportiert wird.
 export function useStatusLogic({ item, currentView }: UseStatusLogicProps) {
     const isStatusRelevantView = useMemo(() => {
@@ -102,6 +106,15 @@ export function useStatusLogic({ item, currentView }: UseStatusLogicProps) {
             : getCardBackgroundAccentClasses(undefined); // Fallback für nicht-relevante Views
     }, [effectiveStatus, isStatusRelevantView]);
 
+
+
+
+
+
+
+
+
+    
     const { abgeschlossenText, abgeschlossenValueClassName } = useMemo(() => {
         let text: string | null = null;
         let className = "text-slate-500 italic"; 

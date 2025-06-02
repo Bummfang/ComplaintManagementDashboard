@@ -4,6 +4,13 @@
 import { motion } from 'framer-motion';
 import React, { ReactNode } from 'react';
 
+
+
+
+
+
+
+
 interface FormSectionProps {
     title?: string;
     icon?: React.ElementType; // Typ für Icon-Komponenten
@@ -19,6 +26,15 @@ const contentItemVariants = {
     hidden: { opacity: 0, x: -20, scale: 0.9 }, // Leichte Anpassung für sanfteren Effekt
     visible: { opacity: 1, x: 0, scale: 1, transition: { type: "spring", stiffness: 160, damping: 20 } }
 };
+
+
+
+
+
+
+
+
+
 
 const FormSection: React.FC<FormSectionProps> = ({
     title,

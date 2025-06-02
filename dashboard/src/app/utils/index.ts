@@ -28,6 +28,12 @@ export const formatDate = (dateString?: string | null, options?: Intl.DateTimeFo
 
 
 
+
+
+
+
+
+
 export const formatTime = (timeString?: string | null): string => {
     if (!timeString || timeString.toLowerCase() === "invalid date") return "N/A";
     try {
@@ -55,6 +61,8 @@ export const formatTime = (timeString?: string | null): string => {
 
 
 
+
+
 export const formatDateTime = (dateTimeString?: string | null): string => {
   if (!dateTimeString) return "N/A";
   try {
@@ -76,6 +84,10 @@ export const formatDateTime = (dateTimeString?: string | null): string => {
     return "Formatierungsfehler";
   }
 };
+
+
+
+
 
 
 

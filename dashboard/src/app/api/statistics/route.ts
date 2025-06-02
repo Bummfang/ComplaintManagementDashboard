@@ -112,6 +112,8 @@ export async function GET(request: NextRequest) {
 
 
 
+
+
   const pool = getDbPool();
   let client: PoolClient | undefined;
 
@@ -138,6 +140,8 @@ export async function GET(request: NextRequest) {
         // paramIndex += 1; // Dieser paramIndex Inkrement war hier überflüssig, da er danach nicht mehr verwendet wird für diese spezifische Kondition
     }
     
+
+
    
    
    
@@ -160,6 +164,7 @@ export async function GET(request: NextRequest) {
 
 
 
+
     if (startDateSQL && endDateSQL) {
         incidentDateFilterCondition = `WHERE datum >= $${incidentParamIndex} AND datum <= $${incidentParamIndex+1}`;
         incidentDateFilterParams.push(startDateSQL, endDateSQL);
@@ -175,6 +180,11 @@ export async function GET(request: NextRequest) {
 
 
 
+
+
+
+
+
     const statusQuery = `
       SELECT status, COUNT(*) AS count
       FROM beschwerde
@@ -182,6 +192,10 @@ export async function GET(request: NextRequest) {
       GROUP BY status
       ORDER BY count DESC;
     `;
+
+
+
+
 
 
 
@@ -213,6 +227,10 @@ export async function GET(request: NextRequest) {
 
 
 
+
+
+
+
     const overTimeResult = await client.query(overTimeQuery, overTimeParams);
     const complaintsOverTime: ComplaintOverTimeAPI[] = overTimeResult.rows.map(row => ({ date: row.date, count: parseInt(row.count, 10) }));
     const reasonsQuery = `
@@ -223,6 +241,13 @@ export async function GET(request: NextRequest) {
       ORDER BY count DESC
       LIMIT 10;
     `;
+
+
+
+
+
+
+
     const reasonsResult = await client.query(reasonsQuery, incidentDateFilterParams);
     const complaintReasons: ComplaintReasonAPI[] = reasonsResult.rows.map(row => ({ reason: row.reason, count: parseInt(row.count, 10) }));
     const linesQuery = `
@@ -270,6 +295,10 @@ export async function GET(request: NextRequest) {
 
 
 
+
+
+
+
     if (avgTimeResult.rows.length > 0 && avgTimeResult.rows[0].avg_seconds !== null) { const avgSeconds = parseFloat(avgTimeResult.rows[0].avg_seconds); averageProcessingTime = parseFloat((avgSeconds / (60 * 60 * 24)).toFixed(1));  }
     const responsePayload: StatisticsApiResponse = {
       totalComplaints, totalPraises, totalSuggestions,
@@ -283,12 +312,17 @@ export async function GET(request: NextRequest) {
 
 
 
+
+
+
     console.log(`[${requestTimestamp}] API GET /api/statistics: All data fetched successfully. Filter: ${JSON.stringify(responsePayload.filterApplied)}`);
     return NextResponse.json(responsePayload, { status: 200 });
 
 
 
 
+
+    
 
   } catch (error) { 
     const errorTimestamp = new Date().toISOString(); 

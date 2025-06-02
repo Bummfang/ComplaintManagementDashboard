@@ -19,10 +19,20 @@ export default function PaginationControls({
     totalItems
 }: PaginationControlsProps) {
     
+
+
+
+
+
     const baseButtonClass = "px-4 sm:px-5 py-2 text-xs sm:text-sm rounded-full border transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 shadow-sm hover:shadow-md";
     const inactiveButtonClass = "bg-slate-700/60 border-slate-600 text-slate-300 hover:bg-sky-700/50 hover:border-sky-600 hover:text-sky-100 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-700/60 disabled:hover:border-slate-600 disabled:hover:text-slate-300";
     const activeButtonClass = "bg-sky-500 border-sky-400 text-white font-bold shadow-lg cursor-default";
     const ellipsisClass = "px-2 text-slate-500 items-center flex h-full";
+
+
+
+
+
 
     // Wenn es absolut keine Items gibt, zeige die Controls gar nicht an.
     // Oder wenn totalPages 0 ist (was bei 0 Items der Fall sein sollte).
@@ -32,12 +42,21 @@ export default function PaginationControls({
         return null;
     }
 
+
+
+
+
+
+
     const pageNumbers = [];
     const maxPagesToShow = 3; 
     const wingSize = Math.floor(maxPagesToShow / 2);
-
     let startPage = Math.max(1, currentPage - wingSize);
     let endPage = Math.min(totalPages, currentPage + wingSize);
+
+
+
+
 
     if (endPage - startPage + 1 < maxPagesToShow) {
         if (currentPage - wingSize < 1) {
@@ -51,9 +70,22 @@ export default function PaginationControls({
         pageNumbers.push(i);
     }
 
+
+
+
+
+
+
+
     const firstItemOnPage = totalItems > 0 ? Math.min((currentPage - 1) * itemsPerPage + 1, totalItems) : 0;
     const lastItemOnPage = Math.min(currentPage * itemsPerPage, totalItems);
 
+
+
+
+
+
+    
     return (
         <div className="mt-10 flex flex-col sm:flex-row justify-between items-center text-xs sm:text-sm text-slate-300 space-y-4 sm:space-y-0">
             {/* Teil 1: Einträge pro Seite & Info - Wird jetzt (fast) immer angezeigt */}

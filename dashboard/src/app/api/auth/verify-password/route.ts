@@ -13,15 +13,31 @@ interface DecodedToken extends JwtPayload {
     
 }
 
+
+
+
+
+
 interface RequestBody {
     password?: string;
 }
+
+
+
+
+
 
 interface UserRecord {
     password?: string; // Spaltenname aus deiner DB (vermutlich 'password')
 }
 
+
+
+
+
 export async function POST(request: NextRequest) {
+    
+    
     const requestTimestamp = new Date().toISOString();
 
     if (!JWT_SECRET) {
@@ -29,12 +45,18 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Serverkonfigurationsfehler.' }, { status: 500 });
     }
 
+
+
+
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return NextResponse.json({ success: false, error: 'Authentifizierungstoken fehlt oder ist ungültig.' }, { status: 401 });
     }
-    const token = authHeader.split(' ')[1];
 
+
+
+
+    const token = authHeader.split(' ')[1];
     let decodedTokenInfo: DecodedToken;
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
@@ -49,6 +71,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Ungültiges oder abgelaufenes Token.' }, { status: 401 });
     }
 
+
+
+
     let requestBody: RequestBody;
     try {
         requestBody = await request.json();
@@ -57,12 +82,21 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Ungültiger JSON-Body.' }, { status: 400 });
     }
 
-    const { password: plainPasswordFromRequest } = requestBody;
 
+
+
+
+
+    const { password: plainPasswordFromRequest } = requestBody;
     if (!plainPasswordFromRequest) {
         return NextResponse.json({ success: false, error: 'Passwort fehlt im Request-Body.' }, { status: 400 });
     }
 
+
+
+
+
+    
     let client: PoolClient | undefined;
     try {
         client = await getDbPool().connect();

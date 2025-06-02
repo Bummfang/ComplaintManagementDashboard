@@ -15,6 +15,12 @@ import {
     XCircleIcon 
 } from '@heroicons/react/24/outline';
 
+
+
+
+
+
+
 // Schnittstelle für die Daten eines Benutzers in der Liste
 interface UserListItem {
     id: number;
@@ -24,6 +30,12 @@ interface UserListItem {
     ist_admin: boolean;
 }
 
+
+
+
+
+
+
 // Schnittstelle für die Daten, die zum Erstellen eines neuen Benutzers gesendet werden
 export interface NewUserFormData {
     name: string;
@@ -31,6 +43,11 @@ export interface NewUserFormData {
     password_hash: string;
     isAdmin: boolean;
 }
+
+
+
+
+
 
 // Framer Motion Varianten
 const sectionVariants = {
@@ -42,10 +59,23 @@ const sectionVariants = {
     },
 };
 
+
+
+
+
+
 const itemVariants = {
     hidden: { opacity: 0, x: -20 },
     visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 120, damping: 18 } },
 };
+
+
+
+
+
+
+
+
 
 const feedbackMessageVariants = {
     hidden: { opacity: 0, y: -10, height: 0 },
@@ -53,25 +83,27 @@ const feedbackMessageVariants = {
     exit: { opacity: 0, y: -5, height: 0, transition: { duration: 0.2, ease: "easeIn" } }
 };
 
+
+
+
+
+
+
 export default function AdminSection() {
     const { token, user: adminUser } = useAuth();
-    
     // States für das "Benutzer erstellen"-Formular
     const [name, setName] = useState('');
     const [nachname, setNachname] = useState('');
     const [password, setPassword] = useState('');
     const [isAdminForm, setIsAdminForm] = useState(false); // Umbenannt von isAdmin, um Konflikt zu vermeiden
     const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
-    
     const [validationError, setValidationError] = useState<string | null>(null);
     const [submissionError, setSubmissionError] = useState<string | null>(null);
     const [submissionSuccess, setSubmissionSuccess] = useState<string | null>(null);
-
     const [usersList, setUsersList] = useState<UserListItem[]>([]);
     const [isLoadingUsers, setIsLoadingUsers] = useState<boolean>(true);
     const [userListError, setUserListError] = useState<string | null>(null);
     const [isDeletingUser, setIsDeletingUser] = useState<number | null>(null);
-
     const fetchUsers = useCallback(async () => {
         if (!token || !adminUser?.isAdmin) {
             setUserListError("Keine Berechtigung zum Laden der Benutzerliste.");
@@ -173,6 +205,14 @@ export default function AdminSection() {
         }
     };
     
+
+
+
+
+
+
+
+
     const handleDeleteUser = async (userIdToDelete: number, usernameToDelete: string) => {
         if (!token || !adminUser?.isAdmin) {
             setSubmissionError("Keine Berechtigung zum Löschen."); return;
@@ -207,6 +247,14 @@ export default function AdminSection() {
         }
     };
 
+
+
+
+
+
+
+
+
     if (!adminUser?.isAdmin && !isLoadingUsers) {
         return (
             <motion.div className="text-center py-10 text-red-400" initial={{opacity:0}} animate={{opacity:1}}>
@@ -215,6 +263,13 @@ export default function AdminSection() {
             </motion.div>
         );
     }
+
+
+
+
+
+
+
 
     return (
         <motion.div
@@ -288,6 +343,15 @@ export default function AdminSection() {
                     </motion.button>
                 </form>
             </motion.div>
+            
+
+
+
+
+
+
+
+
             
             <motion.div 
                 variants={itemVariants}

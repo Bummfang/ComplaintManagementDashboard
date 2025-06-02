@@ -37,6 +37,11 @@ export interface BeschwerdeDbRow extends QueryResultRow {
 
 
 
+
+
+
+
+
 // Das finale Objekt, das an das Frontend gesendet wird
 // MODIFIZIERT: 'status' aus Omit entfernt und explizit als non-nullable hinzugefügt
 export interface BeschwerdeApiResponse extends Omit<BeschwerdeDbRow,
@@ -60,12 +65,12 @@ export interface BeschwerdeApiResponse extends Omit<BeschwerdeDbRow,
 
 
 
+
+
+
+
+
 export const allowedStatusesList: AllowedBeschwerdeStatus[] = ["Offen", "In Bearbeitung", "Gelöst", "Abgelehnt"];
-
-
-
-
-
 export function mapDbRowToApiResponse(row: BeschwerdeDbRow): BeschwerdeApiResponse {
     const {
         // Felder für internal_details und Felder, die nicht direkt übernommen werden
@@ -84,14 +89,19 @@ export function mapDbRowToApiResponse(row: BeschwerdeDbRow): BeschwerdeApiRespon
         ...apiRelevantFields 
     } = row;
 
-    const frontendClarificationType: FrontendInternalCardData['clarificationType'] = interne_klaerungsart || null;
 
+
+
+
+    const frontendClarificationType: FrontendInternalCardData['clarificationType'] = interne_klaerungsart || null;
     // Stelle sicher, dass der Status immer ein gültiger Wert ist.
     // Standardmäßig auf "Offen", falls der DB-Status null, undefined oder nicht in der Liste ist.
     const validStatus: AllowedBeschwerdeStatus = 
         dbStatus && allowedStatusesList.includes(dbStatus) 
         ? dbStatus 
         : 'Offen';
+
+
 
     // BeschwerdeApiResponse Objekt erstellen.
     // apiRelevantFields enthält alle Felder von BeschwerdeDbRow außer den oben explizit destrukturierten.
@@ -101,12 +111,20 @@ export function mapDbRowToApiResponse(row: BeschwerdeDbRow): BeschwerdeApiRespon
         status: validStatus, // Hier den validierten, nicht-null Status setzen
     };
 
+
+
+
+
     const hasInternalDetailsData = [
         interne_notizen, interne_klaerungsart, interne_teamleiter_informiert,
         interne_bereichsleiter_informiert, interne_an_subunternehmer_weitergeleitet,
         interne_an_versicherung_weitergeleitet, interne_geld_erstattet, interne_erstattungsbetrag
     ].some(field => field !== undefined && field !== null);
 
+
+
+
+    
     if (hasInternalDetailsData) {
         apiResponse.internal_details = {
             generalNotes: interne_notizen || "",

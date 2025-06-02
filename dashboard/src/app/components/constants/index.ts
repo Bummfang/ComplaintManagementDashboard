@@ -18,6 +18,15 @@ interface AllApiEndpoints {
 
 
 
+
+
+
+
+
+
+
+
+
 export const API_ENDPOINTS: AllApiEndpoints = {
     beschwerden: '/api/containt',
     lob: '/api/like',
@@ -28,6 +37,11 @@ export const API_ENDPOINTS: AllApiEndpoints = {
     verifyToken: '/api/verify-token',
     createUser: '/api/admin/create-user',
 };
+
+
+
+
+
 
 
 
@@ -47,6 +61,12 @@ export const VIEW_TITLES: Record<ViewType, string> = {
 
 
 
+
+
+
+
+
+
 export const FILTER_LABELS: Record<StatusFilterMode, string> = {
     alle: "Alle",
     Offen: "Offen",
@@ -54,6 +74,8 @@ export const FILTER_LABELS: Record<StatusFilterMode, string> = {
     Gelöst: "Gelöst",
     Abgelehnt: "Abgelehnt",
 };
+
+
 
 
 

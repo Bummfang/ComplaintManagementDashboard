@@ -8,12 +8,21 @@ import { InternalCardData as FrontendInternalCardData, AllowedBeschwerdeStatus }
 
 
 
+
+
+
+
+
 // Typ für den dekodierten JWT-Payload
 interface DecodedToken extends JwtPayload {
     userId: number;
     username: string;
     isAdmin: boolean;
 }
+
+
+
+
 
 
 
@@ -27,11 +36,12 @@ interface PatchRequestBody {
 
 
 
+
+
+
+
+
 const JWT_SECRET = process.env.JWT_SECRET;
-
-
-
-
 // Handler für GET-Anfragen zum Abrufen aller Beschwerden
 export async function GET(request: NextRequest) {
     const initialRequestTimestamp = new Date().toISOString(); // Für Logging, falls früh ein Fehler auftritt
@@ -56,6 +66,14 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Ungültiges oder abgelaufenes Token.' }, { status: 401 });
     }
 
+
+
+
+
+
+
+
+
     const searchParams = request.nextUrl.searchParams;
     const operationTimestamp = new Date().toISOString(); // Zeitstempel für diese spezifische Operation
 
@@ -75,8 +93,11 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate'); // Format: YYYY-MM-DD
     const endDate = searchParams.get('endDate');     // Format: YYYY-MM-DD
     const dateFilterTargetParam = searchParams.get('dateFilterTarget');
-
     let client: PoolClient | undefined;
+
+
+
+
 
     try {
         client = await getDbPool().connect();
@@ -125,6 +146,7 @@ export async function GET(request: NextRequest) {
             }
         }
 
+
         // Bearbeiter-Filter
         if (assigneeSearchTerm) {
             conditions.push(`(u.name || ' ' || u.nachname) ILIKE $${paramIdx++}`);
@@ -164,8 +186,11 @@ export async function GET(request: NextRequest) {
             queryParams.push(endDate);
         }
 
-        const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+
+
+
+        const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
         const selectFields = `
             b.id, b.name, b.email, b.tel, b.betreff, b.beschreibung,
             b.beschwerdegrund, b.datum, b.uhrzeit, b.haltestelle, b.linie, 
@@ -177,10 +202,17 @@ export async function GET(request: NextRequest) {
             b.interne_erstattungsbetrag, b.attachment_filename, b.attachment_mimetype
         `;
 
+
+
+
         // Abfrage für die Gesamtanzahl der gefilterten Einträge
         const totalCountQuery = `SELECT COUNT(DISTINCT b.id) AS total_items FROM "beschwerde" b LEFT JOIN "users" u ON b.bearbeiter_id = u.id ${whereClause}`;
         const totalResult = await client.query(totalCountQuery, queryParams); // Dieselben queryParams wie für die WHERE-Klausel
         const totalItems = parseInt(totalResult.rows[0].total_items, 10);
+
+
+
+
 
         // Parameter für die Datenabfrage (Filterparameter + Paginierungsparameter)
         const dataQueryParams = [...queryParams];
@@ -196,10 +228,20 @@ export async function GET(request: NextRequest) {
             LIMIT $${paramIdx++} OFFSET $${paramIdx++}; 
         `;
 
+
+
+
+
+
         const result = await client.query<BeschwerdeDbRow>(dataQuery, dataQueryParams);
         const responseData = result.rows.map(mapDbRowToApiResponse);
 
+
+
+
         console.log(`[${operationTimestamp}] GET /api/containt - Seite: ${page}, Limit: ${limit}, Filter aktiv: ${conditions.length > 0}, Gefundene Items: ${result.rowCount}, Total Items (gefiltert): ${totalItems}`);
+
+
 
         return NextResponse.json({
             data: responseData,
@@ -218,6 +260,10 @@ export async function GET(request: NextRequest) {
         if (client) client.release();
     }
 }
+
+
+
+
 
 
 
@@ -253,6 +299,10 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({ error: 'Ungültiges oder abgelaufenes Token.' }, { status: 401 }); 
     }
 
+
+
+
+
     let requestBody: PatchRequestBody;
     let itemId: number;
     try {
@@ -262,7 +312,6 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         }
         itemId = parseInt(String(requestBody.id), 10); 
         if (isNaN(itemId)) { return NextResponse.json({ error: 'Ungültige ID: Muss eine Zahl sein.' }, { status: 400 }); }
-        
         const { status: newStatusFromClient, internal_details: internalDetailsFromClient, assign_me_as_bearbeiter } = requestBody;
 
         // Validierung des vom Client gesendeten Status
@@ -271,9 +320,12 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             return NextResponse.json({ error: `Ungültiger Statuswert: ${newStatusFromClient}` }, { status: 400 }); 
         }
     
+
+
+
+
         let client: PoolClient | undefined;
         const actionResponsePayload: { action_required?: "relock_ui" } = {}; 
-
         try {
             client = await getDbPool().connect();
             await client.query('BEGIN');
@@ -306,6 +358,9 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
                 }
             }
             
+
+
+
             if (newStatusFromClient) {
                 if (!setClauses.some(c => c.startsWith('status'))) { 
                     setClauses.push(`status = $${paramIndex++}`);
@@ -327,6 +382,10 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
                     }
                 }
             }
+
+
+
+
 
             // Wenn KEIN Status explizit vom Client kommt UND auch nicht durch assign_me_as_bearbeiter gesetzt wurde,
             // ABER interne Details geändert werden, wollen wir den Status NICHT implizit ändern,
@@ -369,6 +428,9 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
 
 
+
+
+
             if (setClauses.length > 0) {
                 updateQueryParams.push(itemId);
                 const updateQueryText = `UPDATE beschwerde SET ${setClauses.join(', ')} WHERE id = $${paramIndex} RETURNING id;`;
@@ -385,6 +447,11 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
 
 
+
+
+
+
+
             const finalSelectQuery = `
                 SELECT b.*, 
                         u.name || ' ' || u.nachname AS bearbeiter_name
@@ -394,8 +461,10 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             `;
 
 
-
             const finalItemResult = await client.query<BeschwerdeDbRow>(finalSelectQuery, [itemId]);
+
+
+
 
 
 
@@ -408,6 +477,10 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
 
 
+
+
+
+
             const responseRow = mapDbRowToApiResponse(finalItemResult.rows[0]);
             console.log(`[${requestTimestamp}] PATCH /api/containt - Status des Items ID ${itemId} nach mapDbRowToApiResponse: ${responseRow.status}`);
             const itemToSend = { ...responseRow, ...actionResponsePayload };
@@ -415,6 +488,8 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
 
 
+
+            
             await client.query('COMMIT');
             return NextResponse.json(itemToSend, { status: 200 });
 

@@ -6,10 +6,18 @@ import jwt, { type JwtPayload } from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+
+
+
+
+
 interface DecodedToken extends JwtPayload {
     userId: number; // Die ID des Admins, der die Aktion ausführt
     isAdmin: boolean;
 }
+
+
+
 
 
 export async function DELETE(
@@ -19,18 +27,35 @@ export async function DELETE(
 ) {
     const requestTimestamp = new Date().toISOString();
 
+
+
+
+
     if (!JWT_SECRET) {
         console.error(`[${requestTimestamp}] DELETE /api/admin/users/[userId]: JWT_SECRET nicht definiert.`);
         return NextResponse.json({ success: false, error: 'Serverkonfigurationsfehler.' }, { status: 500 });
     }
 
+
+
+
     const authHeader = request.headers.get('Authorization');
+
+
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return NextResponse.json({ success: false, error: 'Authentifizierungstoken fehlt oder ist ungültig.' }, { status: 401 });
     }
-    const token = authHeader.split(' ')[1];
 
+
+
+
+
+    const token = authHeader.split(' ')[1];
     let performingAdmin: DecodedToken;
+
+
+
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as DecodedToken;
         if (!decoded.isAdmin) {
@@ -44,15 +69,24 @@ export async function DELETE(
     }
 
 
+
+
+
+
     let userIdToDeleteStr: string | undefined;
     if (context && context.params && typeof context.params.userId === 'string') {
         userIdToDeleteStr = context.params.userId;
     }
 
+
+
     if (userIdToDeleteStr === undefined) { // Prüfen, ob der String extrahiert werden konnte
         console.error(`[${requestTimestamp}] DELETE /api/admin/users/[userId]: userId nicht im context.params gefunden oder kein String.`);
         return NextResponse.json({ success: false, error: 'Ungültige Anfrage: Benutzer-ID fehlt im Pfad oder ist ungültig.' }, { status: 400 });
     }
+
+
+
 
     const userIdToDelete = parseInt(userIdToDeleteStr, 10);
 
@@ -60,11 +94,17 @@ export async function DELETE(
         return NextResponse.json({ success: false, error: 'Ungültige Benutzer-ID zum Löschen.' }, { status: 400 });
     }
 
+
+
+
     // Sicherheitscheck: Admin kann sich nicht selbst löschen
     if (performingAdmin.userId === userIdToDelete) {
         console.warn(`[${requestTimestamp}] DELETE /api/admin/users/[userId]: Admin (ID: ${performingAdmin.userId}) versuchter Selbstlöschung (ID: ${userIdToDelete}).`);
         return NextResponse.json({ success: false, error: 'Administratoren können sich nicht selbst löschen.' }, { status: 403 });
     }
+
+
+
 
     let client: PoolClient | undefined;
     try {
@@ -102,6 +142,9 @@ export async function DELETE(
         // await client.query('UPDATE lob SET bearbeiter_id = NULL WHERE bearbeiter_id = $1', [userIdToDelete]);
         // await client.query('UPDATE anregung SET bearbeiter_id = NULL WHERE bearbeiter_id = $1', [userIdToDelete]);
 
+
+
+        
         const deleteUserQuery = 'DELETE FROM users WHERE id = $1 RETURNING username';
         const deleteResult = await client.query(deleteUserQuery, [userIdToDelete]);
 

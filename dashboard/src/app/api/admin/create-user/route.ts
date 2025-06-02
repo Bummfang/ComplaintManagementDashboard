@@ -17,6 +17,9 @@ interface CreateUserRequestBody {
 
 
 
+
+
+
 interface UserRecord {
   id: number;
   username: string;
@@ -30,7 +33,15 @@ interface UserRecord {
 
 
 
+
+
+
 const JWT_SECRET = process.env.JWT_SECRET;
+
+
+
+
+
 
 
 
@@ -38,16 +49,30 @@ export async function POST(request: NextRequest) {
   const requestTimestamp = new Date().toISOString();
   console.log(`[${requestTimestamp}] API POST /api/admin/create-user: Attempt to create new user.`);
 
+
+
+
+
+
   if (!JWT_SECRET) {
     console.error(`[${new Date().toISOString()}] FATAL for /api/admin/create-user: JWT_SECRET is not defined.`);
     return NextResponse.json({ error: 'Serverkonfigurationsfehler.', details: 'JWT Secret nicht konfiguriert.' }, { status: 500 });
   }
 
+
+
+
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return NextResponse.json({ error: 'Authentifizierungstoken fehlt oder ist ungültig.' }, { status: 401 });
   }
+
+
+
   const token = authHeader.split(' ')[1];
+
+
+
 
   try {
     const decodedToken = jwt.verify(token, JWT_SECRET) as { userId: number; username: string; isAdmin: boolean };
@@ -55,8 +80,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Zugriff verweigert.', details: 'Nur Administratoren können Benutzer anlegen.' }, { status: 403 });
     }
   } catch (error) {
+
+
     return NextResponse.json({ error: 'Ungültiges oder abgelaufenes Token.', details: error instanceof Error ? error.message : 'JWT error' }, { status: 401 });
   }
+
+
+
 
   let body: CreateUserRequestBody;
   try {
@@ -66,7 +96,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Ungültiger JSON-Body.' }, { status: 400 });
   }
 
+
+
+
+
   const { name, nachname, password_hash: plainPassword, isAdmin } = body;
+
+
+
+
 
   if (!name || !nachname || !plainPassword) {
     return NextResponse.json({ error: 'Vorname, Nachname und Passwort sind erforderlich.' }, { status: 400 });
@@ -81,9 +119,14 @@ export async function POST(request: NextRequest) {
 
 
 
-  
+
+
+
+
   const pool = getDbPool();
   let client: PoolClient | undefined;
+
+
 
 
 
@@ -100,8 +143,13 @@ export async function POST(request: NextRequest) {
     const trimmedNachname = nachname.trim();
     const nameCheckResult = await client.query(checkNameQuery, [trimmedName, trimmedNachname]);
 
+
+
+
     if (nameCheckResult.rows.length > 0) {
       console.warn(`[${requestTimestamp}] Attempt to create user with existing name combination: "${trimmedName} ${trimmedNachname}".`);
+
+
       return NextResponse.json(
         {
           error: 'Benutzer existiert bereits.',
@@ -119,7 +167,6 @@ export async function POST(request: NextRequest) {
     // Passwort hashen
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(plainPassword, saltRounds);
-
     // `username` wird von der DB generiert (Annahme basierend auf vorherigem DB-Fehler)
     const insertUserQuery = `
       INSERT INTO users (name, nachname, password, ist_admin)
@@ -133,12 +180,23 @@ export async function POST(request: NextRequest) {
       isAdmin,
     ]);
 
+
+
+
+
     if (result.rows.length === 0) {
       throw new Error('Benutzer konnte nicht in der Datenbank erstellt werden (keine Zeile zurückgegeben).');
     }
 
+
+
+
     const newUser = result.rows[0];
     console.log(`[${new Date().toISOString()}] User "${newUser.username}" (ID: ${newUser.id}, Name: ${newUser.name} ${newUser.nachname}, Admin: ${newUser.ist_admin}) successfully created by database generation.`);
+
+
+
+
 
     return NextResponse.json(
       {
@@ -153,15 +211,21 @@ export async function POST(request: NextRequest) {
     );
 
   } catch (error) {
-    
-    
-    
-    
-    
+
+
+
+
+
+
     const errorTimestamp = new Date().toISOString();
     let errorMessage = 'Ein interner Serverfehler ist aufgetreten.';
     let errorDetails = 'Unbekannter Fehler';
     let statusCode = 500;
+
+
+
+
+
 
     if (error instanceof DatabaseError) {
       errorDetails = error.message;
@@ -177,16 +241,19 @@ export async function POST(request: NextRequest) {
         // Für andere Datenbankfehler
         console.error(`[${errorTimestamp}] DatabaseError during user creation for (Name: ${name} ${nachname}):`, error);
       }
-    } else if (error instanceof Error) {
+    }
+    else if (error instanceof Error) {
       errorDetails = error.message;
       if (error.message.includes('ECONNREFUSED')) {
         errorMessage = 'Datenbankverbindung fehlgeschlagen.';
       }
       console.error(`[${errorTimestamp}] Generic Error during user creation for (Name: ${name} ${nachname}):`, error);
-    } else if (typeof error === 'string') {
+    }
+    else if (typeof error === 'string') {
       errorDetails = error;
       console.error(`[${errorTimestamp}] String Error during user creation for (Name: ${name} ${nachname}):`, error);
-    } else {
+    }
+    else {
       console.error(`[${errorTimestamp}] Unknown error object during user creation for (Name: ${name} ${nachname}):`, error);
     }
 

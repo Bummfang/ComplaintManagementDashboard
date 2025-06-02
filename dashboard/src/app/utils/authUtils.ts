@@ -25,6 +25,10 @@ interface TokenPayload {
 
 
 
+
+
+
+
 /**
  * Verifiziert den JWT aus dem Authorization Header einer NextApiRequest (Pages Router)
  * und gibt die Benutzerdaten zurück oder null bei Fehlern.

@@ -10,15 +10,27 @@ import { InternalCardData, defaultInternalDetails } from '../../../types'; // Pf
 
 
 export function useInternalDetails(initialData?: InternalCardData) {
+
+
+
+
+
     // State for the internal details form
     const [internalDetails, setInternalDetails] = useState<InternalCardData>(
         initialData ? { ...defaultInternalDetails, ...initialData } : { ...defaultInternalDetails }
     );
 
 
+
+
+
+
     
     // State for validation errors on the internal details form
     const [validationError, setValidationError] = useState<string | null>(null);
+
+
+
 
     /**
      * Updates the internal details state when the initialData prop changes.
@@ -35,6 +47,11 @@ export function useInternalDetails(initialData?: InternalCardData) {
      * @param key The key of the InternalCardData field to update.
      * @param value The new value for the field.
      */
+
+
+
+
+
     const handleInternalDetailChange = useCallback(<K extends keyof InternalCardData>(
         key: K,
         value: InternalCardData[K]
@@ -51,11 +68,22 @@ export function useInternalDetails(initialData?: InternalCardData) {
         setValidationError(null);
     }, []);
 
+
+
+
+
+
+
     /**
      * Validates the current internal details.
      * Sets a validation error message if validation fails.
      * @returns The validated InternalCardData if valid, otherwise null.
      */
+
+
+
+
+
     const validateAndPrepareSaveData = useCallback((): InternalCardData | null => {
         // Rule 1: Clarification type must be selected.
         if (!internalDetails.clarificationType) {
@@ -77,11 +105,21 @@ export function useInternalDetails(initialData?: InternalCardData) {
      * Also clears any validation errors.
      * @param resetToData Optional data to reset the form to. Defaults to defaultInternalDetails.
      */
+
+
+
+
+
+
+
     const resetInternalDetails = useCallback((resetToData?: InternalCardData) => {
         setInternalDetails(resetToData ? { ...defaultInternalDetails, ...resetToData } : { ...defaultInternalDetails });
         setValidationError(null);
     }, []);
 
+
+
+    
     /**
      * Clears the current validation error message.
      */

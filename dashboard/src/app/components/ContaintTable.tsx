@@ -19,6 +19,12 @@ import {ApiErrorResponse} from "../types/index"
 type FetchFilters = Record<string, string | number | boolean | null | undefined>;
 export type DateFilterTarget = 'erstelltam' | 'datum';
 
+
+
+
+
+
+
 interface PatchPayload {
     id: number | string;
     status?: AnyItemStatus;
@@ -26,19 +32,27 @@ interface PatchPayload {
     attachment_filename?: null;
 }
 
+
+
+
+
+
 export default function ContaintTable() {
     const { isAuthenticated, user, token, isLoadingAuth, logout } = useAuth();
-
     const [currentView, setCurrentView] = useState<ViewType>("beschwerden");
     const [copiedCellKey, setCopiedCellKey] = useState<string | null>(null);
     const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
     const [cardAccentsEnabled, setCardAccentsEnabled] = useState<boolean>(true);
     const previousDataCountRef = useRef<number>(0);
     const [uiError, setUiError] = useState<string | null>(null);
-
     // NEU: State für Paginierung
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [itemsPerPage, setItemsPerPage] = useState<number>(8); // Standardanzahl, synchron mit Backend
+
+
+
+
+
 
     // useAppFilters verwaltet die Zustände der Filter-Eingabefelder
     const {
@@ -59,6 +73,11 @@ export default function ContaintTable() {
         initialData: [], // Wird nicht mehr für clientseitige Filterung der Hauptdaten verwendet
         currentView
     });
+
+
+
+
+
 
     // Filterobjekt für useDataFetching erstellen
     const currentFilters = useMemo(() => {
@@ -88,6 +107,14 @@ export default function ContaintTable() {
     ]);
 
     // useDataFetching mit Paginierungs- und Filterparametern aufrufen
+
+
+
+
+
+
+
+
     const {
         items, // Umbenannt von 'data' zu 'items'
         totalItems,
@@ -110,6 +137,9 @@ export default function ContaintTable() {
         filters: currentFilters,
     });
 
+
+
+
     // Wenn sich Filter ändern (außer Seite), auf Seite 1 zurückspringen
     useEffect(() => {
         // Dieser Effekt soll nicht beim allerersten Rendern oder bei Seitenwechsel die Seite auf 1 setzen,
@@ -121,6 +151,9 @@ export default function ContaintTable() {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [JSON.stringify(currentFilters)]); // JSON.stringify für tiefen Vergleich des Filterobjekts
+
+
+
 
 
     // Effekt für den Benachrichtigungston
@@ -150,18 +183,25 @@ export default function ContaintTable() {
         setCurrentPage(1); // Bei View-Wechsel immer auf Seite 1 starten
     }, [currentView]);
 
+
+
+
+
+
+
+
+
+
+
     // Wrapper für Filter-Hook-Funktionen, um Seite zurückzusetzen
     const handleApplyDateFilter = useCallback(() => {
         setCurrentPage(1);
         applyDateFilterFromHook();
     }, [applyDateFilterFromHook, setCurrentPage]);
-
     const handleClearDateFilter = useCallback(() => {
         setCurrentPage(1);
         clearDateFilterFromHook();
     }, [clearDateFilterFromHook, setCurrentPage]);
-
-
     const handleItemUpdate = useCallback(async (
         itemWithDesiredChanges: CardSpecificDataItem,
         file?: File | null // Datei ist optional
@@ -180,6 +220,14 @@ export default function ContaintTable() {
             throw new Error("Nicht autorisiert.");
         }
         setUiError(null);
+
+
+
+
+
+
+
+
 
         const viewSpecificApiBase = API_ENDPOINTS[currentView as keyof typeof API_ENDPOINTS];
         if (!viewSpecificApiBase && currentView !== 'admin' && currentView !== 'statistik') {
@@ -235,19 +283,32 @@ export default function ContaintTable() {
                 console.log("[ContaintTable] handleItemUpdate: Item-Status nach Datei-Upload:", serverConfirmedItem);
             }
 
+
+
+
+
+
+
             // Schritt 2: PATCH-Request für andere Metadaten (Status, internal_details etc.)
             // Erstelle das Payload für den PATCH-Request.
             // Es ist wichtig zu entscheiden, welche Daten hier gesendet werden sollen,
             // besonders wenn ein Datei-Upload vorausging.
             const payloadForPatch: PatchPayload = { id: serverConfirmedItem.id };
             let needsPatchCall = false;
-
             // Status nur senden, wenn er sich vom *ursprünglichen* Item unterscheidet oder explizit gesetzt wurde
             const originalItemFromCache = items.find(i => i.id === itemWithDesiredChanges.id);
             if (itemWithDesiredChanges.status && itemWithDesiredChanges.status !== originalItemFromCache?.status) {
                 payloadForPatch.status = itemWithDesiredChanges.status;
                 needsPatchCall = true;
             }
+
+
+
+
+
+
+
+
 
             // Interne Details nur senden, wenn sie sich geändert haben oder explizit Teil von itemWithDesiredChanges sind
             // und nicht nur vom Upload-Response stammen (es sei denn, das ist gewünscht).
@@ -256,6 +317,12 @@ export default function ContaintTable() {
                 payloadForPatch.internal_details = itemWithDesiredChanges.internal_details;
                 needsPatchCall = true;
             }
+
+
+
+
+
+
 
             // Spezifischer Fall für 'attachment_filename = null' (wenn ein Anhang gelöscht wurde)
             // Dies kommt von handleRemoveAttachment in DataItemCard, das onItemUpdate aufruft
@@ -267,6 +334,12 @@ export default function ContaintTable() {
                 payloadForPatch.attachment_filename = null; // Signalisiert Backend, den Anhang zu entfernen
                 needsPatchCall = true;
             }
+
+
+
+
+
+
 
 
             if (needsPatchCall && viewSpecificApiBase) {
@@ -313,6 +386,13 @@ export default function ContaintTable() {
 
 
 
+
+
+
+
+
+
+
     const handleCopyToClipboard = useCallback(async (textToCopy: string, cellKey: string) => {
         if (!textToCopy) {
             console.warn("[ContaintTable] handleCopyToClipboard: Kein Text zum Kopieren vorhanden für Key:", cellKey);
@@ -339,6 +419,12 @@ export default function ContaintTable() {
         }
 
     }, [copiedCellKey]);
+
+
+
+
+
+
 
     const performStatusChangeAsync = useCallback(async (itemId: number, newStatus: AnyItemStatus, viewForApi: ViewType) => {
         if (!token || !user) { /* ... */ return; }
@@ -384,8 +470,14 @@ export default function ContaintTable() {
     }, [token, user, items, updateSingleItemInCache, setUiError, logout /*, currentView, currentPage, itemsPerPage, currentFilters, refetchData */]);
 
 
-    // In ContaintTable.tsx
 
+
+
+
+
+
+
+    // In ContaintTable.tsx
     const handleStatusChangeForCard = (
         itemId: number,             // Parameter 1 explizit deklariert
         newStatus: AnyItemStatus,   // Parameter 2 explizit deklariert
@@ -401,6 +493,11 @@ export default function ContaintTable() {
         }
     };
 
+
+
+
+
+
     // NEU: Handler für Seitenwechsel
     const handlePageChange = (newPage: number) => {
         if (newPage > 0 && newPage <= totalPages) {
@@ -409,18 +506,32 @@ export default function ContaintTable() {
         }
     };
 
+
+
+
+
+
+
     const handleItemsPerPageChange = (newLimit: number) => {
         setItemsPerPage(newLimit);
         setCurrentPage(1); // Bei Änderung der Items pro Seite immer auf Seite 1 zurück
     };
 
 
+
+
+
+
+
     if (isLoadingAuth && !isAuthenticated) { return <div className="text-center py-10">Authentifizierung wird geladen...</div>; }
     if (!isAuthenticated && !isLoadingAuth) { return <div className="text-center py-10">Bitte einloggen.</div>; }
-
     const displayError = dataFetchingError || uiError;
     const dataToDisplay = items; // Wir verwenden jetzt 'items' direkt
 
+
+
+
+    
     return (
         <div className="min-h-screen w-full bg-gradient-to-br from-[#0D0D12] via-[#111318] to-[#0a0a0f] text-white font-sans relative pt-16 pb-16 overflow-hidden">
             <StatusBar isDbConnected={isDbConnected} lastDataUpdateTimestamp={lastDataUpdateTimestamp} />

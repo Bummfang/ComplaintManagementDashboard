@@ -20,7 +20,6 @@ export default function LoginScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const [loginSuccess, setLoginSuccess] = useState(false);
     const { login } = useAuth();
-
     const handleSubmit = async (event: FormEvent) => {
         event.preventDefault();
         setIsLoading(true);
@@ -28,6 +27,9 @@ export default function LoginScreen() {
         setLoginSuccess(false);
 
         console.log("LoginScreen: Attempting login with (AuthContext version):", { username /*, password*/ }); // Passwort aus Log entfernt
+
+
+
 
         try {
             // API_ENDPOINTS.login anstelle von LOGIN_API_ENDPOINT verwenden
@@ -68,6 +70,12 @@ export default function LoginScreen() {
         }
     };
 
+
+
+
+
+
+
     const cardVariants = {
         hidden: { opacity: 0, y: 30, scale: 0.98, },
         visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.5, ease: "easeOut", when: "beforeChildren", staggerChildren: 0.1, }, },
@@ -84,12 +92,12 @@ export default function LoginScreen() {
         opacity: { duration: 0.3 }, y: { duration: 0.3 }
     };
 
-
-
-    
     
     const keyIconEntryDelay = (cardVariants.visible.transition.staggerChildren || 0) + 0.1;
 
+
+
+    
 
 
 

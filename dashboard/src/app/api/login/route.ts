@@ -52,21 +52,32 @@ interface LoginSuccessResponse {
 
 
 
-
-
 const JWT_SECRET = process.env.JWT_SECRET;
 
 export async function POST(request: NextRequest) {
+
+
+
+
     const pool = getDbPool();
     let client: PoolClient | undefined;
     const requestTimestamp = new Date().toISOString();
-
     console.log(`[${requestTimestamp}] API POST /api/login: Login attempt received.`);
+
+
+
+
 
     if (!JWT_SECRET) {
         console.error(`[${new Date().toISOString()}] FATAL for /api/login: JWT_SECRET is not defined.`);
         return NextResponse.json({ error: 'Serverkonfigurationsfehler.', details: 'JWT Secret nicht konfiguriert.' }, { status: 500 });
     }
+
+
+
+
+
+
 
     try {
         const body = await request.json() as LoginRequestBody;
@@ -133,12 +144,11 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json(responsePayload, { status: 200 });
 
-   
-   
 
 
 
-   
+
+
    
     } catch (error) {
         const errorTimestamp = new Date().toISOString();
@@ -161,12 +171,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: errorMessage, details: errorDetails }, { status: statusCode });
    
    
-   
 
 
 
-
-   
+        
    
     } finally {
         if (client) {

@@ -100,6 +100,12 @@ export default function LockScreen() {
         // setIsUnlocking wird jetzt explizit im Erfolgsfall (durch unmount oder timeout) oder im Fehlerfall gehandhabt
     };
 
+
+
+
+
+
+
     const screenVariants = {
         hidden: { opacity: 0, backdropFilter: 'blur(0px)' },
         visible: { opacity: 1, backdropFilter: 'blur(16px)', transition: { duration: 0.4, ease: "circOut" } },
@@ -131,6 +137,13 @@ export default function LockScreen() {
     const handleLogoutFromLockScreen = () => {
         logout(); 
     };
+
+
+
+
+
+
+    
     return (
         <motion.div
             key="lockscreen-overlay-main"

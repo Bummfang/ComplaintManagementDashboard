@@ -106,6 +106,9 @@ const LoadingScreen = () => {
 
 
 
+
+
+
   
   const dotVariants = (delay: number) => ({
     initial: { opacity: 0.3, y: 0 },
@@ -124,6 +127,11 @@ const LoadingScreen = () => {
 
 
 
+
+
+
+
+  
   
   const loadingText = "Anwendung wird geladen";
 

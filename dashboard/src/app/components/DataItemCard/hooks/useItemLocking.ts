@@ -15,9 +15,6 @@ interface UseItemLockingProps {
 
 
 
-
-
-
 export function useItemLocking({
     item,
     initialLockedState = true,
@@ -28,6 +25,11 @@ export function useItemLocking({
     const [isLocked, setIsLocked] = useState(initialLockedState);
     const [shakeLockAnim, setShakeLockAnim] = useState(false);
     const [isAssigning, setIsAssigning] = useState(false); // Zustand für laufende Zuweisung
+
+
+
+
+
 
     // Effekt, um den Lock-Status zurückzusetzen, wenn sich das Item oder der User ändert
     // oder wenn eine `relock_ui` Action vom Server kommt.
@@ -51,10 +53,20 @@ export function useItemLocking({
     }, [item.id, item.bearbeiter_id, item.status, item.action_required, user, initialLockedState]);
 
 
+
+
+
+
     const triggerShakeLock = useCallback(() => {
         setShakeLockAnim(true);
         setTimeout(() => setShakeLockAnim(false), 400); // Dauer der Animation
     }, []);
+
+
+
+
+
+
 
     const handleToggleLock = useCallback(async () => {
         if (isAssigning) return; // Verhindere mehrfache Ausführung
@@ -67,6 +79,13 @@ export function useItemLocking({
         if (shakeLockAnim) {
             setShakeLockAnim(false);
         }
+
+
+
+
+
+
+
 
         // Nur API-Call ausführen, wenn von "gesperrt" zu "entsperrt" gewechselt wird
         // UND noch kein Bearbeiter zugewiesen ist UND der aktuelle Benutzer gültig ist.
@@ -136,7 +155,11 @@ export function useItemLocking({
             console.warn(`DataItemCard ID ${item.id} (Hook): Attempt to unlock item assigned to another user.`);
         }
 
+
+
     }, [isLocked, item, user, token, currentView, onItemUpdate, triggerShakeLock, shakeLockAnim, isAssigning]);
+
+    
     return {
         isLocked,
         setIsLocked, // Erlaube externes Setzen, falls nötig (z.B. durch `action_required`)

@@ -8,8 +8,15 @@ export interface ParsedForm {
     fields: formidable.Fields;
     files: formidable.Files;
 }
+
+
+
 // Damit FormidableFile direkt genutzt werden kann, falls Ihre Typen es nicht kennen
 export type { FormidableFile };
+
+
+
+
 
 export const parseForm = (req: NextApiRequest): Promise<ParsedForm> => {
     const form = formidable({

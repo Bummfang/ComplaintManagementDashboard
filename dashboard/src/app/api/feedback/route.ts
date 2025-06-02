@@ -6,8 +6,17 @@ import jwt from 'jsonwebtoken';
 
 type AllowedStatusAnregung = "Offen" | "In Bearbeitung" | "Gelöst" | "Abgelehnt";
 const allowedStatusesAnregung: AllowedStatusAnregung[] = ["Offen", "In Bearbeitung", "Gelöst", "Abgelehnt"];
-
 const JWT_SECRET = process.env.JWT_SECRET;
+
+
+
+
+
+
+
+
+
+
 
 interface AnregungDbData extends QueryResultRow { // Umbenannt zu AnregungDbData für Klarheit
     id: number;
@@ -23,10 +32,28 @@ interface AnregungDbData extends QueryResultRow { // Umbenannt zu AnregungDbData
     bearbeiter_name?: string | null; // Wird durch JOIN gefüllt
 }
 
+
+
+
+
+
+
+
+
+
+
 // Typ für die API-Antwort (frontend-freundlich)
 interface AnregungApiResponse extends Omit<AnregungDbData, 'status'> {
     status: AllowedStatusAnregung; // Stellt sicher, dass Status immer gesetzt ist
 }
+
+
+
+
+
+
+
+
 
 function mapAnregungDbRowToAnregungApiResponse(row: AnregungDbData): AnregungApiResponse {
     return {
@@ -34,6 +61,16 @@ function mapAnregungDbRowToAnregungApiResponse(row: AnregungDbData): AnregungApi
         status: row.status || "Offen", // Default zu "Offen", falls DB-Status null/undefined
     };
 }
+
+
+
+
+
+
+
+
+
+
 
 export async function GET(request: NextRequest) {
     const initialRequestTimestamp = new Date().toISOString();
@@ -55,13 +92,15 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Ungültiges oder abgelaufenes Token.' }, { status: 401 });
     }
 
+
+
+
+
     const searchParams = request.nextUrl.searchParams;
     const operationTimestamp = new Date().toISOString();
-
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '20', 10);
     const offset = (page - 1) * limit;
-
     const statusFilter = searchParams.get('status');
     const searchTerm = searchParams.get('searchTerm');
     const emailSearchTerm = searchParams.get('emailSearchTerm');
@@ -70,8 +109,15 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     // dateFilterTarget ist für Anregungen immer 'erstelltam', da es kein 'v_datum' gibt.
-
     let client: PoolClient | undefined;
+
+
+
+
+
+
+
+
 
     try {
         client = await getDbPool().connect();
@@ -129,21 +175,31 @@ export async function GET(request: NextRequest) {
             queryParams.push(endDate);
         }
 
-        const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+
+
+
+
+
+
+
+        const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
         const totalCountQuery = `SELECT COUNT(DISTINCT a.id) AS total_items FROM "anregung" a LEFT JOIN "users" u ON a.bearbeiter_id = u.id ${whereClause}`;
         const totalResult = await client.query(totalCountQuery, queryParams);
         const totalItems = parseInt(totalResult.rows[0].total_items, 10);
-
         const dataQueryParams = [...queryParams]; // Kopiere Filter-Parameter
         dataQueryParams.push(limit);      // Parameter für LIMIT
         dataQueryParams.push(offset);     // Parameter für OFFSET
-        
         const fieldsToSelect = `
             a.id, a.name, a.email, a.tel, a.betreff, a.beschreibung, 
             a.erstelltam, a.status, a.abgeschlossenam, a.bearbeiter_id,
             u.name || ' ' || u.nachname AS bearbeiter_name 
         `;
+
+
+
+
+
 
         const dataQuery = `
             SELECT ${fieldsToSelect}
@@ -154,10 +210,24 @@ export async function GET(request: NextRequest) {
             LIMIT $${paramIdx++} OFFSET $${paramIdx++};
         `;
 
+
+
+
+
+
+
+
+
+
         const result = await client.query<AnregungDbData>(dataQuery, dataQueryParams);
         const responseData = result.rows.map(mapAnregungDbRowToAnregungApiResponse);
-
         console.log(`[${operationTimestamp}] GET /api/feedback - Seite: ${page}, Limit: ${limit}, Filter aktiv: ${conditions.length > 0}, Gefundene Items: ${result.rowCount}, Total Items (gefiltert): ${totalItems}`);
+
+
+
+
+
+
 
         return NextResponse.json({
             data: responseData,
@@ -177,6 +247,16 @@ export async function GET(request: NextRequest) {
     }
 }
 
+
+
+
+
+
+
+
+
+
+
 // Der PATCH-Handler bleibt wie in deiner Datei
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
     // Dein bestehender PATCH-Code für /api/feedback
@@ -192,18 +272,46 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     const requestTimestamp = new Date().toISOString();
     console.log(`[${requestTimestamp}] API PATCH /api/feedback: Verarbeitungsversuch gestartet.`);
 
+
+
+
+
+
+
+
+
     if (!JWT_SECRET) {
         console.error(`[${requestTimestamp}] FATAL für PATCH /api/feedback: JWT_SECRET nicht definiert.`);
         return NextResponse.json({ error: 'Serverkonfigurationsfehler.' }, { status: 500 });
     }
+
+
+
+
+
+
+
 
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return NextResponse.json({ error: 'Authentifizierungstoken fehlt oder ist ungültig.' }, { status: 401 });
     }
 
+
+
+
+
+
+
+
+
     const token = authHeader.split(' ')[1];
     let decodedTokenInfo: { userId: number; username: string; isAdmin: boolean };
+
+
+
+
+
 
     try {
         decodedTokenInfo = jwt.verify(token, JWT_SECRET) as { userId: number; username: string; isAdmin: boolean };
@@ -213,10 +321,29 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({ error: 'Ungültiges oder abgelaufenes Token.' }, { status: 401 });
     }
 
+
+
+
+
+
+
+
+
+
     let requestBody;
     let itemId: number;
     let newStatusFromClient: AllowedStatusAnregung | undefined; // Expliziter Typ
     let assignMeAsBearbeiter: boolean | undefined;
+
+
+
+
+
+
+
+
+    
+
 
     try {
         requestBody = await request.json();
@@ -235,7 +362,16 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({ error: 'Ungültiger JSON-Body oder fehlerhafte Datenstruktur.' }, { status: 400 });
     }
 
-    // console.log(`[${requestTimestamp}] PATCH /api/feedback: Verarbeite Anregung ID ${itemId} - Neuer Status: "${newStatusFromClient}", Bearbeiter zuweisen: ${assignMeAsBearbeiter}`);
+
+
+
+
+
+
+
+
+
+
 
     let client: PoolClient | undefined;
     try {
@@ -271,17 +407,38 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             }
         }
 
+
+
+
+
+
+
+
+
+
         if (newStatusFromClient) {
+
+
             if (!setClauses.some(c => c.startsWith('status'))) { // Verhindere doppeltes Setzen des Status
                 setClauses.push(`status = $${paramIndex++}`);
                 updateQueryParams.push(newStatusFromClient);
             }
+
+
             if (newStatusFromClient === 'Gelöst' || newStatusFromClient === 'Abgelehnt') {
+
+
                  if (!setClauses.some(c => c.startsWith('abgeschlossenam'))) {
                     setClauses.push(`abgeschlossenam = CURRENT_TIMESTAMP`);
                  }
+
+
             } else if (newStatusFromClient === 'Offen') {
+
+
                 setClauses.push(`abgeschlossenam = NULL`); // Sicherstellen, dass es entfernt wird
+
+
                 if (currentItemDbState.status === 'Gelöst' || currentItemDbState.status === 'Abgelehnt') {
                     // Nur bearbeiter_id entfernen, wenn assign_me_as_bearbeiter nicht gleichzeitig true ist
                     if (!assignMeAsBearbeiter && !setClauses.some(c => c.startsWith('bearbeiter_id = $'))) {
@@ -292,6 +449,16 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             }
         }
         
+
+
+
+
+
+
+
+
+
+
         if (setClauses.length > 0) {
             updateQueryParams.push(itemId);
             const updateQueryText = `UPDATE anregung SET ${setClauses.join(', ')} WHERE id = $${paramIndex} RETURNING id;`;
@@ -303,6 +470,15 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             }
         }
         
+
+
+
+
+
+
+
+
+
         const finalSelectQuery = `
             SELECT a.id, a.name, a.email, a.tel, a.betreff, a.beschreibung, 
                    a.erstelltam, a.status, a.abgeschlossenam, a.bearbeiter_id,
@@ -313,25 +489,55 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         `;
         const finalItemResult = await client.query<AnregungDbData>(finalSelectQuery, [itemId]);
 
+
+
+
+
+
+
+
+
+
+
+
         if (finalItemResult.rows.length === 0) {
             await client.query('ROLLBACK');
             return NextResponse.json({ error: 'Anregung nach Update/Selektion nicht gefunden.' }, { status: 404 });
         }
 
+
+
+
+
+
+
+
+
+
         const rawItemFromDb = finalItemResult.rows[0];
         const mappedItem = mapAnregungDbRowToAnregungApiResponse(rawItemFromDb); // Mappen für konsistente API-Antwort
         const itemToSend = { ...mappedItem, ...actionResponsePayload };
-        
         await client.query('COMMIT');
         
-        // console.log(`[${requestTimestamp}] PATCH /api/feedback (Anregung): Anregung ID ${itemId} erfolgreich verarbeitet. Antwort: ${JSON.stringify(itemToSend)}`);
+        
         return NextResponse.json(itemToSend, { status: 200 });
+      
+        
+
+
+
+
+        
         
     } catch (error) {
         if (client) { try { await client.query('ROLLBACK'); } catch (rbError) { console.error(`[${requestTimestamp}] Fehler beim Rollback (Anregung PATCH für ID ${itemId}):`, rbError); } }
         const errorMsg = error instanceof Error ? error.message : 'Interner Serverfehler.';
         console.error(`[${requestTimestamp}] PATCH /api/feedback (Anregung) Fehler für ID ${itemId}:`, errorMsg, error);
         return NextResponse.json({ error: "Fehler beim Verarbeiten der Anfrage.", details: errorMsg }, { status: 500 });
+
+
+
+
     } finally {
         if (client) client.release();
     }

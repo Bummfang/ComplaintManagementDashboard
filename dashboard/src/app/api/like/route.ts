@@ -6,8 +6,14 @@ import jwt from 'jsonwebtoken';
 
 type AllowedStatusLob = "Offen" | "In Bearbeitung" | "Gelöst" | "Abgelehnt"; // Beibehaltung deines Typs
 const allowedStatusesLob: AllowedStatusLob[] = ["Offen", "In Bearbeitung", "Gelöst", "Abgelehnt"];
-
 const JWT_SECRET = process.env.JWT_SECRET;
+
+
+
+
+
+
+
 
 // Interface für Datenbankzeilen der 'lob'-Tabelle
 interface LobDbData extends QueryResultRow {
@@ -24,10 +30,22 @@ interface LobDbData extends QueryResultRow {
     bearbeiter_name?: string | null; // Wird durch JOIN gefüllt
 }
 
+
+
+
+
+
+
+
 // Typ für die API-Antwort (frontend-freundlich)
 interface LobApiResponse extends Omit<LobDbData, 'status'> {
     status: AllowedStatusLob; // Stellt sicher, dass Status immer gesetzt ist
 }
+
+
+
+
+
 
 // Mapping-Funktion
 function mapLobDbRowToLobApiResponse(row: LobDbData): LobApiResponse {
@@ -36,6 +54,11 @@ function mapLobDbRowToLobApiResponse(row: LobDbData): LobApiResponse {
         status: row.status || "Offen", // Default zu "Offen", falls DB-Status null/undefined
     };
 }
+
+
+
+
+
 
 export async function GET(request: NextRequest) {
     const initialRequestTimestamp = new Date().toISOString();
@@ -72,8 +95,12 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     // dateFilterTarget ist für Lob immer 'erstelltam'.
-
     let client: PoolClient | undefined;
+
+
+
+
+
 
     try {
         client = await getDbPool().connect();
@@ -128,22 +155,24 @@ export async function GET(request: NextRequest) {
             queryParams.push(endDate);
         }
 
-        const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+
+
+
+
+
+        const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
         const totalCountQuery = `SELECT COUNT(DISTINCT l.id) AS total_items FROM "lob" l LEFT JOIN "users" u ON l.bearbeiter_id = u.id ${whereClause}`;
         const totalResult = await client.query(totalCountQuery, queryParams);
         const totalItems = parseInt(totalResult.rows[0].total_items, 10);
-
         const dataQueryParams = [...queryParams];
         dataQueryParams.push(limit);
         dataQueryParams.push(offset);
-        
         const fieldsToSelect = `
             l.id, l.name, l.email, l.tel, l.betreff, l.beschreibung, 
             l.erstelltam, l.status, l.abgeschlossenam, l.bearbeiter_id,
             u.name || ' ' || u.nachname AS bearbeiter_name 
         `;
-
         const dataQuery = `
             SELECT ${fieldsToSelect}
             FROM "lob" l
@@ -153,10 +182,15 @@ export async function GET(request: NextRequest) {
             LIMIT $${paramIdx++} OFFSET $${paramIdx++};
         `;
 
+
+
+
         const result = await client.query<LobDbData>(dataQuery, dataQueryParams);
         const responseData = result.rows.map(mapLobDbRowToLobApiResponse);
-
         console.log(`[${operationTimestamp}] GET /api/like - Seite: ${page}, Limit: ${limit}, Filter aktiv: ${conditions.length > 0}, Gefundene Items: ${result.rowCount}, Total Items (gefiltert): ${totalItems}`);
+
+
+
 
         return NextResponse.json({
             data: responseData,
@@ -165,6 +199,9 @@ export async function GET(request: NextRequest) {
             totalPages: Math.ceil(totalItems / limit),
             limit: limit,
         }, { status: 200 });
+
+
+
 
     } catch (error) {
         const errorTimestamp = new Date().toISOString();
@@ -175,6 +212,10 @@ export async function GET(request: NextRequest) {
         if (client) client.release();
     }
 }
+
+
+
+
 
 // Der PATCH-Handler bleibt wie in deiner Datei, ggf. mit Anpassung des zurückgegebenen Typs
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
@@ -227,6 +268,12 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({ error: 'Ungültiger JSON-Body oder fehlerhafte Datenstruktur.' }, { status: 400 });
     }
 
+
+
+
+
+
+    
     // console.log(`[${requestTimestamp}] PATCH /api/like: Verarbeite Lob ID ${itemId} - Neuer Status: "${newStatusFromClient}", Bearbeiter zuweisen: ${assignMeAsBearbeiter}`);
 
     let client: PoolClient | undefined;

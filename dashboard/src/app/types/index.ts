@@ -26,6 +26,10 @@ export interface BeschwerdeItem {
 
 
 
+
+
+
+
 export type AllowedLobStatus = "Offen" | "In Bearbeitung" | "Gelöst" | "Abgelehnt";
 export interface LobItem {
     id: number;
@@ -40,6 +44,11 @@ export interface LobItem {
     bearbeiter_id?: number | null; // << Sicherstellen, dass vorhanden
      bearbeiter_name?: string | null; // << NEU HINZUGEFÜGT
 }
+
+
+
+
+
 
 
 
@@ -63,12 +72,13 @@ export interface AnregungItem {
 
 
 
+
+
+
 export type DataItem = BeschwerdeItem | LobItem | AnregungItem;
 export type ViewType = "beschwerden" | "lob" | "anregungen" | "statistik" | "admin";
 export type StatusFilterMode = "alle" | AllowedBeschwerdeStatus; // Bleibt gleich
 export type AnyItemStatus = AllowedBeschwerdeStatus | AllowedLobStatus | AllowedAnregungStatus; // Bleibt gleich
-
-
 
 
 
@@ -84,11 +94,19 @@ export interface InternalCardData {
 }
 
 
+
+
+
+
 export interface ApiErrorResponse {
     error?: string;
     details?: string;
     message?: string; 
 }
+
+
+
+
 
 
 export const defaultInternalDetails: InternalCardData = {
@@ -101,6 +119,8 @@ export const defaultInternalDetails: InternalCardData = {
     moneyRefunded: false,
     refundAmount: "",
 };
+
+
 
 
 

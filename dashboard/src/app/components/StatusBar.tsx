@@ -10,10 +10,23 @@ import { useAuth } from '../contexts/AuthContext';
 
 
 
+
+
+
+
+
+
 interface StatusBarProps {
     isDbConnected: boolean;
     lastDataUpdateTimestamp: Date | null;
 }
+
+
+
+
+
+
+
 
 
 
@@ -40,6 +53,10 @@ export default function StatusBar({
 
 
 
+
+
+
+
     const statusBarVariants = { hidden: { y: -80, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: 'spring', stiffness: 120, damping: 20, duration: 0.5 }, } };
     const sectionItemVariants = { hidden: { opacity: 0, y: -10 }, visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100, damping: 15 } }, };
     const powerIconWrapperVariants = {
@@ -51,6 +68,13 @@ export default function StatusBar({
 
 
 
+
+
+
+
+
+
+    
 
     
     return (

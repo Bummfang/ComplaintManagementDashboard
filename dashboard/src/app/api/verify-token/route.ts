@@ -9,6 +9,9 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 
 
+
+
+
 interface TokenPayload {
     userId: number;
     username: string;
@@ -18,6 +21,11 @@ interface TokenPayload {
     iat?: number;      // Optional, wird von jwt hinzugefügt
     exp?: number;      // Optional, wird von jwt hinzugefügt
 }
+
+
+
+
+
 
 
 

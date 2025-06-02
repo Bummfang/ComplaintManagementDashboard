@@ -8,6 +8,12 @@ import React from 'react'; // Import React für React.ElementType
 
 
 
+
+
+
+
+
+
 interface DataFieldProps {
     label: string;
     value?: string | number | null; // Wert kann auch eine Zahl sein (z.B. ID)
@@ -19,6 +25,10 @@ interface DataFieldProps {
     icon?: React.ElementType; // Typ für Icon-Komponenten
     children?: React.ReactNode; // Für komplexere Werte oder zusätzliche Elemente
 }
+
+
+
+
 
 
 
@@ -36,6 +46,11 @@ const DataField: React.FC<DataFieldProps> = ({
 }) => {
    
    
+
+
+
+
+
    
    
    

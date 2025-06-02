@@ -88,6 +88,13 @@ const itemVariants = {
 
 
 
+
+
+
+
+
+
+
 const neonButtonBaseClasses = "px-4 py-2 text-xs sm:text-sm font-semibold rounded-full transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900/80 shadow-md whitespace-nowrap flex items-center justify-center gap-2";
 const neonButtonSkyClasses = `bg-sky-600/80 hover:bg-sky-500/90 text-sky-50 hover:text-white focus-visible:ring-sky-400 shadow-[0_0_10px_1px_rgba(56,189,248,0.3),0_0_20px_2px_rgba(56,189,248,0.2)] hover:shadow-[0_0_15px_2px_rgba(56,189,248,0.4),0_0_30px_4px_rgba(56,189,248,0.3)]`;
 const neonButtonSlateClasses = `bg-slate-600/80 hover:bg-slate-500/90 text-slate-100 hover:text-white focus-visible:ring-slate-400 shadow-[0_0_10px_1px_rgba(100,116,139,0.3),0_0_20px_2px_rgba(100,116,139,0.2)] hover:shadow-[0_0_15px_2px_rgba(100,116,139,0.4),0_0_30px_4px_rgba(100,116,139,0.3)]`;
@@ -109,6 +116,12 @@ export default function FilterControls({
 
 
 
+
+
+
+
+
+
     const dateFilterActiveColorClasses = "bg-sky-500/90 hover:bg-sky-400 text-white shadow-[0_0_18px_3px_rgba(56,189,248,0.5)] animate-pulse focus-visible:ring-sky-300";
     const dateFilterDefaultColorClasses = neonButtonSkyClasses;
     const warningIconColor = "text-amber-400";
@@ -122,18 +135,22 @@ export default function FilterControls({
 
 
 
+
+
+
     const beschwerdeSearchInputs: Array<{ Icon: React.ElementType; placeholder: string; value: string; setter: SearchSetter; title: string; views: ViewType[]; }> = [
         { Icon: MapPin, placeholder: "Haltestelle...", value: haltestelleSearchTerm, setter: setHaltestelleSearchTerm, title: "Haltestellensuche zurücksetzen", views: ["beschwerden"] },
         { Icon: Waypoints, placeholder: "Linie...", value: linieSearchTerm, setter: setLinieSearchTerm, title: "Liniensuche zurücksetzen", views: ["beschwerden"] },
     ];
-
-
-
-
     const searchInputs = currentView === "beschwerden" ? [...commonSearchInputs, ...beschwerdeSearchInputs] : commonSearchInputs;
     const showStatusPillsForCurrentView = currentView === "beschwerden" || currentView === "lob" || currentView === "anregungen";
 
 
+
+
+
+
+    
     return (
         <motion.div
             variants={containerVariants} initial="hidden" animate="visible"

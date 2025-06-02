@@ -35,6 +35,10 @@ export interface DataItemCardProps {
 
 
 
+
+
+
+
 function DataItemCard({
     item,
     currentView,
@@ -44,11 +48,17 @@ function DataItemCard({
     cardAccentsEnabled,
     onItemUpdate,
 }: DataItemCardProps) {
+
+
+
+
+
+
+
     const { user, token } = useAuth();
     const [isFlipped, setIsFlipped] = useState(false);
     const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
     const [isProcessingFile, setIsProcessingFile] = useState(false);
-
     const {
         isStatusRelevantView,
         effectiveStatus,
@@ -56,7 +66,6 @@ function DataItemCard({
         abgeschlossenText,
         abgeschlossenValueClassName,
     } = useStatusLogic({ item, currentView });
-
     const {
         internalDetails,
         validationError,
@@ -65,7 +74,6 @@ function DataItemCard({
         resetInternalDetails,
         clearValidationError
     } = useInternalDetails(item.internal_details);
-
     const {
         isLocked,
         setIsLocked,
@@ -88,6 +96,10 @@ function DataItemCard({
         },
         currentView,
     });
+
+
+
+
 
 
 
@@ -146,6 +158,13 @@ function DataItemCard({
 
 
 
+
+
+
+
+
+
+
     const handleRemoveAttachment = useCallback(async () => {
         if (isFinalized) return;
         if (currentView !== 'beschwerden' || typeof item.id !== 'number' || !(item as BeschwerdeItem).attachment_filename) return;
@@ -166,6 +185,9 @@ function DataItemCard({
         } catch (error) { console.error(`DataItemCard ID ${item.id}: Fehler beim Löschen des Anhangs:`, error); }
         finally { setIsProcessingFile(false); }
     }, [item, currentView, token, onItemUpdate, isFinalized]);
+
+
+
 
 
 
@@ -196,10 +218,18 @@ function DataItemCard({
 
 
 
+
+
+
+
     const handleCancelInternal = useCallback(() => {
         resetInternalDetails(item.internal_details); // Reset form to original internal_details
         setIsFlipped(false); // Flip back to front
     }, [item.internal_details, resetInternalDetails, setIsFlipped]);
+
+
+
+
 
 
 
@@ -246,6 +276,11 @@ function DataItemCard({
         setIsFlipped,
         triggerShakeLock
     ]);
+
+
+
+
+
 
 
 
@@ -302,6 +337,11 @@ function DataItemCard({
 
 
 
+
+
+
+
+
     const itemTypePrefix = useMemo(() => currentView === "beschwerden" ? "CMP-" : currentView === "lob" ? "LOB-" : "ANG-", [currentView]);
     const cardKey = `dataitemcard-${currentView}-${item.id}`;
     const resolvedBackgroundClass = cardAccentsEnabled && isStatusRelevantView && effectiveStatus ? getCardBackgroundAccentClasses(effectiveStatus) : getCardBackgroundAccentClasses(undefined);
@@ -313,6 +353,8 @@ function DataItemCard({
 
 
 
+
+    
     
     return (
         <motion.div key={cardKey} variants={cardContainerVariants} initial="hidden" animate="visible" exit="exit"

@@ -11,11 +11,17 @@ import { User as AuthUser } from '../contexts/AuthContext'; // Import User-Typ a
 
 
 
+
+
+
+
 interface ViewTabsProps {
   currentView: ViewType;
   setCurrentView: (view: ViewType) => void;
   user: AuthUser | null; // NEU: Benutzerobjekt für Admin-Check
 }
+
+
 
 
 
@@ -44,6 +50,9 @@ export default function ViewTabs({ currentView, setCurrentView, user }: ViewTabs
   });
 
 
+
+
+  
 
 
 

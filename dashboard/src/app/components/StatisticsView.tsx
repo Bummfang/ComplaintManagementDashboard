@@ -10,6 +10,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_ENDPOINTS } from '../constants';
 import { formatDate } from '../utils';
 
+
+
 // --- Typdefinitionen ---
 // Diese bleiben wie von dir bereitgestellt, da sie die API-Antwort widerspiegeln.
 // Wichtig ist, wie wir im Frontend damit umgehen.
@@ -18,6 +20,9 @@ interface ComplaintByStatus { status: ChartComplaintStatusType; count: number; }
 interface ComplaintOverTime { date: string; count: number; }
 interface ComplaintReason { reason: string; count: number; }
 interface ComplaintHotspot { name: string; count: number; }
+
+
+
 
 // Die Struktur, die von der API erwartet wird (StatisticsApiResponse in deiner route.ts)
 // und wie wir sie im Frontend-State halten (StatisticsData).
@@ -35,6 +40,9 @@ export interface StatisticsData {
   topComplaintTimes: ComplaintHotspot[]; // Wird im Code zu `[]` wenn von API undefined/null
   filterApplied: { startDate?: string; endDate?: string; isDefault: boolean };
 }
+
+
+
 
 
 
@@ -137,6 +145,12 @@ export default function StatisticsView() {
   const fetchStatistics = useCallback(async (startDate?: string | null, endDate?: string | null) => {
    
    
+
+
+
+
+
+
     if (!token || !API_ENDPOINTS.statistik) {
       setError("Statistik-Endpunkt nicht konfiguriert oder kein Token.");
       setStatsData(null);
@@ -149,6 +163,8 @@ export default function StatisticsView() {
 
 
 
+
+
     let apiUrl = API_ENDPOINTS.statistik;
     const queryParams = new URLSearchParams();
 
@@ -158,6 +174,11 @@ export default function StatisticsView() {
     if (queryParams.toString()) {
       apiUrl += `?${queryParams.toString()}`;
     }
+
+
+
+
+
 
 
 
@@ -176,10 +197,14 @@ export default function StatisticsView() {
       }
 
 
+
+
+
+
+
+
+
       const apiData = await response.json() as Partial<StatisticsData>; 
-
-
-
       setStatsData({
         totalComplaints: apiData.totalComplaints ?? 0,
         totalPraises: apiData.totalPraises ?? 0,
@@ -201,6 +226,10 @@ export default function StatisticsView() {
 
 
 
+
+
+
+
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unbekannter Fehler beim Laden der Statistiken.";
       console.error("StatisticsView fetch error:", err, { apiUrl, startDate, endDate });
@@ -215,9 +244,14 @@ export default function StatisticsView() {
 
 
 
+
+
+
+
   useEffect(() => {
     fetchStatistics(appliedStartDate, appliedEndDate); // Beim Mounten mit den initialen (null) Filtern laden
   }, [fetchStatistics, appliedStartDate, appliedEndDate]); // Neu laden, wenn sich die angewendeten Filter ändern (obwohl fetchStatistics schon via Button getriggert wird)
+
 
 
 
@@ -240,6 +274,9 @@ export default function StatisticsView() {
 
 
 
+
+
+
   const handleClearDateFilter = () => {
     setSelectedStartDate("");
     setSelectedEndDate("");
@@ -248,6 +285,11 @@ export default function StatisticsView() {
     setAppliedEndDate(null);
     // fetchStatistics(null, null); // Direkter Aufruf
   };
+
+
+
+
+
 
 
   const handleComingSoon = (featureName: string) => { alert(`Die Funktion "${featureName}" ist bald verfügbar.`); };
@@ -267,6 +309,10 @@ export default function StatisticsView() {
 
 
 
+
+
+
+
   if (error) { 
     return (
       <motion.div className="flex flex-col items-center justify-center min-h-[400px] text-red-300 bg-slate-800/30 p-8 rounded-2xl" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} >
@@ -280,6 +326,9 @@ export default function StatisticsView() {
 
   
 
+
+
+  
 
 
 
