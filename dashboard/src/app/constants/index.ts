@@ -6,6 +6,9 @@ import { ViewType, StatusFilterMode } from '../types'; // ViewType wird immer no
 
 
 
+
+
+
 // Definiere ein Interface für alle API Endpunkte, um den TypeScript-Fehler zu beheben
 interface AllApiEndpoints {
     beschwerden: string;
