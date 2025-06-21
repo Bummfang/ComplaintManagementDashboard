@@ -170,7 +170,10 @@ export function useDataFetching({
             setIsLoadingData(false);
             setError(null);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+
+
+        
     }, [currentView, isAuthenticated, token, currentPage, itemsPerPage, JSON.stringify(filters), fetchDataInternal]);
 
     useEffect(() => {

@@ -87,7 +87,6 @@ export default function PaginationControls({
     
     return (
         <div className="mt-10 flex flex-col sm:flex-row justify-between items-center text-xs sm:text-sm text-slate-300 space-y-4 sm:space-y-0">
-            {/* Teil 1: Einträge pro Seite & Info - Wird jetzt (fast) immer angezeigt */}
             <div className="flex items-center space-x-3">
                 <span className="text-slate-400">Zeige:</span>
                 <select
@@ -106,7 +105,8 @@ export default function PaginationControls({
                 </span>
             </div>
 
-            {/* Teil 2: Paginierungsbuttons - Nur anzeigen, wenn mehr als eine Seite */}
+
+
             {totalPages > 1 && (
                 <div className="flex items-center space-x-1 sm:space-x-1.5">
                     <button
